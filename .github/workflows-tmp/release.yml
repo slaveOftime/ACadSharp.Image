@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  publish-packages:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+            10.0.x
+
+      - name: Derive version
+        id: version
+        shell: bash
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Pack library
+        run: dotnet pack ./ACadSharp.Image/ACadSharp.Image.csproj --configuration Release --output ./artifacts/packages -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.value }}
+
+      - name: Pack CLI tool
+        run: dotnet pack ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj --configuration Release --output ./artifacts/packages -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.value }}
+
+      - name: Publish packages
+        run: dotnet nuget push ./artifacts/packages/*.nupkg --api-key {{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        shell: pwsh
+
+  publish-native-cli:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            archive: tar.gz
+          - os: windows-latest
+            rid: win-x64
+            archive: zip
+          - os: macos-14
+            rid: osx-arm64
+            archive: tar.gz
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Derive version
+        id: version
+        shell: bash
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish native CLI
+        run: dotnet publish ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj --configuration Release --runtime ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.value }} --output ./artifacts/publish/${{ matrix.rid }}
+        shell: pwsh
+
+      - name: Archive CLI
+        shell: pwsh
+        run: |
+          $asset = "cad-to-image-${{ steps.version.outputs.value }}-${{ matrix.rid }}"
+          if ("${{ matrix.archive }}" -eq "zip")
+          {
+            Compress-Archive -Path "./artifacts/publish/${{ matrix.rid }}/*" -DestinationPath "./artifacts/$asset.zip"
+          }
+          else
+          {
+            tar -czf "./artifacts/$asset.tar.gz" -C "./artifacts/publish/${{ matrix.rid }}" .
+          }
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./artifacts/*.zip
+            ./artifacts/*.tar.gz

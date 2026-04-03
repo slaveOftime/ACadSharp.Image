@@ -115,7 +115,7 @@ Build local NuGet packages:
 dotnet pack ./ACadSharp.Image/ACadSharp.Image.csproj -c Release
 
 dotnet pack ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -c Release
-dotnet tool install -g --add-source .\ACadSharp.Image.Cli\bin\Release\ ACadSharp.Image.Cli
+dotnet tool install -g --add-source ./ACadSharp.Image.Cli/bin/Release ACadSharp.Image.Cli
 ```
 
 Publish a native AOT CLI binary locally:

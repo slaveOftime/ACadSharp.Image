@@ -6,7 +6,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PackAsTool>true</PackAsTool>
-		<ToolCommandName>acadsharp-image</ToolCommandName>
+		<ToolCommandName>cad-to-image</ToolCommandName>
 		<PackageId>ACadSharp.Image.Cli</PackageId>
 		<Authors>ACadSharp.Image Contributors</Authors>
 		<Description>Command-line DXF and DWG to image converter powered by ACadSharp.Image.</Description>

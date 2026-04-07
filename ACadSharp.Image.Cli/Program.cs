@@ -27,7 +27,7 @@ internal static class Program
             ImageExportFormat format = ResolveFormat(options);
             string outputPath = ResolveOutputPath(options, inputPath, format);
 
-            ImageExporter exporter = new(outputPath);
+            ImageExporter exporter = new();
             Configure(exporter.Configuration, options);
             exporter.Configuration.OnNotification += OnExporterNotification;
 
@@ -41,7 +41,7 @@ internal static class Program
                 exporter.AddModelSpace(document);
             }
 
-            exporter.Close(format);
+            exporter.Save(outputPath, format);
 
             Console.WriteLine($"Generated {Path.GetFullPath(outputPath)} in {stopwatch.ElapsedMilliseconds}ms");
 

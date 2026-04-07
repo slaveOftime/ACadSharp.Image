@@ -18,7 +18,7 @@ namespace ACadSharp.Image;
 /// <remarks>
 /// The <see cref="ImageExporter"/> is the main entry point for exporting CAD content to images.
 /// Use <see cref="AddModelSpace"/> or <see cref="AddPaperLayouts"/> to add content, then call
-/// <see cref="Save(string, ImageExportFormat)"/> or <see cref="Close(ImageExportFormat)"/> to render and save.
+/// <see cref="Save(string, ImageExportFormat)"/>
 /// </remarks>
 /// <example>
 /// <code>
@@ -39,23 +39,12 @@ public sealed class ImageExporter
     /// </summary>
     public IList<ImagePage> Pages { get; } = new List<ImagePage>();
 
-    private readonly string? _outputPath;
-
     /// <summary>
     /// Creates a new instance of <see cref="ImageExporter"/> without an output path.
     /// Use <see cref="Save(string, ImageExportFormat)"/> to specify the output location.
     /// </summary>
     public ImageExporter()
     {
-    }
-
-    /// <summary>
-    /// Creates a new instance of <see cref="ImageExporter"/> with a predefined output path.
-    /// </summary>
-    /// <param name="outputPath">The file path where the image will be saved.</param>
-    public ImageExporter(string outputPath)
-    {
-        this._outputPath = outputPath;
     }
 
     /// <summary>
@@ -109,7 +98,7 @@ public sealed class ImageExporter
         ImagePage page = new()
         {
             Layout = layout,
-            Name = sanitizeFileName(layout.Name),
+            Name = SanitizeFileName(layout.Name),
         };
 
         foreach (Entity entity in layout.AssociatedBlock.Entities)
@@ -143,7 +132,7 @@ public sealed class ImageExporter
 
         ImagePage page = new()
         {
-            Name = sanitizeFileName(block.Name),
+            Name = SanitizeFileName(block.Name),
         };
 
         page.Add(block, this.shouldIncludeEntity);
@@ -197,25 +186,10 @@ public sealed class ImageExporter
     /// <param name="format">The image format to use. Defaults to PNG.</param>
     public void Save(string outputPath, ImageExportFormat format = ImageExportFormat.Png)
     {
-        this.saveInternal(outputPath, format);
+        this.SaveInternal(outputPath, format);
     }
 
-    /// <summary>
-    /// Renders all added pages and saves the output to the path specified in the constructor.
-    /// </summary>
-    /// <param name="format">The image format to use. Defaults to PNG.</param>
-    /// <exception cref="InvalidOperationException">Thrown when the exporter was not created with an output path.</exception>
-    public void Close(ImageExportFormat format = ImageExportFormat.Png)
-    {
-        if (string.IsNullOrWhiteSpace(this._outputPath))
-        {
-            throw new InvalidOperationException("The exporter was not created with an output path.");
-        }
-
-        this.saveInternal(this._outputPath, format);
-    }
-
-    private void saveInternal(string outputPath, ImageExportFormat format)
+    private void SaveInternal(string outputPath, ImageExportFormat format)
     {
         IReadOnlyList<RenderedImagePage> pages = this.Render();
 
@@ -232,7 +206,7 @@ public sealed class ImageExporter
             if (pages.Count == 1 && !string.IsNullOrWhiteSpace(extension))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-                this.savePage(pages[0], fullPath, format);
+                this.SavePage(pages[0], fullPath, format);
                 return;
             }
 
@@ -249,7 +223,7 @@ public sealed class ImageExporter
             for (int i = 0; i < pages.Count; i++)
             {
                 string pagePath = Path.Combine(directory, $"{prefix}-{i + 1:D2}-{pages[i].Name}{format.GetFileExtension()}");
-                this.savePage(pages[i], pagePath, format);
+                this.SavePage(pages[i], pagePath, format);
             }
         }
         finally
@@ -261,7 +235,7 @@ public sealed class ImageExporter
         }
     }
 
-    private void savePage(RenderedImagePage page, string path, ImageExportFormat format)
+    private void SavePage(RenderedImagePage page, string path, ImageExportFormat format)
     {
         switch (format)
         {
@@ -284,7 +258,7 @@ public sealed class ImageExporter
         }
     }
 
-    private static string sanitizeFileName(string? value)
+    private static string SanitizeFileName(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {

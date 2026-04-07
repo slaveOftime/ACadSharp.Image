@@ -9,13 +9,21 @@
 		<Nullable>enable</Nullable>
 		<IsPackable>true</IsPackable>
 		<PackageId>ACadSharp.Image</PackageId>
+		<Title>ACadSharp.Image</Title>
 		<Authors>ACadSharp.Image Contributors</Authors>
 		<Description>Raster image exporter for ACadSharp DXF and DWG documents using SixLabors.ImageSharp.</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/slaveoftime/ACadSharp.Image</PackageProjectUrl>
 		<PackageTags>acadsharp;cad;dxf;dwg;imagesharp;rendering</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/slaveoftime/ACadSharp.Image.git</RepositoryUrl>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" Link="README.md" />
 		<PackageReference Include="ACadSharp" Version="3.4.24" />
 		<PackageReference Include="SixLabors.Fonts" Version="2.1.3" />
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />

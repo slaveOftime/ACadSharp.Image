@@ -56,7 +56,7 @@ internal sealed class ImagePageRenderer
 
         foreach (Viewport viewport in page.Viewports)
         {
-            this.drawViewport(context, viewport);
+            this.DrawViewport(context, viewport);
         }
 
         foreach (Entity entity in page.Entities)
@@ -67,7 +67,7 @@ internal sealed class ImagePageRenderer
         return new RenderedImagePage(page.Name, image);
     }
 
-    private void drawViewport(ImageRenderContext pageContext, Viewport viewport)
+    private void DrawViewport(ImageRenderContext pageContext, Viewport viewport)
     {
         BoundingBox viewportBounds = viewport.GetBoundingBox();
         int viewportWidth = Math.Max(1, (int)Math.Ceiling(pageContext.ToPixelLength(viewportBounds.LengthX)));

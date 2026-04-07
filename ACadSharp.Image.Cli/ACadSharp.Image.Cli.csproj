@@ -8,15 +8,23 @@
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>cad-to-image</ToolCommandName>
 		<PackageId>ACadSharp.Image.Cli</PackageId>
+		<Title>ACadSharp.Image.Cli</Title>
 		<Authors>ACadSharp.Image Contributors</Authors>
 		<Description>Command-line DXF and DWG to image converter powered by ACadSharp.Image.</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/slaveoftime/ACadSharp.Image</PackageProjectUrl>
 		<PackageTags>acadsharp;cad;dxf;dwg;imagesharp;cli;dotnet-tool</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/slaveoftime/ACadSharp.Image.git</RepositoryUrl>
 		<PublishSingleFile>true</PublishSingleFile>
 		<StripSymbols>true</StripSymbols>
 		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 
 	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" Link="README.md" />
 		<ProjectReference Include="..\ACadSharp.Image\ACadSharp.Image.csproj" SetTargetFramework="TargetFramework=net10.0" AdditionalProperties="TargetFramework=net10.0;TargetFrameworks=net10.0;PublishAot=false" />
 	</ItemGroup>
 

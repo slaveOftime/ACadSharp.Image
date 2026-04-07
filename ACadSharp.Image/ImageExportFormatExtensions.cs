@@ -67,14 +67,14 @@ public static class ImageExportFormatExtensions
             return false;
         }
 
-        return normalized(value) switch
+        return Normalized(value) switch
         {
-            "png" => success(ImageExportFormat.Png, out format),
-            "bmp" => success(ImageExportFormat.Bmp, out format),
-            "jpg" or "jpeg" => success(ImageExportFormat.Jpeg, out format),
-            "gif" => success(ImageExportFormat.Gif, out format),
-            "webp" => success(ImageExportFormat.Webp, out format),
-            _ => failure(out format),
+            "png" => Success(ImageExportFormat.Png, out format),
+            "bmp" => Success(ImageExportFormat.Bmp, out format),
+            "jpg" or "jpeg" => Success(ImageExportFormat.Jpeg, out format),
+            "gif" => Success(ImageExportFormat.Gif, out format),
+            "webp" => Success(ImageExportFormat.Webp, out format),
+            _ => Failure(out format),
         };
     }
 
@@ -106,18 +106,18 @@ public static class ImageExportFormatExtensions
     /// </example>
     public static bool TryParseFileExtension(string? extension, out ImageExportFormat format)
     {
-        return TryParse(normalized(extension).TrimStart('.'), out format);
+        return TryParse(Normalized(extension).TrimStart('.'), out format);
     }
 
-    private static string normalized(string? value) => value?.Trim().ToLowerInvariant() ?? string.Empty;
+    private static string Normalized(string? value) => value?.Trim().ToLowerInvariant() ?? string.Empty;
 
-    private static bool success(ImageExportFormat value, out ImageExportFormat format)
+    private static bool Success(ImageExportFormat value, out ImageExportFormat format)
     {
         format = value;
         return true;
     }
 
-    private static bool failure(out ImageExportFormat format)
+    private static bool Failure(out ImageExportFormat format)
     {
         format = default;
         return false;

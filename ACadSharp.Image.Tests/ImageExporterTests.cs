@@ -12,7 +12,7 @@ public sealed class ImageExporterTests
     {
         ImageExporter exporter = new();
 
-        Assert.Throws<InvalidOperationException>(() => exporter.Close());
+        Assert.Throws<InvalidOperationException>(() => exporter.Save());
     }
 
     [Fact]

@@ -75,7 +75,7 @@ exporter.Configuration.HiddenLayers.Add("DIMENSIONS");
 exporter.Configuration.HiddenLayers.Add("ANNOTATIONS");
 
 exporter.AddModelSpace(document);
-exporter.Close(ImageExportFormat.Webp);
+exporter.Save("./output-directory/filename.webp", ImageExportFormat.Webp);
 ```
 
 **Multi-page export:**
@@ -83,7 +83,7 @@ exporter.Close(ImageExportFormat.Webp);
 ```csharp
 var exporter = new ImageExporter();
 exporter.AddPaperLayouts(document);
-exporter.Save("./output-directory/", ImageExportFormat.Png);
+exporter.Save("./output-directory/filename.png", ImageExportFormat.Png);
 ```
 
 ### CLI Usage
@@ -172,7 +172,6 @@ exporter.Configuration.HiddenLayers.Add("DEFPOINTS");
 exporter.Configuration.HiddenLayers.Add("ANNO_TEXT");
 
 exporter.AddModelSpace(document);
-exporter.Close();
 ```
 
 ### Custom Line Weights

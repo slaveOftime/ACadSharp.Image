@@ -110,7 +110,7 @@ public sealed class ImageExporterTests
         exporter.Add(block);
 
         // Verify filtering before rendering
-        ImagePage page = exporter.TestGetPage(0);
+        ImagePage page = exporter.Pages[0];
         Assert.Equal(2, page.Entities.Count); // Only Layer1 and Layer3 entities
     }
 
@@ -128,7 +128,7 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        ImagePage page = exporter.TestGetPage(0);
+        ImagePage page = exporter.Pages[0];
         Assert.Empty(page.Entities); // All entities filtered out
     }
 
@@ -156,7 +156,7 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        ImagePage page = exporter.TestGetPage(0);
+        ImagePage page = exporter.Pages[0];
         Assert.Single(page.Entities); // Only Layer2 entity
     }
 }

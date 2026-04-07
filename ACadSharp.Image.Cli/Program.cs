@@ -47,11 +47,25 @@ internal static class Program
 
             return 0;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!IsFatalException(ex))
         {
-            Console.Error.WriteLine(ex.Message);
+            Console.Error.WriteLine($"Error: {ex.Message}");
+#if DEBUG
+            Console.Error.WriteLine(ex.StackTrace);
+#endif
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Determines if an exception is fatal and should not be caught.
+    /// </summary>
+    private static bool IsFatalException(Exception ex)
+    {
+        return ex is OutOfMemoryException
+            or StackOverflowException
+            or ThreadAbortException
+            or AccessViolationException;
     }
 
     private static void Configure(ImageConfiguration configuration, CliOptions options)

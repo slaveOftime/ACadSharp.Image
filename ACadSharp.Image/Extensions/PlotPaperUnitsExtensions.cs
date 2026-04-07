@@ -3,7 +3,7 @@ using ACadSharp.Objects;
 
 namespace ACadSharp.Image.Extensions;
 
-public static class PlotPaperUnitsExtensions
+internal static class PlotPaperUnitsExtensions
 {
     public static float GetPixelsPerUnit(this PlotPaperUnits unit, float dpi)
     {

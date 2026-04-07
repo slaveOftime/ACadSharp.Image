@@ -9,6 +9,20 @@ using Rgba32 = SixLabors.ImageSharp.PixelFormats.Rgba32;
 
 namespace ACadSharp.Image.Rendering;
 
+/// <summary>
+/// Renders a single <see cref="ImagePage"/> (including its viewports and entities) into an image.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This class is the core rendering engine for a single page. It creates the output canvas,
+/// processes all viewports (which may contain nested model-space views), and dispatches
+/// entity rendering to <see cref="EntityRenderDispatcher"/>.
+/// </para>
+/// <para>
+/// Each instance is scoped to a specific <see cref="ImageConfiguration"/> and should not
+/// be shared across threads.
+/// </para>
+/// </remarks>
 internal sealed class ImagePageRenderer
 {
     private readonly ImageConfiguration _configuration;
@@ -20,6 +34,21 @@ internal sealed class ImagePageRenderer
         this._dispatcher = new EntityRenderDispatcher(configuration);
     }
 
+    /// <summary>
+    /// Renders the specified page into a <see cref="RenderedImagePage"/>.
+    /// </summary>
+    /// <param name="page">The page to render.</param>
+    /// <returns>A <see cref="RenderedImagePage"/> containing the rendered canvas.</returns>
+    /// <remarks>
+    /// <para>
+    /// The rendering process follows these steps:
+    /// <list type="number">
+    ///   <item>Creates a canvas with the configured dimensions and background color.</item>
+    ///   <item>Renders each viewport's model-space contents at the appropriate scale and position.</item>
+    ///   <item>Renders page-level entities (e.g., annotations) on top.</item>
+    /// </list>
+    /// </para>
+    /// </remarks>
     public RenderedImagePage Render(ImagePage page)
     {
         var image = new Image<Rgba32>(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);

@@ -57,8 +57,9 @@ internal sealed class ImageRenderContext
         ImagePage page,
         ImageConfiguration configuration)
     {
-        double pageWidth = Math.Max(1d, page.Layout.PaperWidth);
-        double pageHeight = Math.Max(1d, page.Layout.PaperHeight);
+        Layout layout = page.Layout ?? new Layout("default_page");
+        double pageWidth = Math.Max(1d, layout.PaperWidth);
+        double pageHeight = Math.Max(1d, layout.PaperHeight);
         float pixelsPerUnit = Math.Min(
             configuration.Width / (float)pageWidth,
             configuration.Height / (float)pageHeight);
@@ -68,13 +69,13 @@ internal sealed class ImageRenderContext
         float offsetX = (configuration.Width - scaledWidth) / 2f;
         float offsetY = (configuration.Height - scaledHeight) / 2f;
 
-        double originX = -page.Translation.X - page.Layout.UnprintableMargin.Left;
-        double originY = -page.Translation.Y - page.Layout.UnprintableMargin.Bottom;
+        double originX = -page.Translation.X - layout.UnprintableMargin.Left;
+        double originY = -page.Translation.Y - layout.UnprintableMargin.Bottom;
 
         return new ImageRenderContext(
             canvas,
             configuration,
-            page.Layout,
+            layout,
             configuration.Width,
             configuration.Height,
             originX,

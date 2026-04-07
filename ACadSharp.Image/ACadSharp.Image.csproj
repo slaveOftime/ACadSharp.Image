@@ -12,6 +12,7 @@
 		<Authors>ACadSharp.Image Contributors</Authors>
 		<Description>Raster image exporter for ACadSharp DXF and DWG documents using SixLabors.ImageSharp.</Description>
 		<PackageTags>acadsharp;cad;dxf;dwg;imagesharp;rendering</PackageTags>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>

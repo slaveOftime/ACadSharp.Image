@@ -12,6 +12,21 @@ using System.Numerics;
 
 namespace ACadSharp.Image.Rendering;
 
+/// <summary>
+/// Dispatches rendering of individual CAD entities to type-specific rendering methods.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This class acts as a type router: it inspects the runtime type of each
+/// <see cref="Entity"/> and delegates to the appropriate drawing method.
+/// Supported entity types include lines, circles, arcs, polylines, splines,
+/// text, dimensions, points, solids, and more.
+/// </para>
+/// <para>
+/// Unsupported entity types trigger a notification via <see cref="ImageConfiguration.Notify"/>
+/// rather than throwing an exception, allowing the export to continue gracefully.
+/// </para>
+/// </remarks>
 internal sealed class EntityRenderDispatcher
 {
     private readonly ImageConfiguration _configuration;
@@ -23,6 +38,21 @@ internal sealed class EntityRenderDispatcher
         this._styleResolver = new ImageStyleResolver(configuration);
     }
 
+    /// <summary>
+    /// Draws a single CAD entity onto the rendering canvas.
+    /// </summary>
+    /// <param name="context">The rendering context containing the canvas and coordinate transforms.</param>
+    /// <param name="entity">The entity to draw.</param>
+    /// <remarks>
+    /// <para>
+    /// The entity's color and line weight are resolved automatically from the entity
+    /// properties (ByLayer, ByBlock, or explicit values) using <see cref="ImageStyleResolver"/>.
+    /// </para>
+    /// <para>
+    /// If the entity type is not supported, a warning notification is raised but no
+    /// exception is thrown.
+    /// </para>
+    /// </remarks>
     public void Draw(ImageRenderContext context, Entity entity)
     {
         ImageStyle style = this._styleResolver.Resolve(entity);
@@ -222,6 +252,15 @@ internal sealed class EntityRenderDispatcher
         context.Canvas.Mutate(x => x.DrawLine(style.StrokeColor, style.StrokeWidth, points));
     }
 
+    /// <summary>
+    /// Determines whether a polyline should be closed based on a heuristic.
+    /// </summary>
+    /// <remarks>
+    /// The heuristic compares the distance between the last and first points (closing length)
+    /// to the average segment length. If the closing length is within 3x the average segment
+    /// length, the polyline is considered closeable. This handles cases where polylines are
+    /// nearly closed but have small gaps due to precision or modeling errors.
+    /// </remarks>
     private bool shouldClose(IReadOnlyList<PointF> points)
     {
         if (points.Count < 3)
@@ -238,6 +277,7 @@ internal sealed class EntityRenderDispatcher
         float averageSegmentLength = totalLength / (points.Count - 1);
         float closingLength = distance(points[^1], points[0]);
 
+        // 3x multiplier provides tolerance for small gaps in nearly-closed polylines
         return closingLength <= averageSegmentLength * 3f;
     }
 

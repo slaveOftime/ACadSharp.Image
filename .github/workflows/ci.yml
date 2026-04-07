@@ -5,6 +5,7 @@ on:
     paths:
       - 'ACadSharp.Image/**'
       - 'ACadSharp.Image.Cli/**'
+      - 'ACadSharp.Image.Tests/**'
       - '.github/workflows/ci.yml'
   push:
     branches:

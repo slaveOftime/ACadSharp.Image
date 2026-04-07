@@ -37,7 +37,19 @@ public sealed class ImagePage
             return;
         }
 
-        BoundingBox limits = BoundingBox.Merge(this.Entities.Select(entity => entity.GetBoundingBox()));
+        // Filter out invalid bounding boxes (those with NaN values)
+        var validBoxes = this.Entities
+            .Select(entity => entity.GetBoundingBox())
+            .Where(bbox => !double.IsNaN(bbox.Min.X) && !double.IsNaN(bbox.Min.Y) && 
+                          !double.IsNaN(bbox.Max.X) && !double.IsNaN(bbox.Max.Y))
+            .ToList();
+
+        if (validBoxes.Count == 0)
+        {
+            return;
+        }
+
+        BoundingBox limits = BoundingBox.Merge(validBoxes);
         this.Translation = -(XY)limits.Min;
         limits = limits.Move(-limits.Min);
 

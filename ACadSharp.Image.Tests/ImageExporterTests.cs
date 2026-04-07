@@ -65,4 +65,23 @@ public sealed class ImageExporterTests
         Assert.NotNull(page.Canvas);
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Spline", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void RenderHandlesEntitiesWithNaNBoundingBox()
+    {
+        // Create a block with normal lines
+        BlockRecord block = new("nan-bbox-block");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
+        block.Entities.Add(new Line(new XYZ(100, 50, 0), new XYZ(200, 0, 0)));
+
+        ImageExporter exporter = new();
+        exporter.Add(block);
+
+        // Should render successfully without NaN propagation issues
+        using RenderedImagePage page = Assert.Single(exporter.Render());
+
+        Assert.NotNull(page.Canvas);
+        Assert.Equal(ImageConfiguration.DefaultWidth, page.Canvas.Width);
+        Assert.Equal(ImageConfiguration.DefaultHeight, page.Canvas.Height);
+    }
 }

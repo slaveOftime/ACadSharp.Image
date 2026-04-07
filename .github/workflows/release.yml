@@ -36,7 +36,7 @@ jobs:
         run: dotnet pack ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj --configuration Release --output ./artifacts/packages -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.value }}
 
       - name: Publish packages
-        run: dotnet nuget push ./artifacts/packages/*.nupkg --api-key {{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push ./artifacts/packages/*.nupkg --api-key "{{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
         shell: pwsh
 
   publish-native-cli:
@@ -79,13 +79,22 @@ jobs:
         shell: pwsh
         run: |
           $asset = "cad-to-image-${{ steps.version.outputs.value }}-${{ matrix.rid }}"
+            $publishDir = "./artifacts/publish/${{ matrix.rid }}"
+            $executableName = if ("${{ matrix.archive }}" -eq "zip") { "cad-to-image.exe" } else { "cad-to-image" }
+            $executablePath = Join-Path $publishDir $executableName
+
+            if (!(Test-Path $executablePath))
+            {
+              throw "Published executable not found at '$executablePath'."
+            }
+
           if ("${{ matrix.archive }}" -eq "zip")
           {
-            Compress-Archive -Path "./artifacts/publish/${{ matrix.rid }}/*" -DestinationPath "./artifacts/$asset.zip"
+              Compress-Archive -Path $executablePath -DestinationPath "./artifacts/$asset.zip"
           }
           else
           {
-            tar -czf "./artifacts/$asset.tar.gz" -C "./artifacts/publish/${{ matrix.rid }}" .
+              tar -czf "./artifacts/$asset.tar.gz" -C $publishDir $executableName
           }
 
       - name: Upload release asset

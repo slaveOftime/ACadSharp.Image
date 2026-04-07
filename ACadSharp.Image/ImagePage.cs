@@ -19,9 +19,28 @@ public sealed class ImagePage
 
     public void Add(BlockRecord block, bool resizeLayout = true)
     {
+        this.Add(block, null, resizeLayout);
+    }
+
+    public void Add(BlockRecord block, Func<Entity, bool>? entityFilter, bool resizeLayout = true)
+    {
         ArgumentNullException.ThrowIfNull(block);
 
-        this.Entities.AddRange(block.Entities);
+        if (entityFilter != null)
+        {
+            foreach (Entity entity in block.Entities)
+            {
+                if (entityFilter(entity))
+                {
+                    this.Entities.Add(entity);
+                }
+            }
+        }
+        else
+        {
+            this.Entities.AddRange(block.Entities);
+        }
+
         this.Layout.PaperUnits = PlotPaperUnits.Pixels;
 
         if (resizeLayout)

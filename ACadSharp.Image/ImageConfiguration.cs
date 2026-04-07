@@ -59,6 +59,12 @@ public sealed class ImageConfiguration
 
     public string FontFamilyName { get; set; } = "Arial";
 
+    /// <summary>
+    /// Gets the set of layer names that should be hidden during export.
+    /// Layer names are case-insensitive.
+    /// </summary>
+    public HashSet<string> HiddenLayers { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public int OutputQuality
     {
         get => this._outputQuality;

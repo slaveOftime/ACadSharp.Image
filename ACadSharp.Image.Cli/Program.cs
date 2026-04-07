@@ -60,6 +60,11 @@ internal static class Program
         configuration.Height = options.Height;
         configuration.OutputQuality = options.Quality;
         configuration.BackgroundColor = ParseColor(options.BackgroundColor);
+
+        foreach (string layer in options.HideLayers)
+        {
+            configuration.HiddenLayers.Add(layer);
+        }
     }
 
     private static CadDocument LoadDocument(string inputPath)
@@ -124,6 +129,7 @@ internal static class Program
         int height = ImageConfiguration.DefaultHeight;
         int quality = 90;
         bool exportPaperLayouts = false;
+        List<string> hideLayers = new();
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -163,6 +169,9 @@ internal static class Program
                 case "--paper-layouts":
                     exportPaperLayouts = true;
                     break;
+                case "--hide-layer":
+                    hideLayers.Add(GetRequiredValue(args, ref i, current));
+                    break;
                 default:
                     throw new InvalidOperationException($"Unknown argument '{current}'.");
             }
@@ -173,7 +182,7 @@ internal static class Program
             throw new InvalidOperationException("An input .dxf or .dwg file is required.");
         }
 
-        return new CliOptions(inputPath, outputPath, format, width, height, backgroundColor, quality, exportPaperLayouts);
+        return new CliOptions(inputPath, outputPath, format, width, height, backgroundColor, quality, exportPaperLayouts, hideLayers);
     }
 
     private static int ParsePositiveInt(string value, string argumentName)
@@ -241,6 +250,7 @@ Options:
   -b, --background <color>    Background color name or hex value. Default: white.
   -q, --quality <1-100>       Output quality for lossy formats. Default: 90.
       --paper-layouts         Export paper layouts instead of model space.
+      --hide-layer <name>     Hide entities on the specified layer. Can be used multiple times.
       --help, -h, -?          Show this help text.
 """);
     }

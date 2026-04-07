@@ -21,4 +21,8 @@
 		<PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="ACadSharp.Image.Tests" />
+	</ItemGroup>
+
 </Project>

@@ -107,6 +107,7 @@ From the repository root:
 dotnet restore ACadSharp.Image.sln
 dotnet test ACadSharp.Image.sln
 dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/HSK80AHCP16190M_BMG.dwg" --format png --width 1800 --height 1200
+dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/6-57-1119.dxf" --width 160 --height 80 --hide-layer OPTIONAL_DIMENSIONS
 ```
 
 Build local NuGet packages:

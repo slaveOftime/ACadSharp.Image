@@ -72,6 +72,11 @@ public sealed class ImageExporter
                 continue;
             }
 
+            if (this.isHiddenLayer(entity))
+            {
+                continue;
+            }
+
             page.Entities.Add(entity);
         }
 
@@ -97,8 +102,32 @@ public sealed class ImageExporter
             Name = sanitizeFileName(block.Name),
         };
 
-        page.Add(block);
+        page.Add(block, entity => !this.isHiddenLayer(entity));
         this._document.Pages.Add(page);
+    }
+
+    /// <summary>
+    /// Gets a page for testing purposes.
+    /// </summary>
+    internal ImagePage TestGetPage(int index)
+    {
+        return this._document.Pages[index];
+    }
+
+    private bool isHiddenLayer(Entity entity)
+    {
+        if (this.Configuration.HiddenLayers.Count == 0)
+        {
+            return false;
+        }
+
+        string? layerName = entity.Layer?.Name;
+        if (string.IsNullOrEmpty(layerName))
+        {
+            return false;
+        }
+
+        return this.Configuration.HiddenLayers.Contains(layerName);
     }
 
     public IReadOnlyList<RenderedImagePage> Render()

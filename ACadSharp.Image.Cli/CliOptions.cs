@@ -8,5 +8,6 @@ internal sealed record CliOptions(
     int Height,
     string BackgroundColor,
     int Quality,
-    bool ExportPaperLayouts
+    bool ExportPaperLayouts,
+    IReadOnlyList<string> HideLayers
 );

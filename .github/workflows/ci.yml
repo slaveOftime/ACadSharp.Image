@@ -2,9 +2,17 @@ name: CI
 
 on:
   pull_request:
+    paths:
+      - 'ACadSharp.Image/**'
+      - 'ACadSharp.Image.Cli/**'
+      - '.github/workflows/ci.yml'
   push:
     branches:
       - main
+    paths:
+      - 'ACadSharp.Image/**'
+      - 'ACadSharp.Image.Cli/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
   test:

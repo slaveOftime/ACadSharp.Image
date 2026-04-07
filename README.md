@@ -1,90 +1,122 @@
 # ACadSharp.Image
 
 [![NuGet downloads](https://img.shields.io/nuget/dt/ACadSharp.Image?logo=nuget&label=downloads)](https://www.nuget.org/packages/ACadSharp.Image)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-6.0%20%7C%208.0%20%7C%2010.0-512bd4)](https://dotnet.microsoft.com/download)
+[![CI](https://github.com/slaveoftime/ACadSharp.Image/actions/workflows/ci.yml/badge.svg)](https://github.com/slaveoftime/ACadSharp.Image/actions)
 
-**High-quality DXF/DWG to image rendering for .NET**, built on top of [ACadSharp](https://github.com/DomCR/ACadSharp) and [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp).
+**High-performance DXF/DWG to image renderer for .NET**, built on [ACadSharp](https://github.com/DomCR/ACadSharp) and [ImageSharp](https://github.com/SixLabors/ImageSharp).
 
-`ACadSharp.Image` is an open source renderer for turning CAD drawings into raster images for previews, automation pipelines, documentation, web apps, and CLI workflows.
+Transform CAD drawings into raster images for **previews**, **CI/CD pipelines**, **web applications**, **documentation**, and **automated workflows** — with zero AutoCAD dependency.
 
 ![Rendered sample](Samples/HSK80AHCP16190M_BMG.webp)
 
-## Highlights
+---
 
-- Render **DXF** and **DWG** files with ACadSharp
-- Export to **PNG**, **BMP**, **JPEG**, **GIF**, and **WebP**
-- Control **width**, **height**, **background color**, and **output quality**
-- Support **model space**, **paper layouts**, and **viewports**
-- Includes a **.NET tool CLI**
-- Ships with GitHub Actions for **CI**, **NuGet publishing**, and **native AOT release binaries**
+## ✨ Features
 
-## Repository layout
+- 🎨 **Multi-format export** — PNG, BMP, JPEG, GIF, and WebP support
+- 📐 **Full CAD support** — Render DXF and DWG files with ACadSharp
+- 🖼️ **Customizable output** — Control width, height, background color, and quality
+- 📊 **Space support** — Model space, paper layouts, and viewports
+- 🎭 **Layer filtering** — Hide specific layers with `--hide-layer` option
+- ⚡ **CLI tool** — Cross-platform command-line interface for automation
+- 🔧 **Library API** — Full .NET integration with intuitive fluent-style configuration
+- 🚀 **Native AOT** - Publish as standalone native binaries with zero .NET runtime requirement
+- 📚 **Fully documented** — Complete XML IntelliSense support
 
-| Path | Description |
-| --- | --- |
-| `ACadSharp.Image` | Core rendering library |
-| `ACadSharp.Image.Cli` | CLI and .NET tool |
-| `ACadSharp.Image.Tests` | Automated tests |
-| `Samples` | Example CAD inputs and rendered output |
-| `.github/workflows` | CI and release automation |
+---
 
-## Install
+## 📦 Installation
 
-### Library package
+### NuGet Package
 
 ```bash
 dotnet add package ACadSharp.Image
 ```
 
-### CLI as a .NET tool
+### CLI as Global Tool
 
 ```bash
 dotnet tool install --global ACadSharp.Image.Cli
 ```
 
-Update an existing install:
+**Update to latest version:**
 
 ```bash
 dotnet tool update --global ACadSharp.Image.Cli
 ```
 
-## Quick start
+---
 
-### Library usage
+## 🚀 Quick Start
+
+### Library Usage
+
+Render a DWG file with custom settings:
 
 ```csharp
 using ACadSharp.IO;
 using ACadSharp.Image;
 using SixLabors.ImageSharp;
 
+// Load CAD document
 var document = DwgReader.Read("part.dwg");
 
-var exporter = new ImageExporter("part.webp");
+// Configure and export
+var exporter = new ImageExporter("output.webp");
 exporter.Configuration.Width = 2000;
 exporter.Configuration.Height = 1400;
 exporter.Configuration.BackgroundColor = Color.Parse("#ffffff");
 exporter.Configuration.OutputQuality = 90;
 
+// Optional: hide specific layers
+exporter.Configuration.HiddenLayers.Add("DIMENSIONS");
+exporter.Configuration.HiddenLayers.Add("ANNOTATIONS");
+
 exporter.AddModelSpace(document);
 exporter.Close(ImageExportFormat.Webp);
 ```
 
-### CLI usage
+**Multi-page export:**
 
-Render a sample DXF to WebP:
-
-```bash
-cad-to-image "./Samples/Subaru Logo Vector Free Wrap.dxf" --format webp --width 1400 --height 1400 --quality 85
+```csharp
+var exporter = new ImageExporter();
+exporter.AddPaperLayouts(document);
+exporter.Save("./output-directory/", ImageExportFormat.Png);
 ```
 
-Render a DWG with a custom background:
+### CLI Usage
+
+**Basic rendering:**
 
 ```bash
-cad-to-image "./Samples/HSK80AHCP16190M_BMG.dwg" --format png --width 1800 --height 1200 --background "#0c0c0c"
+cad-to-image "drawing.dxf" --format webp --width 1400 --height 1400 --quality 85
 ```
 
-## CLI reference
+**Custom background & dimensions:**
 
-```text
+```bash
+cad-to-image "part.dwg" --format png --width 1800 --height 1200 --background "#0c0c0c"
+```
+
+**Hide multiple layers:**
+
+```bash
+cad-to-image "complex.dxf" --hide-layer "DIMENSIONS" --hide-layer "ANNOTATIONS" --hide-layer "BORDER"
+```
+
+**Export paper layouts:**
+
+```bash
+cad-to-image "multi-sheet.dwg" --paper-layouts --output ./sheets/
+```
+
+---
+
+## 📖 CLI Reference
+
+```
 Usage:
   cad-to-image <input.dxf|input.dwg> [options]
 
@@ -96,35 +128,149 @@ Options:
   -b, --background <color>    Background color name or hex value. Default: white.
   -q, --quality <1-100>       Output quality for lossy formats. Default: 90.
       --paper-layouts         Export paper layouts instead of model space.
+      --hide-layer <name>     Hide entities on the specified layer. Can be used multiple times.
       --help, -h, -?          Show this help text.
 ```
 
-## Run locally
+---
 
-From the repository root:
+## 🏗️ Architecture
 
-```bash
-dotnet restore ACadSharp.Image.sln
-dotnet test ACadSharp.Image.sln
-dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/HSK80AHCP16190M_BMG.dwg" --format png --width 1800 --height 1200
-dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/6-57-1119.dxf" --width 160 --height 80 --hide-layer OPTIONAL_DIMENSIONS
+```
+ACadSharp.Image/
+├── ImageExporter.cs          # Main public API
+├── ImageConfiguration.cs     # Fluent configuration
+├── ImagePage.cs              # Page representation
+├── RenderedImagePage.cs      # Rendered output
+└── Rendering/
+    ├── ImagePageRenderer.cs      # Page-level rendering
+    ├── EntityRenderDispatcher.cs # Entity routing & dispatch
+    ├── ImageRenderContext.cs     # Coordinate transforms
+    └── ImageStyleResolver.cs     # Color & line weight resolution
 ```
 
-Build local NuGet packages:
+The library follows a clean architecture pattern:
+- **ImageExporter** - Public API for adding CAD content
+- **ImagePage** - Represents individual renderable pages
+- **Rendering pipeline** - Transforms CAD entities to pixel coordinates and draws them
+- **Configuration** - Fluent, extensible settings for customization
+
+---
+
+## 💡 Advanced Usage
+
+### Layer Filtering
+
+Control visibility of specific layers programmatically:
+
+```csharp
+var exporter = new ImageExporter();
+
+// Hide multiple layers (case-insensitive)
+exporter.Configuration.HiddenLayers.Add("0");
+exporter.Configuration.HiddenLayers.Add("DEFPOINTS");
+exporter.Configuration.HiddenLayers.Add("ANNO_TEXT");
+
+exporter.AddModelSpace(document);
+exporter.Close();
+```
+
+### Custom Line Weights
+
+Override default line weight values:
+
+```csharp
+exporter.Configuration.LineWeightValues[LineWeightType.W25] = 0.30;
+exporter.Configuration.LineWeightScale = 1.5f; // Scale all weights
+```
+
+### Text & Font Configuration
+
+Customize text rendering:
+
+```csharp
+exporter.Configuration.FontFamilyName = "Consolas";
+exporter.Configuration.ArcPrecision = 512; // Higher = smoother arcs
+```
+
+---
+
+## 🛠️ Development
+
+### Prerequisites
+
+- [.NET 6.0 SDK](https://dotnet.microsoft.com/download) or later
+- Any IDE with C# support (VS 2022, VS Code, Rider)
+
+### Build & Test
+
+```bash
+# Clone and build
+git clone https://github.com/slaveoftime/ACadSharp.Image.git
+cd ACadSharp.Image
+dotnet restore
+dotnet build
+
+# Run tests
+dotnet test
+```
+
+### Run Examples
+
+```bash
+dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/6-57-1119.dxf" --width 300 --height 200 --hide-layer OPTIONAL_DIMENSIONS
+
+dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/HSK80AHCP16190M_BMG.dwg" --format webp --width 1200 --height 760
+
+dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/Subaru Logo Vector Free Wrap.dxf" --format webp --width 1200 --height 760 --background "#72b5f2"
+```
+
+### Build NuGet Package
 
 ```bash
 dotnet pack ./ACadSharp.Image/ACadSharp.Image.csproj -c Release
-
 dotnet pack ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -c Release
 dotnet tool install -g --add-source ./ACadSharp.Image.Cli/bin/Release ACadSharp.Image.Cli
 ```
 
-Publish a native AOT CLI binary locally:
+### Publish Native Binary (AOT)
+
+Zero-dependency standalone executables:
 
 ```bash
-dotnet publish ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishAot=true
+# Windows x64
+dotnet publish ./ACadSharp.Image.Cli/ -c Release -r win-x64 --self-contained -p:PublishAot=true
+
+# Linux x64
+dotnet publish ./ACadSharp.Image.Cli/ -c Release -r linux-x64 --self-contained -p:PublishAot=true
+
+# macOS ARM64
+dotnet publish ./ACadSharp.Image.Cli/ -c Release -r osx-arm64 --self-contained -p:PublishAot=true
 ```
 
-## License
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
 
 This project is released under the [MIT License](LICENSE).
+
+---
+
+## 🌟 Support
+
+If you find this project helpful, please consider giving it a ⭐️ on GitHub! It helps others discover the project.
+
+**Questions or issues?** [Open an issue](https://github.com/slaveoftime/ACadSharp.Image/issues) or start a [Discussion](https://github.com/slaveoftime/ACadSharp.Image/discussions).
+

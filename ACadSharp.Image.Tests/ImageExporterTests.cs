@@ -1,7 +1,11 @@
 using ACadSharp.Entities;
 using ACadSharp.IO;
+using ACadSharp.Image.Rendering;
+using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace ACadSharp.Image.Tests;
 
@@ -22,6 +26,10 @@ public sealed class ImageExporterTests
 
         Assert.Equal(ImageConfiguration.DefaultWidth, configuration.Width);
         Assert.Equal(ImageConfiguration.DefaultHeight, configuration.Height);
+        Assert.Equal(0, configuration.PaddingLeft);
+        Assert.Equal(0, configuration.PaddingTop);
+        Assert.Equal(0, configuration.PaddingRight);
+        Assert.Equal(0, configuration.PaddingBottom);
     }
 
     [Fact]
@@ -39,6 +47,50 @@ public sealed class ImageExporterTests
 
         Assert.Equal(800, page.Canvas.Width);
         Assert.Equal(600, page.Canvas.Height);
+    }
+
+    [Fact]
+    public void PageContextUsesConfiguredPadding()
+    {
+        ImageConfiguration configuration = new()
+        {
+            Width = 100,
+            Height = 80,
+        };
+        configuration.SetPadding(10, 20, 30, 20);
+
+        ImagePage page = new()
+        {
+            Layout = new Layout("padding-page")
+            {
+                PaperWidth = 12,
+                PaperHeight = 8,
+            },
+        };
+
+        using Image<Rgba32> canvas = new(configuration.Width, configuration.Height);
+        ImageRenderContext context = ImageRenderContext.CreatePageContext(canvas, page, configuration);
+
+        Assert.Equal(5f, context.PixelsPerUnit);
+        Assert.Equal(10f, context.OffsetX);
+        Assert.Equal(20f, context.OffsetY);
+    }
+
+    [Fact]
+    public void RenderThrowsWhenPaddingConsumesCanvas()
+    {
+        BlockRecord block = new("padding-overflow-block");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)));
+
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 20;
+        exporter.Configuration.Height = 20;
+        exporter.Configuration.SetPadding(10, 0, 10, 0);
+        exporter.Add(block);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => exporter.Render());
+
+        Assert.Contains("Padding", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

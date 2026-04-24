@@ -72,6 +72,7 @@ internal static class Program
     {
         configuration.Width = options.Width;
         configuration.Height = options.Height;
+        configuration.SetPadding(options.PaddingLeft, options.PaddingTop, options.PaddingRight, options.PaddingBottom);
         configuration.OutputQuality = options.Quality;
         configuration.BackgroundColor = ParseColor(options.BackgroundColor);
 
@@ -141,6 +142,10 @@ internal static class Program
         string backgroundColor = "white";
         int width = ImageConfiguration.DefaultWidth;
         int height = ImageConfiguration.DefaultHeight;
+        int paddingLeft = 0;
+        int paddingTop = 0;
+        int paddingRight = 0;
+        int paddingBottom = 0;
         int quality = 90;
         bool exportPaperLayouts = false;
         List<string> hideLayers = new();
@@ -167,6 +172,10 @@ internal static class Program
                 case "--height":
                 case "-H":
                     height = ParsePositiveInt(GetRequiredValue(args, ref i, current), current);
+                    break;
+                case "--padding":
+                case "-p":
+                    (paddingLeft, paddingTop, paddingRight, paddingBottom) = ParsePadding(GetRequiredValue(args, ref i, current), current);
                     break;
                 case "--background":
                 case "-b":
@@ -196,7 +205,7 @@ internal static class Program
             throw new InvalidOperationException("An input .dxf or .dwg file is required.");
         }
 
-        return new CliOptions(inputPath, outputPath, format, width, height, backgroundColor, quality, exportPaperLayouts, hideLayers);
+        return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers);
     }
 
     private static int ParsePositiveInt(string value, string argumentName)
@@ -217,6 +226,32 @@ internal static class Program
         }
 
         throw new InvalidOperationException($"Argument {argumentName} must be between 1 and 100.");
+    }
+
+    private static (int Left, int Top, int Right, int Bottom) ParsePadding(string value, string argumentName)
+    {
+        string[] parts = value.Split(',', StringSplitOptions.TrimEntries);
+        int[] parsed = parts
+            .Select(part => ParseNonNegativeInt(part, argumentName))
+            .ToArray();
+
+        return parsed.Length switch
+        {
+            1 => (parsed[0], parsed[0], parsed[0], parsed[0]),
+            2 => (parsed[0], parsed[1], parsed[0], parsed[1]),
+            4 => (parsed[0], parsed[1], parsed[2], parsed[3]),
+            _ => throw new InvalidOperationException($"Argument {argumentName} must contain 1, 2, or 4 comma-separated integers."),
+        };
+    }
+
+    private static int ParseNonNegativeInt(string value, string argumentName)
+    {
+        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) && parsed >= 0)
+        {
+            return parsed;
+        }
+
+        throw new InvalidOperationException($"Argument {argumentName} values must be zero or greater.");
     }
 
     private static string GetRequiredValue(IReadOnlyList<string> args, ref int index, string argumentName)
@@ -261,6 +296,7 @@ Options:
   -f, --format <format>       png, bmp, jpg, jpeg, gif, webp.
   -w, --width <pixels>        Output width in pixels. Default: 1600.
   -H, --height <pixels>       Output height in pixels. Default: 900.
+  -p, --padding <value>       Padding in pixels: <all>, <x,y>, or <left,top,right,bottom>.
   -b, --background <color>    Background color name or hex value. Default: white.
   -q, --quality <1-100>       Output quality for lossy formats. Default: 90.
       --paper-layouts         Export paper layouts instead of model space.

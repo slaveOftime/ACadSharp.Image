@@ -57,17 +57,24 @@ internal sealed class ImageRenderContext
         ImagePage page,
         ImageConfiguration configuration)
     {
+        int drawableWidth = configuration.Width - configuration.PaddingLeft - configuration.PaddingRight;
+        int drawableHeight = configuration.Height - configuration.PaddingTop - configuration.PaddingBottom;
+        if (drawableWidth <= 0 || drawableHeight <= 0)
+        {
+            throw new InvalidOperationException("Padding must leave at least one drawable pixel in both dimensions.");
+        }
+
         Layout layout = page.Layout ?? new Layout("default_page");
         double pageWidth = Math.Max(1d, layout.PaperWidth);
         double pageHeight = Math.Max(1d, layout.PaperHeight);
         float pixelsPerUnit = Math.Min(
-            configuration.Width / (float)pageWidth,
-            configuration.Height / (float)pageHeight);
+            drawableWidth / (float)pageWidth,
+            drawableHeight / (float)pageHeight);
 
         float scaledWidth = (float)pageWidth * pixelsPerUnit;
         float scaledHeight = (float)pageHeight * pixelsPerUnit;
-        float offsetX = (configuration.Width - scaledWidth) / 2f;
-        float offsetY = (configuration.Height - scaledHeight) / 2f;
+        float offsetX = configuration.PaddingLeft + ((drawableWidth - scaledWidth) / 2f);
+        float offsetY = configuration.PaddingBottom + ((drawableHeight - scaledHeight) / 2f);
 
         double originX = -page.Translation.X - layout.UnprintableMargin.Left;
         double originY = -page.Translation.Y - layout.UnprintableMargin.Bottom;

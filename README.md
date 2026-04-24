@@ -17,7 +17,7 @@ Transform CAD drawings into raster images for **previews**, **CI/CD pipelines**,
 
 - 🎨 **Multi-format export** — PNG, BMP, JPEG, GIF, and WebP support
 - 📐 **Full CAD support** — Render DXF and DWG files with ACadSharp
-- 🖼️ **Customizable output** — Control width, height, background color, and quality
+- 🖼️ **Customizable output** — Control width, height, padding, background color, and quality
 - 📊 **Space support** — Model space, paper layouts, and viewports
 - 🎭 **Layer filtering** — Hide specific layers with `--hide-layer` option
 - ⚡ **CLI tool** — Cross-platform command-line interface for automation
@@ -67,6 +67,7 @@ var document = DwgReader.Read("part.dwg");
 var exporter = new ImageExporter("output.webp");
 exporter.Configuration.Width = 2000;
 exporter.Configuration.Height = 1400;
+exporter.Configuration.SetPadding(24, 12);
 exporter.Configuration.BackgroundColor = Color.Parse("#ffffff");
 exporter.Configuration.OutputQuality = 90;
 
@@ -100,6 +101,14 @@ cad-to-image "drawing.dxf" --format webp --width 1400 --height 1400 --quality 85
 cad-to-image "part.dwg" --format png --width 1800 --height 1200 --background "#0c0c0c"
 ```
 
+**Add padding around the drawing:**
+
+```bash
+cad-to-image "part.dwg" --format png --padding 24
+cad-to-image "part.dwg" --format png --padding 24,12
+cad-to-image "part.dwg" --format png --padding 24,12,40,20
+```
+
 **Hide multiple layers:**
 
 ```bash
@@ -125,6 +134,7 @@ Options:
   -f, --format <format>       png, bmp, jpg, jpeg, gif, webp.
   -w, --width <pixels>        Output width in pixels. Default: 1600.
   -H, --height <pixels>       Output height in pixels. Default: 900.
+  -p, --padding <value>       Padding in pixels: <all>, <x,y>, or <left,top,right,bottom>.
   -b, --background <color>    Background color name or hex value. Default: white.
   -q, --quality <1-100>       Output quality for lossy formats. Default: 90.
       --paper-layouts         Export paper layouts instead of model space.
@@ -272,4 +282,3 @@ This project is released under the [MIT License](LICENSE).
 If you find this project helpful, please consider giving it a ⭐️ on GitHub! It helps others discover the project.
 
 **Questions or issues?** [Open an issue](https://github.com/slaveoftime/ACadSharp.Image/issues) or start a [Discussion](https://github.com/slaveoftime/ACadSharp.Image/discussions).
-

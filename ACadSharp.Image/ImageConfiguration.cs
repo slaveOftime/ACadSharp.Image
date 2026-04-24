@@ -93,6 +93,14 @@ public sealed class ImageConfiguration
 
     private int _outputQuality = 90;
 
+    private int _paddingTop;
+
+    private int _paddingRight;
+
+    private int _paddingBottom;
+
+    private int _paddingLeft;
+
     /// <summary>
     /// Gets or sets the number of segments used to approximate arcs and circles during polygonal tessellation.
     /// </summary>
@@ -127,6 +135,42 @@ public sealed class ImageConfiguration
     /// Default is 1.0 (no scaling).
     /// </remarks>
     public float LineWeightScale { get; set; } = 1f;
+
+    /// <summary>
+    /// Gets or sets the top padding in pixels applied inside the output canvas.
+    /// </summary>
+    public int PaddingTop
+    {
+        get => this._paddingTop;
+        set => this._paddingTop = validateNonNegative(value, nameof(this.PaddingTop));
+    }
+
+    /// <summary>
+    /// Gets or sets the right padding in pixels applied inside the output canvas.
+    /// </summary>
+    public int PaddingRight
+    {
+        get => this._paddingRight;
+        set => this._paddingRight = validateNonNegative(value, nameof(this.PaddingRight));
+    }
+
+    /// <summary>
+    /// Gets or sets the bottom padding in pixels applied inside the output canvas.
+    /// </summary>
+    public int PaddingBottom
+    {
+        get => this._paddingBottom;
+        set => this._paddingBottom = validateNonNegative(value, nameof(this.PaddingBottom));
+    }
+
+    /// <summary>
+    /// Gets or sets the left padding in pixels applied inside the output canvas.
+    /// </summary>
+    public int PaddingLeft
+    {
+        get => this._paddingLeft;
+        set => this._paddingLeft = validateNonNegative(value, nameof(this.PaddingLeft));
+    }
 
     /// <summary>
     /// Gets or sets the background color of the rendered image.
@@ -250,8 +294,49 @@ public sealed class ImageConfiguration
         return Math.Max(1f, pixels * this.LineWeightScale);
     }
 
+    /// <summary>
+    /// Applies the same padding to all four sides of the output canvas.
+    /// </summary>
+    /// <param name="padding">The padding in pixels for each side.</param>
+    public void SetPadding(int padding)
+    {
+        this.SetPadding(padding, padding, padding, padding);
+    }
+
+    /// <summary>
+    /// Applies horizontal and vertical padding to the output canvas.
+    /// </summary>
+    /// <param name="horizontal">The padding in pixels for the left and right sides.</param>
+    /// <param name="vertical">The padding in pixels for the top and bottom sides.</param>
+    public void SetPadding(int horizontal, int vertical)
+    {
+        this.SetPadding(horizontal, vertical, horizontal, vertical);
+    }
+
+    /// <summary>
+    /// Applies padding to each side of the output canvas.
+    /// </summary>
+    /// <param name="left">The left padding in pixels.</param>
+    /// <param name="top">The top padding in pixels.</param>
+    /// <param name="right">The right padding in pixels.</param>
+    /// <param name="bottom">The bottom padding in pixels.</param>
+    public void SetPadding(int left, int top, int right, int bottom)
+    {
+        this.PaddingLeft = left;
+        this.PaddingTop = top;
+        this.PaddingRight = right;
+        this.PaddingBottom = bottom;
+    }
+
     internal void Notify(string message, NotificationType notificationType, Exception? ex = null)
     {
         this.OnNotification?.Invoke(this, new NotificationEventArgs(message, notificationType, ex));
+    }
+
+    private static int validateNonNegative(int value, string propertyName)
+    {
+        return value >= 0
+            ? value
+            : throw new ArgumentOutOfRangeException(propertyName, "Padding must be zero or greater.");
     }
 }

@@ -200,6 +200,11 @@ internal sealed class EntityRenderDispatcher
 
     private void drawSpline(ImageRenderContext context, ImageStyle style, Spline spline)
     {
+        if (this.drawBezierSpline(context, style, spline))
+        {
+            return;
+        }
+
         XY[] sampledVertices = this.sampleSpline(spline);
         if (sampledVertices.Length > 1)
         {
@@ -214,6 +219,83 @@ internal sealed class EntityRenderDispatcher
         }
 
         this._configuration.Notify($"[{spline.SubclassMarker}] Could not approximate spline geometry.", NotificationType.Warning);
+    }
+
+    private bool drawBezierSpline(ImageRenderContext context, ImageStyle style, Spline spline)
+    {
+        if (!tryGetBezierSegments(spline, out int segmentCount))
+        {
+            return false;
+        }
+
+        PathBuilder builder = new();
+        IReadOnlyList<XYZ> controlPoints = spline.ControlPoints;
+        for (int segment = 0; segment < segmentCount; segment++)
+        {
+            int index = segment * 3;
+            builder.AddCubicBezier(
+                context.ToPixelPoint(controlPoints[index]),
+                context.ToPixelPoint(controlPoints[index + 1]),
+                context.ToPixelPoint(controlPoints[index + 2]),
+                context.ToPixelPoint(controlPoints[index + 3]));
+        }
+
+        IPath path = builder.Build();
+        context.Canvas.Mutate(x => x.Draw(style.StrokeColor, style.StrokeWidth, path));
+        return true;
+    }
+
+    private static bool tryGetBezierSegments(Spline spline, out int segmentCount)
+    {
+        segmentCount = 0;
+        if (spline.Degree != 3 ||
+            spline.Weights.Count != 0 ||
+            spline.Knots.Count != spline.ControlPoints.Count + 4 ||
+            spline.ControlPoints.Count < 4 ||
+            (spline.ControlPoints.Count - 1) % 3 != 0)
+        {
+            return false;
+        }
+
+        segmentCount = (spline.ControlPoints.Count - 1) / 3;
+        return hasKnotMultiplicity(spline.Knots, 0, 4) &&
+            hasKnotMultiplicity(spline.Knots, spline.Knots.Count - 4, 4) &&
+            hasBezierInternalKnots(spline.Knots, segmentCount);
+    }
+
+    private static bool hasBezierInternalKnots(IReadOnlyList<double> knots, int segmentCount)
+    {
+        int index = 4;
+        for (int segment = 1; segment < segmentCount; segment++)
+        {
+            if (!hasKnotMultiplicity(knots, index, 3))
+            {
+                return false;
+            }
+
+            index += 3;
+        }
+
+        return index == knots.Count - 4;
+    }
+
+    private static bool hasKnotMultiplicity(IReadOnlyList<double> knots, int startIndex, int count)
+    {
+        if (startIndex < 0 || startIndex + count > knots.Count)
+        {
+            return false;
+        }
+
+        double value = knots[startIndex];
+        for (int i = 1; i < count; i++)
+        {
+            if (Math.Abs(knots[startIndex + i] - value) > double.Epsilon)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private XY[] sampleSpline(Spline spline)

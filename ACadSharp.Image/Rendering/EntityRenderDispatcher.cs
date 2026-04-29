@@ -200,14 +200,11 @@ internal sealed class EntityRenderDispatcher
 
     private void drawSpline(ImageRenderContext context, ImageStyle style, Spline spline)
     {
-        if (spline.IsClosed || spline.IsPeriodic)
+        XY[] sampledVertices = this.sampleSpline(spline);
+        if (sampledVertices.Length > 1)
         {
-            XY[] sampledVertices = this.sampleClosedSpline(spline);
-            if (sampledVertices.Length > 1)
-            {
-                this.drawPolyline(context, style, sampledVertices, true);
-                return;
-            }
+            this.drawPolyline(context, style, sampledVertices, spline.IsClosed || spline.IsPeriodic);
+            return;
         }
 
         if (spline.TryPolygonalVertexes(this._configuration.ArcPrecision, out List<XYZ>? points) && points.Count > 1)
@@ -219,21 +216,125 @@ internal sealed class EntityRenderDispatcher
         this._configuration.Notify($"[{spline.SubclassMarker}] Could not approximate spline geometry.", NotificationType.Warning);
     }
 
-    private XY[] sampleClosedSpline(Spline spline)
+    private XY[] sampleSpline(Spline spline)
     {
-        int precision = Math.Max(8, (int)this._configuration.ArcPrecision);
-        List<XY> vertices = new(precision);
+        int degree = (int)spline.Degree;
+        IReadOnlyList<double> knots = spline.Knots;
+        IReadOnlyList<XYZ> controlPoints = spline.ControlPoints;
+        IReadOnlyList<double> weights = spline.Weights;
 
-        for (int i = 0; i < precision; i++)
+        if (degree < 1 ||
+            controlPoints.Count <= degree ||
+            knots.Count != controlPoints.Count + degree + 1 ||
+            (weights.Count != 0 && weights.Count != controlPoints.Count))
         {
-            double t = (i + 0.5d) / precision;
-            if (spline.TryPointOnSpline(t, out XYZ point))
+            return [];
+        }
+
+        double start = knots[degree];
+        double end = knots[controlPoints.Count];
+        if (end <= start)
+        {
+            return [];
+        }
+
+        int knotSpans = 0;
+        double previous = start;
+        for (int i = degree + 1; i <= controlPoints.Count; i++)
+        {
+            double current = knots[i];
+            if (current > previous)
             {
-                vertices.Add(point.Convert<XY>());
+                knotSpans++;
+                previous = current;
             }
         }
 
+        int precision = Math.Max(this._configuration.ArcPrecision, knotSpans * 16);
+        List<XY> vertices = new(precision + 1);
+        for (int i = 0; i <= precision; i++)
+        {
+            double t = start + ((end - start) * i / precision);
+            vertices.Add(evaluateSplinePoint(degree, knots, controlPoints, weights, t));
+        }
+
         return vertices.ToArray();
+    }
+
+    private static XY evaluateSplinePoint(
+        int degree,
+        IReadOnlyList<double> knots,
+        IReadOnlyList<XYZ> controlPoints,
+        IReadOnlyList<double> weights,
+        double t)
+    {
+        int span = findKnotSpan(degree, knots, controlPoints.Count, t);
+        SplinePoint[] points = new SplinePoint[degree + 1];
+
+        for (int i = 0; i <= degree; i++)
+        {
+            int pointIndex = span - degree + i;
+            XYZ point = controlPoints[pointIndex];
+            double weight = weights.Count == 0 ? 1d : weights[pointIndex];
+            points[i] = new SplinePoint(point.X * weight, point.Y * weight, point.Z * weight, weight);
+        }
+
+        for (int level = 1; level <= degree; level++)
+        {
+            for (int i = degree; i >= level; i--)
+            {
+                int knotIndex = span - degree + i;
+                double denominator = knots[knotIndex + degree + 1 - level] - knots[knotIndex];
+                double alpha = denominator == 0d ? 0d : (t - knots[knotIndex]) / denominator;
+                points[i] = SplinePoint.Lerp(points[i - 1], points[i], alpha);
+            }
+        }
+
+        SplinePoint result = points[degree];
+        return result.Weight == 0d
+            ? new XY(result.X, result.Y)
+            : new XY(result.X / result.Weight, result.Y / result.Weight);
+    }
+
+    private static int findKnotSpan(int degree, IReadOnlyList<double> knots, int controlPointCount, double t)
+    {
+        int maxSpan = controlPointCount - 1;
+        if (t >= knots[controlPointCount])
+        {
+            return maxSpan;
+        }
+
+        int low = degree;
+        int high = controlPointCount;
+        int span = (low + high) / 2;
+        while (t < knots[span] || t >= knots[span + 1])
+        {
+            if (t < knots[span])
+            {
+                high = span;
+            }
+            else
+            {
+                low = span;
+            }
+
+            span = (low + high) / 2;
+        }
+
+        return span;
+    }
+
+    private readonly record struct SplinePoint(double X, double Y, double Z, double Weight)
+    {
+        public static SplinePoint Lerp(SplinePoint start, SplinePoint end, double amount)
+        {
+            double inverse = 1d - amount;
+            return new SplinePoint(
+                (start.X * inverse) + (end.X * amount),
+                (start.Y * inverse) + (end.Y * amount),
+                (start.Z * inverse) + (end.Z * amount),
+                (start.Weight * inverse) + (end.Weight * amount));
+        }
     }
 
     private void drawPolyline(ImageRenderContext context, ImageStyle style, IEnumerable<XY> vertices, bool close)

@@ -119,6 +119,53 @@ public sealed class ImageExporterTests
     }
 
     [Fact]
+    public void RenderClosedPeriodicSplineDoesNotDrawSpokeToOrigin()
+    {
+        using Image<Rgba32> canvas = new(100, 100, SixLabors.ImageSharp.Color.White);
+        ImageConfiguration configuration = new()
+        {
+            Width = 100,
+            Height = 100,
+        };
+        ImagePage page = new()
+        {
+            Layout = new Layout("spline-page")
+            {
+                PaperWidth = 10,
+                PaperHeight = 10,
+            },
+        };
+        ImageRenderContext context = new(canvas, configuration, page.Layout, 100, 100, -5, -5, 10f);
+        EntityRenderDispatcher dispatcher = new(configuration);
+        Spline spline = new()
+        {
+            Degree = 3,
+            Flags = SplineFlags.Closed | SplineFlags.Periodic | SplineFlags.Planar,
+        };
+
+        spline.Knots.AddRange([0d, 0d, 0d, 0d, 0.25d, 0.25d, 0.25d, 0.5d, 0.5d, 0.5d, 0.75d, 0.75d, 0.75d, 1d, 1d, 1d, 1d]);
+        spline.ControlPoints.AddRange([
+            new XYZ(2, 4, 0),
+            new XYZ(3, 4, 0),
+            new XYZ(4, 3, 0),
+            new XYZ(4, 2, 0),
+            new XYZ(4, 1, 0),
+            new XYZ(3, 0, 0),
+            new XYZ(2, 0, 0),
+            new XYZ(1, 0, 0),
+            new XYZ(0, 1, 0),
+            new XYZ(0, 2, 0),
+            new XYZ(0, 3, 0),
+            new XYZ(1, 4, 0),
+            new XYZ(2, 4, 0),
+        ]);
+
+        dispatcher.Draw(context, spline);
+
+        Assert.Equal(SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>(), canvas[50, 50]);
+    }
+
+    [Fact]
     public void RenderHandlesEntitiesWithNaNBoundingBox()
     {
         // Create a block with normal lines

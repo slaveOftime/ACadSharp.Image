@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.ObjectModel;
 using ACadSharp.IO;
 using ImageColor = SixLabors.ImageSharp.Color;
 
@@ -25,7 +27,7 @@ namespace ACadSharp.Image;
 ///     Dpi = 150f,
 ///     BackgroundColor = ImageColor.Black,
 /// };
-/// config.HiddenLayers.Add("annotation");
+/// config.HideLayer("annotation");
 /// </code>
 /// </example>
 public sealed class ImageConfiguration
@@ -101,6 +103,23 @@ public sealed class ImageConfiguration
 
     private int _paddingLeft;
 
+    private readonly HashSet<string> _hiddenLayers = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<LineWeightType, double> _lineWeightValues = new();
+
+    private readonly IReadOnlySet<string> _readOnlyHiddenLayers;
+
+    private readonly ReadOnlyDictionary<LineWeightType, double> _readOnlyLineWeightValues;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ImageConfiguration"/> class.
+    /// </summary>
+    public ImageConfiguration()
+    {
+        this._readOnlyHiddenLayers = new ReadOnlySet<string>(this._hiddenLayers);
+        this._readOnlyLineWeightValues = new ReadOnlyDictionary<LineWeightType, double>(this._lineWeightValues);
+    }
+
     /// <summary>
     /// Gets or sets the number of segments used to approximate arcs and circles during polygonal tessellation.
     /// </summary>
@@ -142,7 +161,7 @@ public sealed class ImageConfiguration
     public int PaddingTop
     {
         get => this._paddingTop;
-        set => this._paddingTop = validateNonNegative(value, nameof(this.PaddingTop));
+        set => this._paddingTop = ValidateNonNegative(value, nameof(this.PaddingTop));
     }
 
     /// <summary>
@@ -151,7 +170,7 @@ public sealed class ImageConfiguration
     public int PaddingRight
     {
         get => this._paddingRight;
-        set => this._paddingRight = validateNonNegative(value, nameof(this.PaddingRight));
+        set => this._paddingRight = ValidateNonNegative(value, nameof(this.PaddingRight));
     }
 
     /// <summary>
@@ -160,7 +179,7 @@ public sealed class ImageConfiguration
     public int PaddingBottom
     {
         get => this._paddingBottom;
-        set => this._paddingBottom = validateNonNegative(value, nameof(this.PaddingBottom));
+        set => this._paddingBottom = ValidateNonNegative(value, nameof(this.PaddingBottom));
     }
 
     /// <summary>
@@ -169,7 +188,7 @@ public sealed class ImageConfiguration
     public int PaddingLeft
     {
         get => this._paddingLeft;
-        set => this._paddingLeft = validateNonNegative(value, nameof(this.PaddingLeft));
+        set => this._paddingLeft = ValidateNonNegative(value, nameof(this.PaddingLeft));
     }
 
     /// <summary>
@@ -195,7 +214,7 @@ public sealed class ImageConfiguration
     /// Gets the set of layer names that should be hidden during export.
     /// Layer names are case-insensitive.
     /// </summary>
-    public HashSet<string> HiddenLayers { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlySet<string> HiddenLayers => this._readOnlyHiddenLayers;
 
     /// <summary>
     /// Gets or sets the JPEG output quality as a percentage.
@@ -258,7 +277,7 @@ public sealed class ImageConfiguration
     /// (or <see cref="LineWeightScale"/>, whichever is greater) is used.
     /// </para>
     /// </remarks>
-    public Dictionary<LineWeightType, double> LineWeightValues { get; } = new();
+    public IReadOnlyDictionary<LineWeightType, double> LineWeightValues => this._readOnlyLineWeightValues;
 
     /// <summary>
     /// Converts a <see cref="LineWeightType"/> to its equivalent width in pixels.
@@ -279,7 +298,7 @@ public sealed class ImageConfiguration
     /// </remarks>
     public float GetLineWeightPixels(LineWeightType lineWeight)
     {
-        double millimeters = this.LineWeightValues.TryGetValue(lineWeight, out double configured)
+        double millimeters = this._lineWeightValues.TryGetValue(lineWeight, out double configured)
             ? configured
             : LineWeightDefaultValues.TryGetValue(lineWeight, out double fallback)
                 ? fallback
@@ -328,15 +347,122 @@ public sealed class ImageConfiguration
         this.PaddingBottom = bottom;
     }
 
+    /// <summary>
+    /// Hides the specified layer during export.
+    /// </summary>
+    /// <param name="layerName">The layer name to hide.</param>
+    public void HideLayer(string layerName)
+    {
+        ThrowIfNullOrWhiteSpace(layerName);
+        this._hiddenLayers.Add(layerName);
+    }
+
+    /// <summary>
+    /// Hides the specified layers during export.
+    /// </summary>
+    /// <param name="layerNames">The layer names to hide.</param>
+    public void HideLayers(IEnumerable<string> layerNames)
+    {
+        ArgumentNullException.ThrowIfNull(layerNames);
+
+        foreach (string layerName in layerNames)
+        {
+            this.HideLayer(layerName);
+        }
+    }
+
+    /// <summary>
+    /// Shows the specified layer if it was previously hidden.
+    /// </summary>
+    /// <param name="layerName">The layer name to show.</param>
+    /// <returns><see langword="true"/> if the layer was removed; otherwise, <see langword="false"/>.</returns>
+    public bool ShowLayer(string layerName)
+    {
+        ThrowIfNullOrWhiteSpace(layerName);
+        return this._hiddenLayers.Remove(layerName);
+    }
+
+    /// <summary>
+    /// Clears all hidden layer filters.
+    /// </summary>
+    public void ClearHiddenLayers()
+    {
+        this._hiddenLayers.Clear();
+    }
+
+    /// <summary>
+    /// Sets a custom line weight override in millimeters.
+    /// </summary>
+    /// <param name="lineWeight">The line weight to override.</param>
+    /// <param name="millimeters">The line weight value in millimeters.</param>
+    public void SetLineWeight(LineWeightType lineWeight, double millimeters)
+    {
+        if (millimeters < 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(millimeters), "Line weight must be zero or greater.");
+        }
+
+        this._lineWeightValues[lineWeight] = millimeters;
+    }
+
+    /// <summary>
+    /// Removes a custom line weight override.
+    /// </summary>
+    /// <param name="lineWeight">The line weight override to remove.</param>
+    /// <returns><see langword="true"/> if an override was removed; otherwise, <see langword="false"/>.</returns>
+    public bool RemoveLineWeight(LineWeightType lineWeight)
+    {
+        return this._lineWeightValues.Remove(lineWeight);
+    }
+
+    /// <summary>
+    /// Clears all custom line weight overrides.
+    /// </summary>
+    public void ClearLineWeights()
+    {
+        this._lineWeightValues.Clear();
+    }
+
     internal void Notify(string message, NotificationType notificationType, Exception? ex = null)
     {
         this.OnNotification?.Invoke(this, new NotificationEventArgs(message, notificationType, ex));
     }
 
-    private static int validateNonNegative(int value, string propertyName)
+    private static int ValidateNonNegative(int value, string propertyName)
     {
         return value >= 0
             ? value
             : throw new ArgumentOutOfRangeException(propertyName, "Padding must be zero or greater.");
+    }
+
+    private static void ThrowIfNullOrWhiteSpace(string? value, string? paramName = null)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("Value cannot be null or whitespace.", paramName);
+        }
+    }
+
+    private sealed class ReadOnlySet<T>(ISet<T> set) : IReadOnlySet<T>
+    {
+        public int Count => set.Count;
+
+        public bool Contains(T item) => set.Contains(item);
+
+        public bool IsProperSubsetOf(IEnumerable<T> other) => set.IsProperSubsetOf(other);
+
+        public bool IsProperSupersetOf(IEnumerable<T> other) => set.IsProperSupersetOf(other);
+
+        public bool IsSubsetOf(IEnumerable<T> other) => set.IsSubsetOf(other);
+
+        public bool IsSupersetOf(IEnumerable<T> other) => set.IsSupersetOf(other);
+
+        public bool Overlaps(IEnumerable<T> other) => set.Overlaps(other);
+
+        public bool SetEquals(IEnumerable<T> other) => set.SetEquals(other);
+
+        public IEnumerator<T> GetEnumerator() => set.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
     }
 }

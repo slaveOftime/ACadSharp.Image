@@ -72,8 +72,8 @@ exporter.Configuration.BackgroundColor = Color.Parse("#ffffff");
 exporter.Configuration.OutputQuality = 90;
 
 // Optional: hide specific layers
-exporter.Configuration.HiddenLayers.Add("DIMENSIONS");
-exporter.Configuration.HiddenLayers.Add("ANNOTATIONS");
+exporter.Configuration.HideLayer("DIMENSIONS");
+exporter.Configuration.HideLayer("ANNOTATIONS");
 
 exporter.AddModelSpace(document);
 exporter.Save("./output-directory/filename.webp", ImageExportFormat.Webp);
@@ -154,7 +154,9 @@ ACadSharp.Image/
 ├── RenderedImagePage.cs      # Rendered output
 └── Rendering/
     ├── ImagePageRenderer.cs      # Page-level rendering
-    ├── EntityRenderDispatcher.cs # Entity routing & dispatch
+    ├── EntityRenderDispatcher.cs # Entity routing & primitive drawing
+    ├── SplineRenderer.cs         # Spline path generation and sampling
+    ├── TextRenderer.cs           # Text and MText rendering
     ├── ImageRenderContext.cs     # Coordinate transforms
     └── ImageStyleResolver.cs     # Color & line weight resolution
 ```
@@ -177,9 +179,9 @@ Control visibility of specific layers programmatically:
 var exporter = new ImageExporter();
 
 // Hide multiple layers (case-insensitive)
-exporter.Configuration.HiddenLayers.Add("0");
-exporter.Configuration.HiddenLayers.Add("DEFPOINTS");
-exporter.Configuration.HiddenLayers.Add("ANNO_TEXT");
+exporter.Configuration.HideLayer("0");
+exporter.Configuration.HideLayer("DEFPOINTS");
+exporter.Configuration.HideLayer("ANNO_TEXT");
 
 exporter.AddModelSpace(document);
 ```
@@ -189,7 +191,7 @@ exporter.AddModelSpace(document);
 Override default line weight values:
 
 ```csharp
-exporter.Configuration.LineWeightValues[LineWeightType.W25] = 0.30;
+exporter.Configuration.SetLineWeight(LineWeightType.W25, 0.30);
 exporter.Configuration.LineWeightScale = 1.5f; // Scale all weights
 ```
 
@@ -219,9 +221,19 @@ git clone https://github.com/slaveoftime/ACadSharp.Image.git
 cd ACadSharp.Image
 dotnet restore
 dotnet build
+dotnet format --verify-no-changes
 
 # Run tests
 dotnet test
+```
+
+### Measure Render Performance
+
+Use the repeatable sample-render benchmark script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\artifacts\measure-render.ps1
+powershell -ExecutionPolicy Bypass -File .\artifacts\measure-render.ps1 -Iterations 10
 ```
 
 ### Run Examples
@@ -231,7 +243,7 @@ dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samp
 
 dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/HSK80AHCP16190M_BMG.dwg" --format webp --width 1200 --height 760
 
-dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/Subaru Logo Vector Free Wrap.dxf" --format webp --width 1200 --height 760 --background "#72b5f2"
+dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/Subaru Logo Vector Free Wrap.dxf" --format webp --width 1200 --height 700 --background "#a0a7ae"
 ```
 
 ### Build NuGet Package
@@ -256,6 +268,20 @@ dotnet publish ./ACadSharp.Image.Cli/ -c Release -r linux-x64 --self-contained -
 # macOS ARM64
 dotnet publish ./ACadSharp.Image.Cli/ -c Release -r osx-arm64 --self-contained -p:PublishAot=true
 ```
+
+---
+
+## 🔄 Migration Notes
+
+Recent modernization work includes intentional API tightening:
+
+- `ImageExporter.Pages` is now a read-only collection view.
+- `ImagePage.Entities` and `ImagePage.Viewports` are now read-only collection views.
+- Add content through `ImageExporter.Add(...)`, `ImagePage.Add(...)`, `ImagePage.AddEntity(...)`, and `ImagePage.AddViewport(...)`.
+- `ImageConfiguration.HiddenLayers` is now read-only; use `HideLayer`, `HideLayers`, `ShowLayer`, and `ClearHiddenLayers`.
+- `ImageConfiguration.LineWeightValues` is now read-only; use `SetLineWeight`, `RemoveLineWeight`, and `ClearLineWeights`.
+
+These changes preserve the rendering behavior while making mutation points explicit and easier to maintain.
 
 ---
 

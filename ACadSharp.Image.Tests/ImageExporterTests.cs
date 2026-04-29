@@ -204,7 +204,7 @@ public sealed class ImageExporterTests
         block.Entities.Add(lineOnLayer3);
 
         ImageExporter exporter = new();
-        exporter.Configuration.HiddenLayers.Add("Layer2");
+        exporter.Configuration.HideLayer("Layer2");
 
         exporter.Add(block);
 
@@ -223,7 +223,7 @@ public sealed class ImageExporterTests
         block.Entities.Add(lineOnLayer);
 
         ImageExporter exporter = new();
-        exporter.Configuration.HiddenLayers.Add("mylayer"); // lowercase
+        exporter.Configuration.HideLayer("mylayer"); // lowercase
 
         exporter.Add(block);
 
@@ -250,8 +250,8 @@ public sealed class ImageExporterTests
         block.Entities.Add(line3);
 
         ImageExporter exporter = new();
-        exporter.Configuration.HiddenLayers.Add("Layer1");
-        exporter.Configuration.HiddenLayers.Add("Layer3");
+        exporter.Configuration.HideLayer("Layer1");
+        exporter.Configuration.HideLayer("Layer3");
 
         exporter.Add(block);
 

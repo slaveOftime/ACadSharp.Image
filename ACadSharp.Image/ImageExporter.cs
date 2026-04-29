@@ -1,4 +1,5 @@
 using System.Text;
+using System.Collections.ObjectModel;
 using ACadSharp.Entities;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
@@ -29,6 +30,12 @@ namespace ACadSharp.Image;
 /// </example>
 public sealed class ImageExporter
 {
+    private static readonly HashSet<char> s_invalidFileNameCharacters = Path.GetInvalidFileNameChars().ToHashSet();
+
+    private readonly List<ImagePage> _pages = [];
+
+    private readonly ReadOnlyCollection<ImagePage> _readOnlyPages;
+
     /// <summary>
     /// Gets the configuration for this exporter.
     /// </summary>
@@ -37,7 +44,7 @@ public sealed class ImageExporter
     /// <summary>
     /// Gets the collection of pages that have been added to this exporter.
     /// </summary>
-    public IList<ImagePage> Pages { get; } = new List<ImagePage>();
+    public IReadOnlyList<ImagePage> Pages => this._readOnlyPages;
 
     /// <summary>
     /// Creates a new instance of <see cref="ImageExporter"/> without an output path.
@@ -45,6 +52,7 @@ public sealed class ImageExporter
     /// </summary>
     public ImageExporter()
     {
+        this._readOnlyPages = this._pages.AsReadOnly();
     }
 
     /// <summary>
@@ -103,9 +111,9 @@ public sealed class ImageExporter
 
         foreach (Entity entity in layout.AssociatedBlock.Entities)
         {
-            if (this.shouldIncludeEntity(entity))
+            if (this.ShouldIncludeEntity(entity))
             {
-                page.Entities.Add(entity);
+                page.AddEntity(entity);
             }
         }
 
@@ -116,10 +124,10 @@ public sealed class ImageExporter
                 continue;
             }
 
-            page.Viewports.Add(viewport);
+            page.AddViewport(viewport);
         }
 
-        this.Pages.Add(page);
+        this._pages.Add(page);
     }
 
     /// <summary>
@@ -135,21 +143,21 @@ public sealed class ImageExporter
             Name = SanitizeFileName(block.Name),
         };
 
-        page.Add(block, this.shouldIncludeEntity);
-        this.Pages.Add(page);
+        page.Add(block, this.ShouldIncludeEntity);
+        this._pages.Add(page);
     }
 
-    private bool shouldIncludeEntity(Entity entity)
+    private bool ShouldIncludeEntity(Entity entity)
     {
         if (entity is Viewport)
         {
             return false;
         }
 
-        return !this.isHiddenLayer(entity);
+        return !this.IsHiddenLayer(entity);
     }
 
-    private bool isHiddenLayer(Entity entity)
+    private bool IsHiddenLayer(Entity entity)
     {
         if (this.Configuration.HiddenLayers.Count == 0)
         {
@@ -176,7 +184,13 @@ public sealed class ImageExporter
     public IReadOnlyList<RenderedImagePage> Render()
     {
         ImagePageRenderer renderer = new(this.Configuration);
-        return this.Pages.Select(renderer.Render).ToArray();
+        RenderedImagePage[] pages = new RenderedImagePage[this._pages.Count];
+        for (int i = 0; i < this._pages.Count; i++)
+        {
+            pages[i] = renderer.Render(this._pages[i]);
+        }
+
+        return pages;
     }
 
     /// <summary>
@@ -266,11 +280,10 @@ public sealed class ImageExporter
         }
 
         StringBuilder builder = new(value.Length);
-        HashSet<char> invalid = Path.GetInvalidFileNameChars().ToHashSet();
 
         foreach (char c in value)
         {
-            builder.Append(invalid.Contains(c) ? '_' : c);
+            builder.Append(s_invalidFileNameCharacters.Contains(c) ? '_' : c);
         }
 
         return builder.ToString();

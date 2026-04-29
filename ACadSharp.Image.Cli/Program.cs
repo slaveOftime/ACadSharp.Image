@@ -78,7 +78,7 @@ internal static class Program
 
         foreach (string layer in options.HideLayers)
         {
-            configuration.HiddenLayers.Add(layer);
+            configuration.HideLayer(layer);
         }
     }
 
@@ -231,9 +231,11 @@ internal static class Program
     private static (int Left, int Top, int Right, int Bottom) ParsePadding(string value, string argumentName)
     {
         string[] parts = value.Split(',', StringSplitOptions.TrimEntries);
-        int[] parsed = parts
-            .Select(part => ParseNonNegativeInt(part, argumentName))
-            .ToArray();
+        int[] parsed = new int[parts.Length];
+        for (int i = 0; i < parts.Length; i++)
+        {
+            parsed[i] = ParseNonNegativeInt(parts[i], argumentName);
+        }
 
         return parsed.Length switch
         {

@@ -1,4 +1,4 @@
-using ACadSharp.Entities;
+﻿using ACadSharp.Entities;
 using ACadSharp.IO;
 using ACadSharp.Image.Rendering;
 using ACadSharp.Objects;
@@ -163,6 +163,36 @@ public sealed class ImageExporterTests
         dispatcher.Draw(context, spline);
 
         Assert.Equal(SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>(), canvas[50, 50]);
+    }
+
+    [Fact]
+    public void RenderInsertDrawsBlockContentsWithoutReportingNotImplemented()
+    {
+        BlockRecord insertedBlock = new("inserted-block");
+        insertedBlock.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(2, 1, 0)));
+
+        BlockRecord pageBlock = new("insert-page");
+        pageBlock.Entities.Add(new Insert(insertedBlock)
+        {
+            InsertPoint = new XYZ(3, 4, 0),
+            XScale = 2,
+            YScale = 3,
+        });
+
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 100;
+        exporter.Configuration.Height = 100;
+        exporter.Configuration.SetPadding(10);
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, args) => notifications.Add(args);
+        exporter.Add(pageBlock);
+
+        using RenderedImagePage page = Assert.Single(exporter.Render());
+
+        Rgba32 white = SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>();
+        Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Insert", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEqual(white, page.Canvas[10, 80]);
+        Assert.NotEqual(white, page.Canvas[90, 20]);
     }
 
     [Fact]

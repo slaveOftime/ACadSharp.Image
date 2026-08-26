@@ -1,4 +1,4 @@
-using ACadSharp.Entities;
+﻿using ACadSharp.Entities;
 using ACadSharp.Extensions;
 using ACadSharp.IO;
 using ACadSharp.Tables;
@@ -97,6 +97,9 @@ internal sealed class EntityRenderDispatcher
             case IText text:
                 this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
                 break;
+            case Insert insert:
+                this.DrawBlockContents(context, insert);
+                break;
             default:
                 this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
                 break;
@@ -167,6 +170,14 @@ internal sealed class EntityRenderDispatcher
         }
 
         context.Canvas.Mutate(x => x.DrawLine(style.StrokeColor, style.StrokeWidth, points));
+    }
+
+    private void DrawBlockContents(ImageRenderContext context, Insert insert)
+    {
+        foreach (Entity entity in insert.Explode())
+        {
+            Draw(context, entity);
+        }
     }
 
     /// <summary>

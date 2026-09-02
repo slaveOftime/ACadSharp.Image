@@ -40,6 +40,12 @@ public sealed class SampleParityTests
         IReadOnlyList<Image<Rgba32>> rendered = RenderSample(samplePath, paperLayouts);
         try
         {
+            if (!update)
+            {
+                int baselineCount = Directory.GetFiles(baselineDirectory, $"{baseName}.*.png").Length;
+                Assert.True(baselineCount == rendered.Count, $"Expected {baselineCount} baseline pages for {baseName}, renderer produced {rendered.Count}.");
+            }
+
             for (int i = 0; i < rendered.Count; i++)
             {
                 string baselinePath = Path.Combine(baselineDirectory, $"{baseName}.{i + 1:D2}.png");

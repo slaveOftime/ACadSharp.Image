@@ -433,7 +433,6 @@
         <line x1="63.024" y1="12.15" x2="63.775" y2="13.4" vector-effect="non-scaling-stroke" data-handle="1F7" data-type="LINE" />
         <line x1="63.775" y1="13.4" x2="63.024" y2="14.65" vector-effect="non-scaling-stroke" data-handle="1F8" data-type="LINE" />
         <line x1="63.024" y1="14.65" x2="62.874" y2="13.4" vector-effect="non-scaling-stroke" data-handle="1F9" data-type="LINE" />
-        <ellipse cx="31.775" cy="13.4" rx="Infinity" ry="Infinity" vector-effect="non-scaling-stroke" data-handle="1FA" data-type="ARC" />
       </g>
       <g id="layer-optional_dimensions" class="cad-layer" data-layer="OPTIONAL_DIMENSIONS" stroke="#ff0000" stroke-width="1">
         <line x1="37.459" y1="10.227" x2="37.013" y2="9.789" vector-effect="non-scaling-stroke" data-handle="1FB" data-type="LINE" />
@@ -482,7 +481,7 @@
         <line x1="70.587" y1="10.9" x2="69.962" y2="10.9" vector-effect="non-scaling-stroke" data-handle="224" data-type="LINE" />
         <line x1="69.962" y1="10.9" x2="70.275" y2="12.15" vector-effect="non-scaling-stroke" data-handle="225" data-type="LINE" />
         <line x1="70.275" y1="10.9" x2="70.275" y2="10.275" vector-effect="non-scaling-stroke" data-handle="226" data-type="LINE" />
-        <text x="71.525" y="21.65" font-size="2.5" transform="rotate(-116.62 71.525 21.65)" fill="#0000ff" stroke="none" data-handle="227" data-type="TEXT">2.5</text>
+        <text x="71.525" y="21.65" font-size="2.5" transform="rotate(-116.6202 71.525 21.65)" fill="#0000ff" stroke="none" data-handle="227" data-type="TEXT">2.5</text>
         <line x1="67.581" y1="17.251" x2="67.196" y2="16.759" vector-effect="non-scaling-stroke" data-handle="228" data-type="LINE" />
         <line x1="67.196" y1="16.759" x2="66.404" y2="17.775" vector-effect="non-scaling-stroke" data-handle="229" data-type="LINE" />
         <line x1="66.404" y1="17.775" x2="67.581" y2="17.251" vector-effect="non-scaling-stroke" data-handle="22A" data-type="LINE" />

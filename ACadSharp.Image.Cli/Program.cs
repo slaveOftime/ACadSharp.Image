@@ -81,7 +81,7 @@ internal static class Program
             configuration.HideLayer(layer);
         }
 
-        configuration.Svg.NonScalingStroke = !options.SvgScalingStroke;
+        configuration.Svg.NonScalingStroke = !options.SvgNoScalingStroke;
         configuration.Svg.EmitEntityAttributes = !options.SvgNoEntityAttributes;
         configuration.Svg.EmitSize = options.SvgEmitSize;
         configuration.Svg.IdPrefix = options.SvgIdPrefix;
@@ -155,7 +155,7 @@ internal static class Program
         int quality = 90;
         bool exportPaperLayouts = false;
         List<string> hideLayers = new();
-        bool svgScalingStroke = false;
+        bool svgNoScalingStroke = false;
         bool svgNoEntityAttributes = false;
         bool svgEmitSize = false;
         string svgIdPrefix = string.Empty;
@@ -207,7 +207,7 @@ internal static class Program
                     hideLayers.Add(GetRequiredValue(args, ref i, current));
                     break;
                 case "--svg-no-scaling-stroke":
-                    svgScalingStroke = true;
+                    svgNoScalingStroke = true;
                     break;
                 case "--svg-no-entity-attributes":
                     svgNoEntityAttributes = true;
@@ -231,7 +231,7 @@ internal static class Program
             throw new InvalidOperationException("An input .dxf or .dwg file is required.");
         }
 
-        return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers, svgScalingStroke, svgNoEntityAttributes, svgEmitSize, svgIdPrefix, svgPrecision);
+        return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers, svgNoScalingStroke, svgNoEntityAttributes, svgEmitSize, svgIdPrefix, svgPrecision);
     }
 
     private static int ParseRange(string value, string argumentName, int min, int max)

@@ -148,8 +148,10 @@ public sealed class ImagePage
         foreach (Entity entity in this._entities)
         {
             BoundingBox boundingBox = entity.GetBoundingBox();
-            if (double.IsNaN(boundingBox.Min.X) || double.IsNaN(boundingBox.Min.Y) ||
-                double.IsNaN(boundingBox.Max.X) || double.IsNaN(boundingBox.Max.Y))
+            // NaN and infinity both occur in the wild (Samples/6-57-1119.dxf has an ARC with an infinite radius)
+            // and either would poison the page size.
+            if (!double.IsFinite(boundingBox.Min.X) || !double.IsFinite(boundingBox.Min.Y) || !double.IsFinite(boundingBox.Min.Z) ||
+                !double.IsFinite(boundingBox.Max.X) || !double.IsFinite(boundingBox.Max.Y) || !double.IsFinite(boundingBox.Max.Z))
             {
                 continue;
             }

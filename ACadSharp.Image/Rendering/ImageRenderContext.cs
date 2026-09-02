@@ -34,7 +34,8 @@ internal sealed class ImageRenderContext
         double lineTypeScale,
         Viewport? viewport = null,
         ImageRenderContext? parent = null,
-        double? strokeUnitsPerMillimeter = null)
+        double? strokeUnitsPerMillimeter = null,
+        double pixelsPerSurfaceUnit = 1d)
     {
         this.Surface = surface;
         this.Configuration = configuration;
@@ -51,6 +52,7 @@ internal sealed class ImageRenderContext
         this.Viewport = viewport;
         this.Parent = parent;
         this.StrokeUnitsPerMillimeter = strokeUnitsPerMillimeter;
+        this.PixelsPerSurfaceUnit = pixelsPerSurfaceUnit;
     }
 
     /// <summary>Surface that receives the primitives produced from this context.</summary>
@@ -107,6 +109,12 @@ internal sealed class ImageRenderContext
     public double? StrokeUnitsPerMillimeter { get; }
 
     /// <summary>
+    /// Pixels per surface unit. One for the raster backend, whose surface units are already pixels; the page fit scale
+    /// for SVG, whose surface units are drawing units. Sizes expressed in pixels are divided by it.
+    /// </summary>
+    public double PixelsPerSurfaceUnit { get; }
+
+    /// <summary>
     /// Creates the page-level context that maps paper space onto the full surface.
     /// </summary>
     /// <param name="surface">Surface receiving the page content.</param>
@@ -149,7 +157,8 @@ internal sealed class ImageRenderContext
             offsetX,
             offsetY,
             singlePrecision: true,
-            lineTypeScale: pixelsPerUnit);
+            lineTypeScale: pixelsPerUnit,
+            pixelsPerSurfaceUnit: 1d);
     }
 
     /// <summary>
@@ -179,7 +188,8 @@ internal sealed class ImageRenderContext
             lineTypeScale: scale,
             viewport: viewport,
             parent: parent,
-            strokeUnitsPerMillimeter: parent.StrokeUnitsPerMillimeter);
+            strokeUnitsPerMillimeter: parent.StrokeUnitsPerMillimeter,
+            pixelsPerSurfaceUnit: parent.PixelsPerSurfaceUnit);
     }
 
     /// <summary>
@@ -259,7 +269,8 @@ internal sealed class ImageRenderContext
             offsetY: 0d,
             singlePrecision: false,
             lineTypeScale: lineTypeScale,
-            strokeUnitsPerMillimeter: strokeUnitsPerMillimeter);
+            strokeUnitsPerMillimeter: strokeUnitsPerMillimeter,
+            pixelsPerSurfaceUnit: ComputeSvgFitScale(page, configuration));
     }
 
     /// <summary>
@@ -313,6 +324,13 @@ internal sealed class ImageRenderContext
     {
         return this.ToSurfacePoint(point.Convert<XY>());
     }
+
+    /// <summary>
+    /// Converts a size expressed in pixels into surface units.
+    /// </summary>
+    /// <param name="pixels">Size in pixels.</param>
+    /// <returns>The size in surface units.</returns>
+    public double ToSurfacePixels(double pixels) => pixels / this.PixelsPerSurfaceUnit;
 
     /// <summary>
     /// Converts a drawing length into surface units.

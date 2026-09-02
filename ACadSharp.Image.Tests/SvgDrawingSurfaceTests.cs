@@ -1,7 +1,6 @@
 using System.Xml.Linq;
 using ACadSharp.Image.Rendering;
 using ACadSharp.Image.Rendering.Svg;
-using SixLabors.ImageSharp;
 
 namespace ACadSharp.Image.Tests;
 
@@ -326,6 +325,27 @@ public sealed class SvgDrawingSurfaceTests
         Assert.Equal("0", (string?)spans[1].Attribute("x"));
         Assert.Null(text.Attribute("dominant-baseline"));
         Assert.Null(text.Attribute("transform"));
+    }
+
+    [Fact]
+    public void LayerNamesThatSanitiseAlikeGetUniqueIds()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        ImageStyle style = new(Color.Black, 1f);
+
+        surface.BeginEntity(Entity("A WALL"), Layer("A WALL"));
+        surface.DrawLine(style, new SurfacePoint(0, 0), new SurfacePoint(1, 1));
+        surface.EndEntity();
+        surface.BeginEntity(Entity("A-WALL"), Layer("A-WALL"));
+        surface.DrawLine(style, new SurfacePoint(1, 1), new SurfacePoint(2, 2));
+        surface.EndEntity();
+
+        XDocument document = surface.ToDocument();
+        List<string> ids = document.Descendants().Select(e => (string?)e.Attribute("id")).OfType<string>().ToList();
+
+        // Both names sanitise to "layer-a-wall"; duplicate ids are invalid markup, so the second one is suffixed.
+        Assert.Equal(new[] { "layer-a-wall", "layer-a-wall-2" }, ids);
+        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
 
     [Fact]

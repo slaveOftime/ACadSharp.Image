@@ -7,9 +7,9 @@ using SixLabors.ImageSharp.PixelFormats;
 namespace ACadSharp.Image.Tests;
 
 /// <summary>
-/// Renders the files in <c>Samples/</c> with a fixed configuration and compares the result
-/// byte-for-byte with the PNGs in <c>Baselines/</c>. Set the environment variable
-/// <c>ACADSHARP_IMAGE_UPDATE_BASELINES=1</c> to rewrite the baselines instead of comparing.
+/// Renders the files in <c>Samples/</c> with a fixed configuration and compares the result with the baselines in
+/// <c>Baselines/</c>: the PNGs pixel-for-pixel and the SVG goldens as text. Set the environment variable
+/// <c>ACADSHARP_IMAGE_UPDATE_BASELINES=1</c> to rewrite both instead of comparing.
 /// </summary>
 public sealed class SampleParityTests
 {
@@ -105,6 +105,11 @@ public sealed class SampleParityTests
         {
             string goldenPath = Path.Combine(baselineDirectory, $"{baseName}.{i + 1:D2}.svg");
             string actual = Assert.IsType<RenderedSvgPage>(pages[i]).Content.Replace("\r\n", "\n");
+
+            // Non-finite numbers make the SVG invalid. The ordinal comparison is deliberate: "dominant-baseline"
+            // contains "nan" in lower case only.
+            Assert.DoesNotContain("Infinity", actual, StringComparison.Ordinal);
+            Assert.DoesNotContain("NaN", actual, StringComparison.Ordinal);
             if (update)
             {
                 File.WriteAllText(goldenPath, actual);

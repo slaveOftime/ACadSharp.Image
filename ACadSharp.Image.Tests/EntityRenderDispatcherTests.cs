@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using ACadSharp.Entities;
 using ACadSharp.Image.Rendering;
 using ACadSharp.Image.Rendering.Svg;
+using ACadSharp.IO;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
@@ -185,23 +186,74 @@ public sealed class EntityRenderDispatcherTests
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawEllipse", StringComparison.Ordinal));
     }
 
+    // Both angles are finite, so the entity passes the non-finite gate, but their difference overflows to infinity.
+    // Without the sweep normalization the tessellation would step over an unbounded range and hang.
+    private static Arc HugeSweepArc() => new()
+    {
+        Center = new XYZ(10, 10, 0),
+        Radius = 5,
+        StartAngle = -double.MaxValue,
+        EndAngle = double.MaxValue,
+    };
+
+    private static Arc NonFiniteArc() => new()
+    {
+        Center = new XYZ(10, 10, 0),
+        Radius = double.PositiveInfinity,
+        StartAngle = double.NaN,
+        EndAngle = double.NaN,
+    };
+
     [Fact]
-    public void InfiniteArcSweepNormalizesToAFullTurnInsteadOfHanging()
+    public void HugeArcSweepNormalizesToAFullTurnInsteadOfHanging()
     {
         RecordingDrawingSurface surface = new() { SupportsCurves = true };
         ImageConfiguration configuration = new();
         EntityRenderDispatcher dispatcher = new(configuration);
 
-        dispatcher.Draw(CreateContext(surface, configuration), new Arc { Center = new XYZ(10, 10, 0), Radius = 5, StartAngle = 0, EndAngle = double.NegativeInfinity });
+        dispatcher.Draw(CreateContext(surface, configuration), HugeSweepArc());
 
         Assert.Contains(surface.Calls, c => c.StartsWith("DrawArc", StringComparison.Ordinal) && c.Contains("sweep=-6.28", StringComparison.Ordinal));
 
         // A full turn reaches the SVG surface as a closed ellipse (a circle here), never an arc path.
         using SvgDrawingSurface svg = new(configuration, new SurfaceRect(0, 0, 100, 100), null, null);
-        dispatcher.Draw(CreateContext(svg, configuration), new Arc { Center = new XYZ(10, 10, 0), Radius = 5, StartAngle = 0, EndAngle = double.NegativeInfinity });
+        dispatcher.Draw(CreateContext(svg, configuration), HugeSweepArc());
 
         XDocument document = svg.ToDocument();
         Assert.Single(document.Descendants(SvgDrawingSurface.Ns + "circle"));
+        Assert.Empty(document.Descendants(SvgDrawingSurface.Ns + "path"));
+
+        // The other branch of the same guard: a huge but finite sweep is folded into one turn with a modulo
+        // instead of being handed to the surface raw, which would step a tessellation over 1e9 radians.
+        surface.Calls.Clear();
+        dispatcher.Draw(CreateContext(surface, configuration), new Arc { Center = new XYZ(10, 10, 0), Radius = 5, StartAngle = 0, EndAngle = 1e9 });
+        string call = Assert.Single(surface.Calls, c => c.StartsWith("DrawArc", StringComparison.Ordinal));
+        Assert.Contains("sweep=-0.577", call, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NonFiniteArcIsSkippedWithWarning()
+    {
+        RecordingDrawingSurface surface = new() { SupportsCurves = true };
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), WithHandle(NonFiniteArc(), 0x1FA));
+
+        Assert.Empty(surface.Calls);
+        NotificationEventArgs notification = Assert.Single(notifications);
+        Assert.Equal(NotificationType.Warning, notification.NotificationType);
+        Assert.Contains("non-finite", notification.Message, StringComparison.Ordinal);
+
+        // Nothing of the sort may reach the markup: rx="Infinity" is not valid SVG.
+        using SvgDrawingSurface svg = new(configuration, new SurfaceRect(0, 0, 100, 100), null, null);
+        dispatcher.Draw(CreateContext(svg, configuration), WithHandle(NonFiniteArc(), 0x1FA));
+
+        XDocument document = svg.ToDocument();
+        Assert.Empty(document.Descendants(SvgDrawingSurface.Ns + "ellipse"));
+        Assert.Empty(document.Descendants(SvgDrawingSurface.Ns + "circle"));
         Assert.Empty(document.Descendants(SvgDrawingSurface.Ns + "path"));
     }
 }

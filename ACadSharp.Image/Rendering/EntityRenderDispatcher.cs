@@ -1,4 +1,5 @@
-﻿using ACadSharp.Entities;
+﻿using System.Globalization;
+using ACadSharp.Entities;
 using ACadSharp.Extensions;
 using ACadSharp.Image.Extensions;
 using ACadSharp.IO;
@@ -59,6 +60,14 @@ internal sealed class EntityRenderDispatcher
 
     private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName)
     {
+        if (!HasFiniteGeometry(entity))
+        {
+            this._configuration.Notify(
+                $"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: geometry contains non-finite values; entity skipped.",
+                NotificationType.Warning);
+            return;
+        }
+
         ImageStyle style = this._styleResolver.Resolve(entity, context);
         Layer? layer = GetEffectiveLayer(entity, parentLayer);
         string layerName = layer?.Name ?? Layer.DefaultName;
@@ -163,8 +172,9 @@ internal sealed class EntityRenderDispatcher
 
     private void DrawPoint(ImageRenderContext context, ImageStyle style, ACadSharp.Entities.Point point)
     {
+        // DotSizePixels is a pixel size; SVG surface units are drawing units, so it has to be converted.
         float radius = Math.Max(1f, this._configuration.DotSizePixels / 2f);
-        context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), radius);
+        context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), context.ToSurfacePixels(radius));
     }
 
     private void DrawDimension(ImageRenderContext context, Dimension dimension, Layer? layer)
@@ -239,6 +249,26 @@ internal sealed class EntityRenderDispatcher
 
         return sweep;
     }
+
+    /// <summary>
+    /// False when an entity's defining geometry carries NaN or infinity, as some DXF files do
+    /// (Samples/6-57-1119.dxf handle 1FA is an ARC with radius Infinity and NaN angles).
+    /// </summary>
+    /// <param name="entity">The entity to inspect.</param>
+    /// <returns>True when the geometry can be drawn.</returns>
+    internal static bool HasFiniteGeometry(Entity entity) => entity switch
+    {
+        // Arc derives from Circle: this case must stay first.
+        Arc arc => IsFinite(arc.Center) && IsFinitePositive(arc.Radius) && double.IsFinite(arc.StartAngle) && double.IsFinite(arc.EndAngle),
+        Circle circle => IsFinite(circle.Center) && IsFinitePositive(circle.Radius),
+        Ellipse ellipse => IsFinite(ellipse.Center) && IsFinite(ellipse.MajorAxisEndPoint) && double.IsFinite(ellipse.RadiusRatio) && double.IsFinite(ellipse.StartParameter) && double.IsFinite(ellipse.EndParameter),
+        Line line => IsFinite(line.StartPoint) && IsFinite(line.EndPoint),
+        _ => true,
+    };
+
+    private static bool IsFinite(XYZ p) => double.IsFinite(p.X) && double.IsFinite(p.Y) && double.IsFinite(p.Z);
+
+    private static bool IsFinitePositive(double value) => double.IsFinite(value) && value > 0d;
 
     /// <summary>
     /// Emits an arc natively. Drawing angles turn counter-clockwise; the surface Y axis points down, so both the start

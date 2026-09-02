@@ -46,6 +46,27 @@ public sealed class SvgExportTests
     }
 
     [Fact]
+    public void PointRadiusIsConvertedFromPixelsIntoDrawingUnits()
+    {
+        BlockRecord block = new("points");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
+        block.Entities.Add(new Point { Location = new XYZ(50, 25, 0) });
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 1000;
+        exporter.Configuration.Height = 500;
+        exporter.Configuration.SetPadding(0);
+        exporter.Add(block);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Svg));
+        XDocument document = XDocument.Parse(((RenderedSvgPage)page).Content);
+        XElement circle = Assert.Single(document.Descendants(Ns + "circle"));
+
+        // The dot is DotSizePixels / 2 = 2 pixels; the page fits 100 x 50 drawing units into 1000 x 500 pixels,
+        // so a pixel is a tenth of a drawing unit and the radius is 0.2 units, not 2.
+        Assert.Equal("0.2", (string?)circle.Attribute("r"));
+    }
+
+    [Fact]
     public void YAxisIsFlipped()
     {
         BlockRecord block = new("flip");

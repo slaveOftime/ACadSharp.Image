@@ -4,7 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="ACadSharp" Version="3.4.24" />
+    <PackageVersion Include="ACadSharp" Version="3.7.1" />
     <PackageVersion Include="coverlet.collector" Version="8.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageVersion Include="SixLabors.Fonts" Version="2.1.3" />

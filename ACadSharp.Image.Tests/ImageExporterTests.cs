@@ -240,9 +240,8 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        // Verify filtering before rendering
-        ImagePage page = exporter.Pages[0];
-        Assert.Equal(2, page.Entities.Count); // Only Layer1 and Layer3 entities
+        Assert.Equal(3, exporter.Pages[0].Entities.Count); // pages keep every entity; filtering happens at render time
+        Assert.Equal(2, CountDrawnLines(exporter));
     }
 
     [Fact]
@@ -259,8 +258,8 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        ImagePage page = exporter.Pages[0];
-        Assert.Empty(page.Entities); // All entities filtered out
+        Assert.Single(exporter.Pages[0].Entities); // pages keep every entity; filtering happens at render time
+        Assert.Equal(0, CountDrawnLines(exporter));
     }
 
     [Fact]
@@ -287,8 +286,8 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        ImagePage page = exporter.Pages[0];
-        Assert.Single(page.Entities); // Only Layer2 entity
+        Assert.Equal(3, exporter.Pages[0].Entities.Count); // pages keep every entity; filtering happens at render time
+        Assert.Equal(1, CountDrawnLines(exporter));
     }
 
     [Fact]
@@ -327,5 +326,56 @@ public sealed class ImageExporterTests
         Assert.Equal((byte)'P', bytes[1]);
         Assert.Equal((byte)'N', bytes[2]);
         Assert.Equal((byte)'G', bytes[3]);
+    }
+
+    private static int CountDrawnLines(ImageExporter exporter)
+    {
+        RecordingDrawingSurface surface = new();
+        ImagePageRenderer renderer = new(exporter.Configuration);
+        renderer.RenderTo(surface, exporter.Pages[0]);
+        return surface.Calls.Count(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ChangingHiddenLayersAfterAddTakesEffect()
+    {
+        BlockRecord block = new("late-hide");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 1, 0)) { Layer = new Layer("Late") });
+        ImageExporter exporter = new();
+        exporter.Add(block);
+
+        Assert.Equal(1, CountDrawnLines(exporter));
+        exporter.Configuration.HideLayer("Late");
+        Assert.Equal(0, CountDrawnLines(exporter));
+    }
+
+    [Fact]
+    public void HiddenEntitiesDoNotAffectAutoSizedFraming()
+    {
+        static ImageExporter Build(bool withFarHiddenLine)
+        {
+            BlockRecord block = new("framing");
+            block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)) { Layer = new Layer("Visible") });
+            if (withFarHiddenLine)
+            {
+                block.Entities.Add(new Line(new XYZ(1000, 1000, 0), new XYZ(1010, 1010, 0)) { Layer = new Layer("Far") });
+            }
+
+            ImageExporter exporter = new();
+            exporter.Configuration.Width = 200;
+            exporter.Configuration.Height = 200;
+            exporter.Configuration.HideLayer("Far");
+            exporter.Add(block);
+            return exporter;
+        }
+
+        static string FirstLineCall(ImageExporter exporter)
+        {
+            RecordingDrawingSurface surface = new();
+            new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
+            return surface.Calls.Single(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        }
+
+        Assert.Equal(FirstLineCall(Build(withFarHiddenLine: false)), FirstLineCall(Build(withFarHiddenLine: true)));
     }
 }

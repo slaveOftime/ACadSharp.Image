@@ -29,6 +29,7 @@ internal sealed class EntityRenderDispatcher
     private readonly SplineRenderer _splineRenderer;
     private readonly ImageStyleResolver _styleResolver;
     private readonly TextRenderer _textRenderer;
+    private readonly EntityVisibilityFilter _visibilityFilter;
 
     public EntityRenderDispatcher(ImageConfiguration configuration)
     {
@@ -36,6 +37,7 @@ internal sealed class EntityRenderDispatcher
         this._splineRenderer = new SplineRenderer(configuration);
         this._styleResolver = new ImageStyleResolver();
         this._textRenderer = new TextRenderer();
+        this._visibilityFilter = new EntityVisibilityFilter(configuration);
     }
 
     /// <summary>
@@ -68,9 +70,14 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        ImageStyle style = this._styleResolver.Resolve(entity, context);
         Layer? layer = GetEffectiveLayer(entity, parentLayer);
         string layerName = layer?.Name ?? Layer.DefaultName;
+        if (!this._visibilityFilter.IsVisible(entity, layer, layerName, context.Viewport))
+        {
+            return;
+        }
+
+        ImageStyle style = this._styleResolver.Resolve(entity, context);
         EntityRenderInfo info = new(layerName, entity.ObjectName, entity.Handle, parentHandle, blockName);
         LayerRenderInfo layerInfo = CreateLayerInfo(layer, layerName, context);
 

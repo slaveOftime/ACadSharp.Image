@@ -55,6 +55,12 @@ public sealed class ImagePage
     internal PlotPaperUnits PaperUnits => PlotPaperUnits.Pixels;
 
     /// <summary>
+    /// Gets a value indicating whether the page size came from <see cref="UpdateLayoutSize()"/> rather than from a layout's paper size.
+    /// Auto-sized pages are re-framed on the visible entities at render time.
+    /// </summary>
+    internal bool AutoSized { get; private set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ImagePage"/> class.
     /// </summary>
     public ImagePage()
@@ -132,6 +138,18 @@ public sealed class ImagePage
     /// </summary>
     public void UpdateLayoutSize()
     {
+        this.UpdateLayoutSize(null);
+    }
+
+    /// <summary>
+    /// Updates the layout size based on the bounding box of the entities the predicate accepts.
+    /// </summary>
+    /// <param name="include">Predicate selecting the entities to frame, or null to frame every entity.</param>
+    /// <remarks>
+    /// When no selected entity has finite bounds, <see cref="Translation"/> and the layout size are left unchanged.
+    /// </remarks>
+    public void UpdateLayoutSize(Func<Entity, bool>? include)
+    {
         if (this._entities.Count == 0)
         {
             return;
@@ -147,6 +165,11 @@ public sealed class ImagePage
 
         foreach (Entity entity in this._entities)
         {
+            if (include != null && !include(entity))
+            {
+                continue;
+            }
+
             BoundingBox boundingBox = entity.GetBoundingBox();
             // NaN and infinity both occur in the wild (Samples/6-57-1119.dxf has an ARC with an infinite radius)
             // and either would poison the page size.
@@ -188,5 +211,6 @@ public sealed class ImagePage
         this.Layout ??= new Layout("default_page");
         this.Layout.PaperWidth = Math.Max(1d, limits.Max.X);
         this.Layout.PaperHeight = Math.Max(1d, limits.Max.Y);
+        this.AutoSized = true;
     }
 }

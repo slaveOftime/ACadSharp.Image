@@ -13,6 +13,8 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
 
     public List<LayerRenderInfo> Layers { get; } = new();
 
+    public List<ImageStyle> Styles { get; } = new();
+
     public int Depth { get; private set; }
 
     public bool SupportsCurves { get; init; }
@@ -31,25 +33,65 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
         this.Calls.Add("EndEntity");
     }
 
-    public void DrawLine(ImageStyle style, SurfacePoint start, SurfacePoint end) => this.Calls.Add($"DrawLine {start} {end} w={style.StrokeWidth}");
+    public void DrawLine(ImageStyle style, SurfacePoint start, SurfacePoint end)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"DrawLine {start} {end} w={style.StrokeWidth}");
+    }
 
-    public void DrawPolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, bool closed) => this.Calls.Add($"DrawPolyline n={points.Count} closed={closed}");
+    public void DrawPolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, bool closed)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"DrawPolyline n={points.Count} closed={closed}");
+    }
 
-    public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle) => this.Calls.Add($"DrawArc {center} rx={radiusX} ry={radiusY} rot={rotation} start={startAngle} sweep={sweepAngle}");
+    public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"DrawArc {center} rx={radiusX} ry={radiusY} rot={rotation} start={startAngle} sweep={sweepAngle}");
+    }
 
-    public void DrawEllipse(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation) => this.Calls.Add($"DrawEllipse {center} rx={radiusX} ry={radiusY} rot={rotation}");
+    public void DrawEllipse(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"DrawEllipse {center} rx={radiusX} ry={radiusY} rot={rotation}");
+    }
 
-    public void DrawCubicBezier(ImageStyle style, IReadOnlyList<SurfacePoint> controlPoints, bool closed) => this.Calls.Add($"DrawCubicBezier n={controlPoints.Count} closed={closed}");
+    public void DrawCubicBezier(ImageStyle style, IReadOnlyList<SurfacePoint> controlPoints, bool closed)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"DrawCubicBezier n={controlPoints.Count} closed={closed}");
+    }
 
-    public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed) => this.Calls.Add($"DrawBulgePolyline n={points.Count} closed={closed} bulges={string.Join(",", bulges)}");
+    public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"DrawBulgePolyline n={points.Count} closed={closed} bulges={string.Join(",", bulges)}");
+    }
 
-    public void FillPolygon(ImageStyle style, IReadOnlyList<SurfacePoint> points) => this.Calls.Add($"FillPolygon n={points.Count}");
+    public void FillPolygon(ImageStyle style, IReadOnlyList<SurfacePoint> points)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"FillPolygon n={points.Count}");
+    }
 
-    public void FillPath(ImageStyle style, IReadOnlyList<IReadOnlyList<SurfacePoint>> rings) => this.Calls.Add($"FillPath rings={rings.Count}");
+    public void FillPath(ImageStyle style, IReadOnlyList<IReadOnlyList<SurfacePoint>> rings)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"FillPath rings={rings.Count}");
+    }
 
-    public void FillCircle(ImageStyle style, SurfacePoint center, double radius) => this.Calls.Add($"FillCircle {center} r={radius}");
+    public void FillCircle(ImageStyle style, SurfacePoint center, double radius)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"FillCircle {center} r={radius}");
+    }
 
-    public void DrawText(ImageStyle style, SurfaceText text) => this.Calls.Add($"DrawText '{text.Text}' anchor={text.Anchor} baseline={text.Baseline}");
+    public void DrawText(ImageStyle style, SurfaceText text)
+    {
+        this.Styles.Add(style);
+        this.Calls.Add($"DrawText '{text.Text}' anchor={text.Anchor} baseline={text.Baseline}");
+    }
 
     public ViewportSurface BeginViewport(SurfaceRect bounds)
     {

@@ -1,5 +1,6 @@
 using ACadSharp.Entities;
 using ACadSharp.Image.Rendering.Svg;
+using ACadSharp.Tables;
 using ACadSharp.Types.Units;
 using CSMath;
 using SixLabors.ImageSharp;
@@ -25,11 +26,13 @@ internal sealed class ImagePageRenderer
 {
     private readonly ImageConfiguration _configuration;
     private readonly EntityRenderDispatcher _dispatcher;
+    private readonly EntityVisibilityFilter _visibilityFilter;
 
     public ImagePageRenderer(ImageConfiguration configuration)
     {
         this._configuration = configuration;
         this._dispatcher = new EntityRenderDispatcher(configuration);
+        this._visibilityFilter = new EntityVisibilityFilter(configuration);
     }
 
     /// <summary>
@@ -77,7 +80,30 @@ internal sealed class ImagePageRenderer
     /// <param name="page">The page to render.</param>
     internal void RenderTo(IDrawingSurface surface, ImagePage page)
     {
+        this.RefitAutoSizedPage(page);
         this.RenderTo(ImageRenderContext.CreatePageContext(surface, page, this._configuration), page);
+    }
+
+    /// <summary>
+    /// Re-frames a page whose size was derived from its content, so that hidden entities do not stretch the frame.
+    /// </summary>
+    /// <param name="page">The page about to be rendered.</param>
+    /// <remarks>
+    /// Only top-level page entities take part; entities shown through a viewport are framed by the viewport itself,
+    /// and pages that carry a layout's paper size are left alone.
+    /// </remarks>
+    private void RefitAutoSizedPage(ImagePage page)
+    {
+        if (!page.AutoSized)
+        {
+            return;
+        }
+
+        page.UpdateLayoutSize(entity =>
+        {
+            Layer? layer = EntityRenderDispatcher.GetEffectiveLayer(entity, null);
+            return this._visibilityFilter.IsVisible(entity, layer, layer?.Name ?? Layer.DefaultName, null);
+        });
     }
 
     /// <summary>
@@ -105,6 +131,7 @@ internal sealed class ImagePageRenderer
     /// <returns>The rendered SVG page.</returns>
     private RenderedSvgPage RenderSvg(ImagePage page)
     {
+        this.RefitAutoSizedPage(page);
         SurfaceRect viewBox = ImageRenderContext.ComputeSvgViewBox(page, this._configuration);
         SvgOptions options = this._configuration.Svg;
         double? strokeUnits = options.NonScalingStroke

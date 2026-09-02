@@ -93,6 +93,9 @@ public sealed class ImageExporter
     /// Adds a single layout to the exporter.
     /// </summary>
     /// <param name="layout">The layout to add.</param>
+    /// <remarks>
+    /// Layer filters and visibility settings are applied when rendering, so all entities are kept on the page.
+    /// </remarks>
     public void Add(Layout layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
@@ -106,7 +109,7 @@ public sealed class ImageExporter
 
         foreach (Entity entity in layout.AssociatedBlock.Entities)
         {
-            if (this.ShouldIncludeEntity(entity))
+            if (ShouldIncludeEntity(entity))
             {
                 page.AddEntity(entity);
             }
@@ -129,6 +132,9 @@ public sealed class ImageExporter
     /// Adds a block record to the exporter as a single page.
     /// </summary>
     /// <param name="block">The block record to add.</param>
+    /// <remarks>
+    /// Layer filters and visibility settings are applied when rendering, so all entities are kept on the page.
+    /// </remarks>
     public void Add(BlockRecord block)
     {
         ArgumentNullException.ThrowIfNull(block);
@@ -139,35 +145,16 @@ public sealed class ImageExporter
             Document = block.Document,
         };
 
-        page.Add(block, this.ShouldIncludeEntity);
+        page.Add(block, ShouldIncludeEntity);
         this._pages.Add(page);
     }
 
-    private bool ShouldIncludeEntity(Entity entity)
-    {
-        if (entity is Viewport)
-        {
-            return false;
-        }
-
-        return !this.IsHiddenLayer(entity);
-    }
-
-    private bool IsHiddenLayer(Entity entity)
-    {
-        if (this.Configuration.HiddenLayers.Count == 0)
-        {
-            return false;
-        }
-
-        string? layerName = entity.Layer?.Name;
-        if (string.IsNullOrEmpty(layerName))
-        {
-            return false;
-        }
-
-        return this.Configuration.HiddenLayers.Contains(layerName);
-    }
+    /// <summary>
+    /// Viewports are added through <see cref="ImagePage.AddViewport"/>, never as page entities.
+    /// </summary>
+    /// <param name="entity">The entity being considered.</param>
+    /// <returns>True when the entity belongs on the page.</returns>
+    private static bool ShouldIncludeEntity(Entity entity) => entity is not Viewport;
 
     /// <summary>
     /// Renders all added pages without saving to disk.

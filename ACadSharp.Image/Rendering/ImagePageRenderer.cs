@@ -49,13 +49,22 @@ internal sealed class ImagePageRenderer
     public RenderedPage Render(ImagePage page, ImageExportFormat format)
     {
         Image<Rgba32> image = new(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);
-        using RasterDrawingSurface surface = new(image, this._configuration, ownsCanvas: false);
-        this.RenderTo(surface, page);
+        try
+        {
+            using RasterDrawingSurface surface = new(image, this._configuration, ownsCanvas: false);
+            this.RenderTo(surface, page);
+        }
+        catch
+        {
+            image.Dispose();
+            throw;
+        }
+
         return new RenderedImagePage(page.Name, image, format, this._configuration.OutputQuality);
     }
 
     /// <summary>
-    /// Renders the page onto an arbitrary drawing surface.
+    /// Renders the page onto the raster page context (see <see cref="ImageRenderContext.CreatePageContext"/>).
     /// </summary>
     /// <param name="surface">The surface receiving the page content.</param>
     /// <param name="page">The page to render.</param>
@@ -87,7 +96,7 @@ internal sealed class ImagePageRenderer
         double scale = pageContext.SinglePrecision
             ? (float)pageContext.Scale * (float)viewport.ScaleFactor
             : pageContext.Scale * viewport.ScaleFactor;
-        ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(pageContext, viewport, viewportSurface, modelBounds, scale);
+        ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(pageContext, viewport, viewportSurface, viewportWidth, modelBounds, scale);
 
         foreach (Entity entity in viewport.SelectEntities())
         {

@@ -68,7 +68,7 @@ internal sealed class ImageRenderContext
     /// <summary>Drawing X coordinate that maps onto <see cref="OffsetX"/>.</summary>
     public double OriginX { get; }
 
-    /// <summary>Drawing Y coordinate that maps onto the surface bottom.</summary>
+    /// <summary>Drawing Y coordinate that maps onto <c>SurfaceHeight - OffsetY</c>.</summary>
     public double OriginY { get; }
 
     /// <summary>Surface units per drawing unit.</summary>
@@ -83,7 +83,7 @@ internal sealed class ImageRenderContext
     /// <summary>True for the raster backend: reproduces the original float arithmetic exactly.</summary>
     public bool SinglePrecision { get; }
 
-    /// <summary>Surface units per linetype unit; differs from <see cref="Scale"/> inside viewports with paper-space linetype scaling.</summary>
+    /// <summary>Surface units per linetype unit. Currently equal to <see cref="Scale"/>; a later change makes it differ inside viewports with paper-space linetype scaling.</summary>
     public double LineTypeScale { get; }
 
     /// <summary>Viewport whose contents are being drawn, or null for page-level content.</summary>
@@ -144,16 +144,17 @@ internal sealed class ImageRenderContext
     /// <param name="parent">Context that opened the viewport.</param>
     /// <param name="viewport">Viewport being drawn.</param>
     /// <param name="surface">Surface returned by <see cref="IDrawingSurface.BeginViewport"/>.</param>
+    /// <param name="surfaceWidth">Width of the viewport in surface units.</param>
     /// <param name="modelBounds">Model-space bounds shown by the viewport.</param>
     /// <param name="scale">Surface units per model unit.</param>
     /// <returns>A context whose origin is the bottom-left corner of <paramref name="modelBounds"/>.</returns>
-    public static ImageRenderContext CreateViewportContext(ImageRenderContext parent, Viewport viewport, ViewportSurface surface, BoundingBox modelBounds, double scale)
+    public static ImageRenderContext CreateViewportContext(ImageRenderContext parent, Viewport viewport, ViewportSurface surface, double surfaceWidth, BoundingBox modelBounds, double scale)
     {
         return new ImageRenderContext(
             surface.Surface,
             parent.Configuration,
             parent.Layout,
-            surfaceWidth: 0d,
+            surfaceWidth: surfaceWidth,
             surfaceHeight: surface.BottomY,
             originX: modelBounds.Min.X,
             originY: modelBounds.Min.Y,

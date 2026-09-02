@@ -38,9 +38,15 @@ internal static class CurveTessellation
     /// Converts a polyline bulge into arc parameters in surface space.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Bulge is tan(theta/4) where theta is the included angle. A positive bulge is a counter-clockwise arc in the drawing
     /// and still looks counter-clockwise on screen after the Y flip; but in surface coordinates (Y down) a visually
     /// counter-clockwise turn is a decreasing angle, so a positive bulge yields a negative sweep here.
+    /// </para>
+    /// <para>
+    /// Callers must guard against <paramref name="bulge"/> being 0 and against coincident <paramref name="start"/>/<paramref name="end"/>
+    /// points; either condition drives the chord length to 0 and yields NaN.
+    /// </para>
     /// </remarks>
     public static void BulgeArc(SurfacePoint start, SurfacePoint end, double bulge, out SurfacePoint center, out double radius, out double startAngle, out double sweepAngle)
     {
@@ -51,7 +57,7 @@ internal static class CurveTessellation
         radius = chord / (2d * Math.Sin(theta / 2d));
 
         // Distance from the chord midpoint to the centre, along the chord normal.
-        double sagitta = radius * Math.Cos(theta / 2d);
+        double apothem = radius * Math.Cos(theta / 2d);
         double midX = (start.X + end.X) / 2d;
         double midY = (start.Y + end.Y) / 2d;
         double normalX = -chordY / chord;
@@ -59,7 +65,7 @@ internal static class CurveTessellation
 
         // The arc bulges toward +normal for a positive bulge, so the centre sits on the -normal side.
         double side = bulge > 0 ? -1d : 1d;
-        center = new SurfacePoint(midX + (side * sagitta * normalX), midY + (side * sagitta * normalY));
+        center = new SurfacePoint(midX + (side * apothem * normalX), midY + (side * apothem * normalY));
         startAngle = Math.Atan2(start.Y - center.Y, start.X - center.X);
         sweepAngle = bulge > 0 ? -theta : theta;
     }

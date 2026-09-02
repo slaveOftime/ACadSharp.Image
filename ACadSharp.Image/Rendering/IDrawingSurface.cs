@@ -18,8 +18,19 @@ internal interface IDrawingSurface : IDisposable
     /// </summary>
     bool SupportsCurves { get; }
 
+    /// <summary>
+    /// Opens a scope for the entity about to be drawn.
+    /// </summary>
+    /// <remarks>
+    /// Scopes nest: an <c>Insert</c> or <c>Dimension</c> opens a scope, draws nothing itself, and each nested entity
+    /// opens its own scope inside it. Every <see cref="BeginEntity"/> is matched by an <see cref="EndEntity"/>, even
+    /// when the entity type is unsupported.
+    /// </remarks>
     void BeginEntity(EntityRenderInfo info, LayerRenderInfo layer);
 
+    /// <summary>
+    /// Closes the scope opened by the matching <see cref="BeginEntity"/>.
+    /// </summary>
     void EndEntity();
 
     void DrawLine(ImageStyle style, SurfacePoint start, SurfacePoint end);
@@ -36,6 +47,10 @@ internal interface IDrawingSurface : IDisposable
     /// <summary>
     /// Draws a chain of cubic Bezier segments given 3n+1 control points.
     /// </summary>
+    /// <remarks>
+    /// The raster backend ignores <paramref name="closed"/> (the chain ends where it starts for closed splines);
+    /// structured backends may close the path.
+    /// </remarks>
     void DrawCubicBezier(ImageStyle style, IReadOnlyList<SurfacePoint> controlPoints, bool closed);
 
     /// <summary>

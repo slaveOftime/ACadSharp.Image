@@ -52,7 +52,7 @@ public sealed class EntityRenderDispatcherTests
         BlockRecord block = new("DOOR");
         block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)) { Layer = new Layer(Layer.DefaultName) });
         block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(0, 1, 0)) { Layer = new Layer("Hardware") });
-        Insert insert = WithHandle(new Insert(block) { Layer = new Layer("Doors") }, 0xAB);
+        Insert insert = WithHandle(new Insert(block) { Layer = new Layer("Doors") { Color = new ACadSharp.Color(1) } }, 0xAB);
 
         dispatcher.Draw(CreateContext(surface, configuration), insert);
 
@@ -62,8 +62,22 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal("Doors", surface.Entities[1].LayerName);
         Assert.Equal(0xABUL, surface.Entities[1].ParentHandle);
         Assert.Equal("DOOR", surface.Entities[1].BlockName);
+        Assert.Equal(0UL, surface.Entities[1].Handle);
         Assert.Equal("Hardware", surface.Entities[2].LayerName);
         Assert.Equal(0, surface.Depth);
+        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), surface.Layers[1].Color);
+    }
+
+    [Fact]
+    public void EffectiveLayerReturnsParentLayerObjectForLayerZero()
+    {
+        Layer parent = new("Doors") { IsOn = false };
+        Line onZero = new() { Layer = new Layer(Layer.DefaultName) };
+        Line onOwn = new() { Layer = new Layer("Own") };
+
+        Assert.Same(parent, EntityRenderDispatcher.GetEffectiveLayer(onZero, parent));
+        Assert.Equal("Own", EntityRenderDispatcher.GetEffectiveLayer(onOwn, parent)!.Name);
+        Assert.Equal(Layer.DefaultName, EntityRenderDispatcher.GetEffectiveLayer(onZero, null)!.Name);
     }
 
     [Fact]

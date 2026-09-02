@@ -54,15 +54,16 @@ internal sealed class EntityRenderDispatcher
     /// </remarks>
     public void Draw(ImageRenderContext context, Entity entity)
     {
-        this.Draw(context, entity, parentLayerName: null, parentHandle: null, blockName: null);
+        this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null);
     }
 
-    private void Draw(ImageRenderContext context, Entity entity, string? parentLayerName, ulong? parentHandle, string? blockName)
+    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName)
     {
         ImageStyle style = this._styleResolver.Resolve(entity, context);
-        string layerName = GetEffectiveLayerName(entity, parentLayerName);
+        Layer? layer = GetEffectiveLayer(entity, parentLayer);
+        string layerName = layer?.Name ?? Layer.DefaultName;
         EntityRenderInfo info = new(layerName, entity.ObjectName, entity.Handle, parentHandle, blockName);
-        LayerRenderInfo layerInfo = CreateLayerInfo(entity.Layer, layerName, context);
+        LayerRenderInfo layerInfo = CreateLayerInfo(layer, layerName, context);
 
         context.Surface.BeginEntity(info, layerInfo);
         try
@@ -70,19 +71,19 @@ internal sealed class EntityRenderDispatcher
             switch (entity)
             {
                 case Arc arc:
-                    this.DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), false);
+                    DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), false);
                     break;
                 case Circle circle:
-                    this.DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
+                    DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
                     break;
                 case Ellipse ellipse:
-                    this.DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
+                    DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
                     break;
                 case Line line:
                     context.Surface.DrawLine(style, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
                     break;
                 case Dimension dimension:
-                    this.DrawDimension(context, dimension, layerName);
+                    this.DrawDimension(context, dimension, layer);
                     break;
                 case Solid solid:
                     DrawSolid(context, style, solid);
@@ -91,7 +92,7 @@ internal sealed class EntityRenderDispatcher
                     this.DrawPoint(context, style, point);
                     break;
                 case IPolyline polyline:
-                    this.DrawPolyline(context, style, polyline.GetPoints<XYZ>(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), polyline.IsClosed);
+                    DrawPolyline(context, style, polyline.GetPoints<XYZ>(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), polyline.IsClosed);
                     break;
                 case Spline spline:
                     this._splineRenderer.Draw(context, style, spline);
@@ -106,7 +107,7 @@ internal sealed class EntityRenderDispatcher
                     this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
                     break;
                 case Insert insert:
-                    this.DrawBlockContents(context, insert, layerName);
+                    this.DrawBlockContents(context, insert, layer);
                     break;
                 default:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
@@ -122,17 +123,17 @@ internal sealed class EntityRenderDispatcher
     /// <summary>
     /// Entities on layer "0" inside a block take the layer of the insert that placed them.
     /// </summary>
-    internal static string GetEffectiveLayerName(Entity entity, string? parentLayerName)
+    internal static Layer? GetEffectiveLayer(Entity entity, Layer? parentLayer)
     {
-        string? own = entity.Layer?.Name;
-        if (string.IsNullOrEmpty(own))
+        Layer? own = entity.Layer;
+        if (own == null || string.IsNullOrEmpty(own.Name))
         {
-            return parentLayerName ?? Layer.DefaultName;
+            return parentLayer ?? own;
         }
 
-        if (parentLayerName != null && string.Equals(own, Layer.DefaultName, StringComparison.Ordinal))
+        if (parentLayer != null && string.Equals(own.Name, Layer.DefaultName, StringComparison.Ordinal))
         {
-            return parentLayerName;
+            return parentLayer;
         }
 
         return own;
@@ -154,7 +155,7 @@ internal sealed class EntityRenderDispatcher
         context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), radius);
     }
 
-    private void DrawDimension(ImageRenderContext context, Dimension dimension, string layerName)
+    private void DrawDimension(ImageRenderContext context, Dimension dimension, Layer? layer)
     {
         BlockRecord? block = dimension.Block;
         if (block == null)
@@ -176,7 +177,7 @@ internal sealed class EntityRenderDispatcher
                 continue;
             }
 
-            this.Draw(context, entity, layerName, dimension.Handle, blockName: null);
+            this.Draw(context, entity, layer, dimension.Handle, blockName: null);
         }
     }
 
@@ -193,7 +194,7 @@ internal sealed class EntityRenderDispatcher
         context.Surface.FillPolygon(style, points);
     }
 
-    private void DrawPolyline(ImageRenderContext context, ImageStyle style, IEnumerable<XY> vertices, bool close)
+    private static void DrawPolyline(ImageRenderContext context, ImageStyle style, IEnumerable<XY> vertices, bool close)
     {
         SurfacePoint[] points = vertices.Select(context.ToSurfacePoint).ToArray();
         if (points.Length < 2)
@@ -204,11 +205,11 @@ internal sealed class EntityRenderDispatcher
         context.Surface.DrawPolyline(style, points, SplineRenderer.ShouldClosePoints(points, close));
     }
 
-    private void DrawBlockContents(ImageRenderContext context, Insert insert, string layerName)
+    private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer)
     {
         foreach (Entity entity in insert.Explode())
         {
-            this.Draw(context, entity, layerName, insert.Handle, insert.Block?.Name);
+            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name);
         }
     }
 }

@@ -5,6 +5,10 @@ namespace ACadSharp.Image.Rendering;
 /// <summary>
 /// Resolved visual style for one entity. Widths and dash lengths are in surface units.
 /// </summary>
+/// <remarks>
+/// <c>new ImageStyle()</c> / <see langword="default"/> has <see cref="Opacity"/> 0 and is therefore invisible; use one
+/// of the constructors instead.
+/// </remarks>
 /// <param name="StrokeColor">Stroke and fill colour.</param>
 /// <param name="StrokeWidth">Stroke width in surface units.</param>
 /// <param name="DashPattern">Alternating dash and gap lengths in surface units, or <see langword="null"/> for a solid stroke.</param>

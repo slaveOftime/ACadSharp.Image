@@ -210,7 +210,7 @@ exporter.Configuration.ArcPrecision = 512; // Higher = smoother arcs
 
 ### Prerequisites
 
-- [.NET 6.0 SDK](https://dotnet.microsoft.com/download) or later
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download) or later
 - Any IDE with C# support (VS 2022, VS Code, Rider)
 
 ### Build & Test
@@ -282,6 +282,13 @@ Recent modernization work includes intentional API tightening:
 - `ImageConfiguration.LineWeightValues` is now read-only; use `SetLineWeight`, `RemoveLineWeight`, and `ClearLineWeights`.
 
 These changes preserve the rendering behavior while making mutation points explicit and easier to maintain.
+
+Changes on the way to the next major release:
+
+- `ImageExporter.Render()` now takes an optional `ImageExportFormat` and returns `IReadOnlyList<RenderedPage>`; cast items to `RenderedImagePage` for the raster canvas, or call `Save(path)`/`Save(stream)` on the page.
+- `RenderedImagePage` derives from the new abstract `RenderedPage` and its constructor takes the format and quality it will save with.
+- The library targets net8.0 and net10.0; net6.0 is no longer supported.
+- ACadSharp 3.7.1 is required.
 
 ---
 

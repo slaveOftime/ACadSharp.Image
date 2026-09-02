@@ -277,7 +277,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
             pattern[i] = Math.Max(0.001f, style.DashPattern[i] / width);
         }
 
-        return new PatternPen(color, style.StrokeWidth, pattern);
+        return new PatternPen(color, width, pattern);
     }
 
     private static PointF ToPointF(SurfacePoint point)

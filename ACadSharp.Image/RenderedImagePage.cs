@@ -22,7 +22,7 @@ public sealed class RenderedImagePage : RenderedPage
     /// </summary>
     /// <param name="name">Page name.</param>
     /// <param name="canvas">Rendered canvas; ownership transfers to the page.</param>
-    /// <param name="format">Raster format used by <see cref="RenderedPage.Save(Stream)"/>. Must not be <see cref="ImageExportFormat.Svg"/>.</param>
+    /// <param name="format">Raster format used by <see cref="RenderedPage.Save(Stream)"/>. Must not be <c>Svg</c>.</param>
     /// <param name="quality">Quality 1..100 for lossy formats.</param>
     public RenderedImagePage(string name, SixLabors.ImageSharp.Image<Rgba32> canvas, ImageExportFormat format = ImageExportFormat.Png, int quality = 90)
         : base(name, format)

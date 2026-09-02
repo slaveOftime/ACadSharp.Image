@@ -105,11 +105,19 @@ public sealed class ImageConfiguration
 
     private readonly HashSet<string> _hiddenLayers = new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly HashSet<string> _includedLayers = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly Dictionary<LineWeightType, double> _lineWeightValues = new();
 
     private readonly IReadOnlySet<string> _readOnlyHiddenLayers;
 
+    private readonly IReadOnlySet<string> _readOnlyIncludedLayers;
+
     private readonly ReadOnlyDictionary<LineWeightType, double> _readOnlyLineWeightValues;
+
+    private float _minimumDashPixels = 2f;
+
+    private int _maxHatchLines = 20000;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ImageConfiguration"/> class.
@@ -117,6 +125,7 @@ public sealed class ImageConfiguration
     public ImageConfiguration()
     {
         this._readOnlyHiddenLayers = new ReadOnlySet<string>(this._hiddenLayers);
+        this._readOnlyIncludedLayers = new ReadOnlySet<string>(this._includedLayers);
         this._readOnlyLineWeightValues = new ReadOnlyDictionary<LineWeightType, double>(this._lineWeightValues);
     }
 
@@ -220,6 +229,39 @@ public sealed class ImageConfiguration
     /// Layer names are case-insensitive.
     /// </summary>
     public IReadOnlySet<string> HiddenLayers => this._readOnlyHiddenLayers;
+
+    /// <summary>
+    /// Gets or sets how layer state (on/off, frozen, plottable) affects rendering. Default <see cref="LayerVisibilityMode.All"/>.
+    /// </summary>
+    public LayerVisibilityMode LayerVisibility { get; set; } = LayerVisibilityMode.All;
+
+    /// <summary>
+    /// Gets the layers to render when the set is not empty; all other layers are skipped. Applied before <see cref="HiddenLayers"/>. Case-insensitive.
+    /// </summary>
+    public IReadOnlySet<string> IncludedLayers => this._readOnlyIncludedLayers;
+
+    /// <summary>
+    /// Gets or sets the colour used for AutoCAD colour index 7 ("white/black by background"). Null (default) picks black or white from the luminance of <see cref="BackgroundColor"/>.
+    /// </summary>
+    public ImageColor? ForegroundColor { get; set; }
+
+    /// <summary>
+    /// Gets or sets the pattern length in pixels below which dashed linetypes are drawn solid. Default 2.
+    /// </summary>
+    public float MinimumDashPixels
+    {
+        get => this._minimumDashPixels;
+        set => this._minimumDashPixels = value >= 0f ? value : throw new ArgumentOutOfRangeException(nameof(value), "Minimum dash length must be zero or greater.");
+    }
+
+    /// <summary>
+    /// Gets or sets the maximum number of pattern lines drawn per hatch; beyond it a warning is raised and the remainder is skipped. Default 20000.
+    /// </summary>
+    public int MaxHatchLines
+    {
+        get => this._maxHatchLines;
+        set => this._maxHatchLines = value > 0 ? value : throw new ArgumentOutOfRangeException(nameof(value), "Maximum hatch lines must be greater than zero.");
+    }
 
     /// <summary>
     /// Gets or sets the JPEG output quality as a percentage.
@@ -401,6 +443,49 @@ public sealed class ImageConfiguration
     public void ClearHiddenLayers()
     {
         this._hiddenLayers.Clear();
+    }
+
+    /// <summary>
+    /// Adds the specified layer to the include list.
+    /// </summary>
+    /// <param name="layerName">The layer name to include.</param>
+    public void IncludeLayer(string layerName)
+    {
+        ThrowIfNullOrWhiteSpace(layerName);
+        this._includedLayers.Add(layerName);
+    }
+
+    /// <summary>
+    /// Adds the specified layers to the include list.
+    /// </summary>
+    /// <param name="layerNames">The layer names to include.</param>
+    public void IncludeLayers(IEnumerable<string> layerNames)
+    {
+        ArgumentNullException.ThrowIfNull(layerNames);
+
+        foreach (string layerName in layerNames)
+        {
+            this.IncludeLayer(layerName);
+        }
+    }
+
+    /// <summary>
+    /// Removes the specified layer from the include list.
+    /// </summary>
+    /// <param name="layerName">The layer name to exclude.</param>
+    /// <returns><see langword="true"/> if the layer was removed; otherwise, <see langword="false"/>.</returns>
+    public bool ExcludeLayer(string layerName)
+    {
+        ThrowIfNullOrWhiteSpace(layerName);
+        return this._includedLayers.Remove(layerName);
+    }
+
+    /// <summary>
+    /// Clears the include list.
+    /// </summary>
+    public void ClearIncludedLayers()
+    {
+        this._includedLayers.Clear();
     }
 
     /// <summary>

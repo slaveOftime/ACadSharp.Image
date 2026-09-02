@@ -39,4 +39,41 @@ public sealed class ImageConfigurationTests
 
         Assert.Empty(configuration.LineWeightValues);
     }
+
+    [Fact]
+    public void LayerVisibilityDefaultsToAll()
+    {
+        Assert.Equal(LayerVisibilityMode.All, new ImageConfiguration().LayerVisibility);
+    }
+
+    [Fact]
+    public void IncludedLayersAreManagedThroughMethods()
+    {
+        ImageConfiguration configuration = new();
+
+        configuration.IncludeLayer("Walls");
+        configuration.IncludeLayers(["doors", "Windows"]);
+
+        Assert.Equal(3, configuration.IncludedLayers.Count);
+        Assert.Contains("WALLS", configuration.IncludedLayers);
+        Assert.True(configuration.ExcludeLayer("DOORS"));
+        Assert.False(configuration.ExcludeLayer("nope"));
+        Assert.Throws<ArgumentException>(() => configuration.IncludeLayer(" "));
+
+        configuration.ClearIncludedLayers();
+
+        Assert.Empty(configuration.IncludedLayers);
+    }
+
+    [Fact]
+    public void NewNumericSettingsAreValidated()
+    {
+        ImageConfiguration configuration = new();
+
+        Assert.Null(configuration.ForegroundColor);
+        Assert.Equal(2f, configuration.MinimumDashPixels);
+        Assert.Equal(20000, configuration.MaxHatchLines);
+        Assert.Throws<ArgumentOutOfRangeException>(() => configuration.MinimumDashPixels = -1f);
+        Assert.Throws<ArgumentOutOfRangeException>(() => configuration.MaxHatchLines = 0);
+    }
 }

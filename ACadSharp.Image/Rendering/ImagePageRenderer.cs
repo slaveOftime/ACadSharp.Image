@@ -74,7 +74,8 @@ internal sealed class ImagePageRenderer
     }
 
     /// <summary>
-    /// Renders the page onto the raster page context (see <see cref="ImageRenderContext.CreatePageContext"/>).
+    /// Re-frames an auto-sized page on its visible entities, then renders it onto the raster page context
+    /// (see <see cref="ImageRenderContext.CreatePageContext"/>).
     /// </summary>
     /// <param name="surface">The surface receiving the page content.</param>
     /// <param name="page">The page to render.</param>

@@ -91,8 +91,8 @@ internal sealed class ImageRenderContext
     /// <summary>
     /// Surface units per linetype unit. Equal to <see cref="Scale"/> for the raster backend and for SVG in
     /// drawing-unit stroke mode; the SVG non-scaling-stroke page context uses the raster fit scale instead, because the
-    /// browser computes dash patterns in pixel space there. A later change makes it differ inside viewports with
-    /// paper-space linetype scaling.
+    /// browser computes dash patterns in pixel space there. Inside a viewport it is the page value when PSLTSCALE
+    /// scales linetypes to paper space, and the page value times the viewport scale factor when it does not.
     /// </summary>
     public double LineTypeScale { get; }
 
@@ -170,8 +170,9 @@ internal sealed class ImageRenderContext
     /// <param name="surfaceWidth">Width of the viewport in surface units.</param>
     /// <param name="modelBounds">Model-space bounds shown by the viewport.</param>
     /// <param name="scale">Surface units per model unit.</param>
+    /// <param name="lineTypeScale">Surface units per linetype unit, decided by the PSLTSCALE header variable.</param>
     /// <returns>A context whose origin is the bottom-left corner of <paramref name="modelBounds"/>.</returns>
-    public static ImageRenderContext CreateViewportContext(ImageRenderContext parent, Viewport viewport, ViewportSurface surface, double surfaceWidth, BoundingBox modelBounds, double scale)
+    public static ImageRenderContext CreateViewportContext(ImageRenderContext parent, Viewport viewport, ViewportSurface surface, double surfaceWidth, BoundingBox modelBounds, double scale, double lineTypeScale)
     {
         return new ImageRenderContext(
             surface.Surface,
@@ -185,7 +186,7 @@ internal sealed class ImageRenderContext
             offsetX: surface.OffsetX,
             offsetY: 0d,
             singlePrecision: parent.SinglePrecision,
-            lineTypeScale: scale,
+            lineTypeScale: lineTypeScale,
             viewport: viewport,
             parent: parent,
             strokeUnitsPerMillimeter: parent.StrokeUnitsPerMillimeter,

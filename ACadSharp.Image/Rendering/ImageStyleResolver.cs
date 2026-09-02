@@ -7,7 +7,7 @@ namespace ACadSharp.Image.Rendering;
 /// Resolves <see cref="ImageStyle"/> values from CAD entity properties.
 /// </summary>
 /// <remarks>
-/// This class reads color and line weight information from an <see cref="Entity"/>
+/// This class reads color, line weight and linetype information from an <see cref="Entity"/>
 /// and converts it into surface-unit rendering values using the
 /// <see cref="ImageRenderContext"/> the entity is drawn in.
 /// </remarks>
@@ -21,14 +21,15 @@ internal sealed class ImageStyleResolver
     /// <param name="parentOpacity">The opacity to inherit when the entity's transparency is ByBlock.</param>
     /// <returns>
     /// An <see cref="ImageStyle"/> containing the stroke color (in RGBA),
-    /// stroke width (in surface units), and opacity for the entity.
+    /// stroke width and dash pattern (in surface units), and opacity for the entity.
     /// </returns>
     public ImageStyle Resolve(Entity entity, ImageRenderContext context, float parentOpacity)
     {
+        float width = context.ToStrokeWidth(entity.GetActiveLineWeightType());
         return new ImageStyle(
             entity.GetActiveColor().ToImageColor(context.Configuration.ResolveForegroundColor()),
-            context.ToStrokeWidth(entity.GetActiveLineWeightType()),
-            null,
+            width,
+            LineTypeDashResolver.Resolve(entity, context, width),
             ResolveOpacity(entity, parentOpacity));
     }
 

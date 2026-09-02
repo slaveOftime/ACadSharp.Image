@@ -59,7 +59,7 @@
         </text>
       </g>
       <g id="layer-sk4" class="cad-layer" data-layer="SK4" stroke="#ffff00" stroke-width="1">
-        <line x1="29.92" y1="94.08" x2="276.06" y2="94.08" vector-effect="non-scaling-stroke" data-handle="47F4" data-type="LINE" />
+        <line x1="29.92" y1="94.08" x2="276.06" y2="94.08" stroke-dasharray="29.426 3.678 7.357 3.678" vector-effect="non-scaling-stroke" data-handle="47F4" data-type="LINE" />
       </g>
       <g id="layer-1" class="cad-layer" data-layer="1" stroke="#00ffff" stroke-width="1.89">
         <path d="M140.12 118.19A2.09 2.09 0 0 0 140.14 118.17" vector-effect="non-scaling-stroke" data-handle="47F5" data-type="ARC" />
@@ -533,239 +533,239 @@
         <line x1="39.94" y1="84.41" x2="39.94" y2="67.19" vector-effect="non-scaling-stroke" data-handle="4AA5" data-type="LINE" />
       </g>
       <g id="layer-3" class="cad-layer" data-layer="3" stroke="#ff0000" stroke-width="1.323">
-        <path d="M135.52 90.2A0.6 0.6 0 0 0 135.35 90.62" vector-effect="non-scaling-stroke" data-handle="4939" data-type="ARC" />
-        <path d="M129.34 90.62A0.6 0.6 0 0 0 129.16 90.2" vector-effect="non-scaling-stroke" data-handle="493A" data-type="ARC" />
-        <path d="M264.74 78.81A0.4 0.4 0 0 0 264.34 79.21" vector-effect="non-scaling-stroke" data-handle="493B" data-type="ARC" />
-        <path d="M264.34 108.94A0.4 0.4 0 0 0 264.74 109.34" vector-effect="non-scaling-stroke" data-handle="493C" data-type="ARC" />
-        <path d="M223.24 83.99A0.4 0.4 0 0 0 222.84 84.39" vector-effect="non-scaling-stroke" data-handle="493D" data-type="ARC" />
-        <path d="M222.84 103.77A0.4 0.4 0 0 0 223.24 104.17" vector-effect="non-scaling-stroke" data-handle="493E" data-type="ARC" />
-        <path d="M79.84 63.53A1 1 0 0 0 79.96 62.91" vector-effect="non-scaling-stroke" data-handle="4942" data-type="ARC" />
-        <path d="M81.82 58.81A0.3 0.3 0 0 0 82.12 59.11" vector-effect="non-scaling-stroke" data-handle="4944" data-type="ARC" />
-        <path d="M79.96 125.25A1 1 0 0 0 79.84 124.62" vector-effect="non-scaling-stroke" data-handle="4945" data-type="ARC" />
-        <path d="M265.09 109.1A0.2 0.2 0 0 0 265.29 109.3" vector-effect="non-scaling-stroke" data-handle="4949" data-type="ARC" />
-        <path d="M265.29 78.85A0.2 0.2 0 0 0 265.09 79.05" vector-effect="non-scaling-stroke" data-handle="494A" data-type="ARC" />
-        <path d="M265.09 108.93A0.4 0.4 0 0 0 264.76 108.54" vector-effect="non-scaling-stroke" data-handle="494B" data-type="ARC" />
-        <path d="M264.76 79.61A0.4 0.4 0 0 0 265.09 79.22" vector-effect="non-scaling-stroke" data-handle="494C" data-type="ARC" />
-        <path d="M264.39 108.31A0.2 0.2 0 0 0 264.55 108.5" vector-effect="non-scaling-stroke" data-handle="494D" data-type="ARC" />
-        <path d="M264.55 79.65A0.2 0.2 0 0 0 264.39 79.85" vector-effect="non-scaling-stroke" data-handle="494E" data-type="ARC" />
-        <path d="M264.34 104.24A0.8 0.8 0 0 0 263.54 103.44" vector-effect="non-scaling-stroke" data-handle="494F" data-type="ARC" />
-        <path d="M263.54 84.71A0.8 0.8 0 0 0 264.34 83.91" vector-effect="non-scaling-stroke" data-handle="4950" data-type="ARC" />
-        <path d="M223.59 103.92A0.2 0.2 0 0 0 223.79 104.12" vector-effect="non-scaling-stroke" data-handle="4951" data-type="ARC" />
-        <path d="M223.79 84.03A0.2 0.2 0 0 0 223.59 84.23" vector-effect="non-scaling-stroke" data-handle="4952" data-type="ARC" />
-        <path d="M229.34 84.21A0.5 0.5 0 0 0 229.84 84.71" vector-effect="non-scaling-stroke" data-handle="4953" data-type="ARC" />
-        <path d="M229.84 103.44A0.5 0.5 0 0 0 229.34 103.94" vector-effect="non-scaling-stroke" data-handle="4954" data-type="ARC" />
-        <path d="M223.59 103.7A0.4 0.4 0 0 0 223.33 103.33" vector-effect="non-scaling-stroke" data-handle="4955" data-type="ARC" />
-        <path d="M223.33 84.82A0.4 0.4 0 0 0 223.59 84.45" vector-effect="non-scaling-stroke" data-handle="4956" data-type="ARC" />
-        <path d="M222.94 103.05A0.2 0.2 0 0 0 223.08 103.23" vector-effect="non-scaling-stroke" data-handle="4957" data-type="ARC" />
-        <path d="M223.08 84.92A0.2 0.2 0 0 0 222.94 85.1" vector-effect="non-scaling-stroke" data-handle="4958" data-type="ARC" />
-        <path d="M134.76 106.88A0.75 0.75 0 0 0 135.49 106.31" vector-effect="non-scaling-stroke" data-handle="4959" data-type="ARC" />
-        <path d="M129.2 106.31A0.75 0.75 0 0 0 129.93 106.88" vector-effect="non-scaling-stroke" data-handle="495A" data-type="ARC" />
-        <path d="M91.57 59.11A0.3 0.3 0 0 0 91.87 58.81" vector-effect="non-scaling-stroke" data-handle="4964" data-type="ARC" />
-        <path d="M106.14 84.3A0.5 0.5 0 0 0 105.64 83.8" vector-effect="non-scaling-stroke" data-handle="4967" data-type="ARC" />
-        <path d="M105.64 104.35A0.5 0.5 0 0 0 106.14 103.85" vector-effect="non-scaling-stroke" data-handle="4968" data-type="ARC" />
-        <path d="M89.42 115.1A2 2 0 0 0 92.29 113.3" vector-effect="non-scaling-stroke" data-handle="496A" data-type="ARC" />
-        <path d="M92.29 74.85A2 2 0 0 0 89.42 73.05" vector-effect="non-scaling-stroke" data-handle="496B" data-type="ARC" />
-        <path d="M102.34 83.8A0.5 0.5 0 0 0 102.1 83.86" vector-effect="non-scaling-stroke" data-handle="496C" data-type="ARC" />
-        <path d="M102.1 104.29A0.5 0.5 0 0 0 102.34 104.35" vector-effect="non-scaling-stroke" data-handle="496D" data-type="ARC" />
-        <line x1="137.49" y1="89.63" x2="137.49" y2="86.03" vector-effect="non-scaling-stroke" data-handle="497B" data-type="LINE" />
-        <line x1="127.19" y1="86.03" x2="127.19" y2="89.63" vector-effect="non-scaling-stroke" data-handle="497C" data-type="LINE" />
-        <line x1="137.49" y1="86.03" x2="136.6" y2="85.13" vector-effect="non-scaling-stroke" data-handle="497D" data-type="LINE" />
-        <line x1="128.09" y1="85.13" x2="127.19" y2="86.03" vector-effect="non-scaling-stroke" data-handle="497E" data-type="LINE" />
-        <line x1="127.34" y1="77.58" x2="128.09" y2="78.32" vector-effect="non-scaling-stroke" data-handle="497F" data-type="LINE" />
-        <line x1="136.6" y1="78.32" x2="137.34" y2="77.58" vector-effect="non-scaling-stroke" data-handle="4980" data-type="LINE" />
-        <line x1="136.6" y1="85.13" x2="136.6" y2="78.32" vector-effect="non-scaling-stroke" data-handle="4981" data-type="LINE" />
-        <line x1="128.09" y1="78.32" x2="128.09" y2="85.13" vector-effect="non-scaling-stroke" data-handle="4982" data-type="LINE" />
-        <line x1="128.59" y1="89.63" x2="129.34" y2="90.38" vector-effect="non-scaling-stroke" data-handle="4983" data-type="LINE" />
-        <line x1="135.52" y1="90.2" x2="136.09" y2="89.63" vector-effect="non-scaling-stroke" data-handle="4984" data-type="LINE" />
-        <line x1="135.35" y1="107.63" x2="135.35" y2="90.62" vector-effect="non-scaling-stroke" data-handle="4985" data-type="LINE" />
-        <line x1="129.34" y1="90.62" x2="129.34" y2="107.63" vector-effect="non-scaling-stroke" data-handle="4986" data-type="LINE" />
-        <line x1="135.25" y1="109.88" x2="135.25" y2="107.63" vector-effect="non-scaling-stroke" data-handle="4987" data-type="LINE" />
-        <line x1="129.44" y1="107.63" x2="129.44" y2="109.88" vector-effect="non-scaling-stroke" data-handle="4988" data-type="LINE" />
-        <line x1="129.44" y1="109.88" x2="132.34" y2="111.62" vector-effect="non-scaling-stroke" data-handle="4989" data-type="LINE" />
-        <line x1="132.34" y1="111.62" x2="135.25" y2="109.88" vector-effect="non-scaling-stroke" data-handle="498A" data-type="LINE" />
-        <line x1="269.84" y1="78.71" x2="269.74" y2="78.81" vector-effect="non-scaling-stroke" data-handle="498B" data-type="LINE" />
-        <line x1="269.74" y1="109.34" x2="269.84" y2="109.44" vector-effect="non-scaling-stroke" data-handle="498C" data-type="LINE" />
-        <line x1="269.74" y1="78.81" x2="264.74" y2="78.81" vector-effect="non-scaling-stroke" data-handle="498D" data-type="LINE" />
-        <line x1="264.74" y1="109.34" x2="269.74" y2="109.34" vector-effect="non-scaling-stroke" data-handle="498E" data-type="LINE" />
-        <line x1="264.34" y1="83.79" x2="229.34" y2="83.79" vector-effect="non-scaling-stroke" data-handle="498F" data-type="LINE" />
-        <line x1="259.84" y1="104.37" x2="264.34" y2="104.37" vector-effect="non-scaling-stroke" data-handle="4990" data-type="LINE" />
-        <line x1="229.34" y1="104.37" x2="256.84" y2="104.37" vector-effect="non-scaling-stroke" data-handle="4991" data-type="LINE" />
-        <line x1="229.34" y1="83.99" x2="223.24" y2="83.99" vector-effect="non-scaling-stroke" data-handle="4992" data-type="LINE" />
-        <line x1="223.24" y1="104.17" x2="229.34" y2="104.17" vector-effect="non-scaling-stroke" data-handle="4993" data-type="LINE" />
-        <line x1="222.84" y1="85.88" x2="220.84" y2="85.88" vector-effect="non-scaling-stroke" data-handle="4994" data-type="LINE" />
-        <line x1="220.84" y1="102.28" x2="222.84" y2="102.28" vector-effect="non-scaling-stroke" data-handle="4995" data-type="LINE" />
-        <line x1="256.84" y1="104.32" x2="135.35" y2="104.32" vector-effect="non-scaling-stroke" data-handle="4996" data-type="LINE" />
-        <line x1="264.34" y1="104.32" x2="259.84" y2="104.32" vector-effect="non-scaling-stroke" data-handle="4997" data-type="LINE" />
-        <line x1="133.77" y1="107.32" x2="264.34" y2="107.32" vector-effect="non-scaling-stroke" data-handle="4998" data-type="LINE" />
-        <line x1="256.84" y1="105.49" x2="259.84" y2="105.49" vector-effect="non-scaling-stroke" data-handle="4999" data-type="LINE" />
-        <line x1="79.96" y1="62.91" x2="79.84" y2="62.08" vector-effect="non-scaling-stroke" data-handle="499D" data-type="LINE" />
-        <line x1="91.87" y1="58.81" x2="91.87" y2="54.11" vector-effect="non-scaling-stroke" data-handle="49A0" data-type="LINE" />
-        <line x1="81.82" y1="54.11" x2="81.82" y2="58.81" vector-effect="non-scaling-stroke" data-handle="49A1" data-type="LINE" />
-        <line x1="135.59" y1="89.78" x2="135.59" y2="87.96" vector-effect="non-scaling-stroke" data-handle="49A3" data-type="LINE" />
-        <line x1="129.09" y1="87.96" x2="129.09" y2="89.78" vector-effect="non-scaling-stroke" data-handle="49A4" data-type="LINE" />
-        <line x1="79.84" y1="126.07" x2="79.96" y2="125.25" vector-effect="non-scaling-stroke" data-handle="49A5" data-type="LINE" />
-        <line x1="220.84" y1="99.08" x2="202.84" y2="99.08" vector-effect="non-scaling-stroke" data-handle="49AB" data-type="LINE" />
-        <line x1="202.84" y1="89.08" x2="202.84" y2="99.08" vector-effect="non-scaling-stroke" data-handle="49AC" data-type="LINE" />
-        <line x1="220.84" y1="89.08" x2="202.84" y2="89.08" vector-effect="non-scaling-stroke" data-handle="49AD" data-type="LINE" />
-        <line x1="202.84" y1="99.08" x2="201.55" y2="98.33" vector-effect="non-scaling-stroke" data-handle="49AE" data-type="LINE" />
-        <line x1="202.84" y1="89.08" x2="201.55" y2="89.83" vector-effect="non-scaling-stroke" data-handle="49AF" data-type="LINE" />
-        <line x1="135.34" y1="89.78" x2="135.34" y2="93.59" vector-effect="non-scaling-stroke" data-handle="49B0" data-type="LINE" />
-        <line x1="129.34" y1="89.78" x2="129.34" y2="93.59" vector-effect="non-scaling-stroke" data-handle="49B1" data-type="LINE" />
-        <line x1="136.59" y1="78.94" x2="136.59" y2="88.44" vector-effect="non-scaling-stroke" data-handle="49B2" data-type="LINE" />
-        <line x1="128.09" y1="78.94" x2="128.09" y2="88.44" vector-effect="non-scaling-stroke" data-handle="49B3" data-type="LINE" />
-        <line x1="137.34" y1="85.08" x2="127.34" y2="85.08" vector-effect="non-scaling-stroke" data-handle="49B4" data-type="LINE" />
-        <line x1="137.34" y1="85.08" x2="137.31" y2="85.13" vector-effect="non-scaling-stroke" data-handle="49B5" data-type="LINE" />
-        <line x1="127.34" y1="85.08" x2="127.37" y2="85.13" vector-effect="non-scaling-stroke" data-handle="49B6" data-type="LINE" />
-        <line x1="79.84" y1="115.1" x2="89.42" y2="115.1" vector-effect="non-scaling-stroke" data-handle="49C4" data-type="LINE" />
-        <line x1="89.42" y1="73.05" x2="79.84" y2="73.05" vector-effect="non-scaling-stroke" data-handle="49C5" data-type="LINE" />
-        <line x1="92.29" y1="104.43" x2="93.38" y2="103.34" vector-effect="non-scaling-stroke" data-handle="49C6" data-type="LINE" />
-        <line x1="93.38" y1="84.81" x2="92.29" y2="83.73" vector-effect="non-scaling-stroke" data-handle="49C7" data-type="LINE" />
-        <line x1="102.34" y1="104.35" x2="105.64" y2="104.35" vector-effect="non-scaling-stroke" data-handle="49C8" data-type="LINE" />
-        <line x1="105.64" y1="83.8" x2="102.34" y2="83.8" vector-effect="non-scaling-stroke" data-handle="49C9" data-type="LINE" />
-        <line x1="102.1" y1="83.86" x2="100.34" y2="84.81" vector-effect="non-scaling-stroke" data-handle="49CA" data-type="LINE" />
-        <line x1="100.34" y1="103.34" x2="102.1" y2="104.29" vector-effect="non-scaling-stroke" data-handle="49CB" data-type="LINE" />
-        <line x1="100.34" y1="84.81" x2="93.38" y2="84.81" vector-effect="non-scaling-stroke" data-handle="49CC" data-type="LINE" />
-        <line x1="93.38" y1="103.34" x2="100.34" y2="103.34" vector-effect="non-scaling-stroke" data-handle="49CD" data-type="LINE" />
-        <line x1="106.54" y1="98.33" x2="220.84" y2="98.33" vector-effect="non-scaling-stroke" data-handle="49CE" data-type="LINE" />
-        <line x1="220.84" y1="89.83" x2="106.54" y2="89.83" vector-effect="non-scaling-stroke" data-handle="49CF" data-type="LINE" />
-        <line x1="265.29" y1="109.3" x2="269.74" y2="109.3" vector-effect="non-scaling-stroke" data-handle="49D1" data-type="LINE" />
-        <line x1="269.74" y1="78.85" x2="265.29" y2="78.85" vector-effect="non-scaling-stroke" data-handle="49D2" data-type="LINE" />
-        <line x1="269.74" y1="109.3" x2="269.84" y2="109.2" vector-effect="non-scaling-stroke" data-handle="49D3" data-type="LINE" />
-        <line x1="269.84" y1="78.95" x2="269.74" y2="78.85" vector-effect="non-scaling-stroke" data-handle="49D4" data-type="LINE" />
-        <line x1="264.76" y1="79.61" x2="264.55" y2="79.65" vector-effect="non-scaling-stroke" data-handle="49D5" data-type="LINE" />
-        <line x1="264.55" y1="108.5" x2="264.76" y2="108.54" vector-effect="non-scaling-stroke" data-handle="49D6" data-type="LINE" />
-        <line x1="264.39" y1="82.65" x2="264.34" y2="82.73" vector-effect="non-scaling-stroke" data-handle="49D7" data-type="LINE" />
-        <line x1="264.34" y1="105.42" x2="264.39" y2="105.5" vector-effect="non-scaling-stroke" data-handle="49D8" data-type="LINE" />
-        <line x1="223.79" y1="104.12" x2="229.34" y2="104.12" vector-effect="non-scaling-stroke" data-handle="49D9" data-type="LINE" />
-        <line x1="229.34" y1="84.03" x2="223.79" y2="84.03" vector-effect="non-scaling-stroke" data-handle="49DA" data-type="LINE" />
-        <line x1="238.83" y1="103.87" x2="254.85" y2="103.87" vector-effect="non-scaling-stroke" data-handle="49DB" data-type="LINE" />
-        <line x1="254.85" y1="84.29" x2="238.83" y2="84.29" vector-effect="non-scaling-stroke" data-handle="49DC" data-type="LINE" />
-        <line x1="238.83" y1="84.29" x2="238.09" y2="84.71" vector-effect="non-scaling-stroke" data-handle="49DD" data-type="LINE" />
-        <line x1="238.09" y1="103.44" x2="238.83" y2="103.87" vector-effect="non-scaling-stroke" data-handle="49DE" data-type="LINE" />
-        <line x1="254.85" y1="103.87" x2="255.59" y2="103.44" vector-effect="non-scaling-stroke" data-handle="49DF" data-type="LINE" />
-        <line x1="255.59" y1="84.71" x2="254.85" y2="84.29" vector-effect="non-scaling-stroke" data-handle="49E0" data-type="LINE" />
-        <line x1="255.59" y1="103.44" x2="263.54" y2="103.44" vector-effect="non-scaling-stroke" data-handle="49E1" data-type="LINE" />
-        <line x1="263.54" y1="84.71" x2="255.59" y2="84.71" vector-effect="non-scaling-stroke" data-handle="49E2" data-type="LINE" />
-        <line x1="229.84" y1="103.44" x2="238.09" y2="103.44" vector-effect="non-scaling-stroke" data-handle="49E3" data-type="LINE" />
-        <line x1="238.09" y1="84.71" x2="229.84" y2="84.71" vector-effect="non-scaling-stroke" data-handle="49E4" data-type="LINE" />
-        <line x1="223.33" y1="84.82" x2="223.08" y2="84.92" vector-effect="non-scaling-stroke" data-handle="49E5" data-type="LINE" />
-        <line x1="223.08" y1="103.23" x2="223.33" y2="103.33" vector-effect="non-scaling-stroke" data-handle="49E6" data-type="LINE" />
-        <line x1="269.84" y1="85.47" x2="268.8" y2="86.07" vector-effect="non-scaling-stroke" data-handle="49E7" data-type="LINE" />
-        <line x1="268.8" y1="102.08" x2="269.84" y2="102.68" vector-effect="non-scaling-stroke" data-handle="49E8" data-type="LINE" />
-        <line x1="222.94" y1="102.23" x2="228.44" y2="102.23" vector-effect="non-scaling-stroke" data-handle="49E9" data-type="LINE" />
-        <line x1="228.44" y1="85.92" x2="222.94" y2="85.92" vector-effect="non-scaling-stroke" data-handle="49EA" data-type="LINE" />
-        <line x1="137.34" y1="88.01" x2="137.34" y2="78.32" vector-effect="non-scaling-stroke" data-handle="49EB" data-type="LINE" />
-        <line x1="127.34" y1="78.32" x2="127.34" y2="88.01" vector-effect="non-scaling-stroke" data-handle="49EC" data-type="LINE" />
-        <line x1="129.84" y1="84.38" x2="132.34" y2="85.88" vector-effect="non-scaling-stroke" data-handle="49ED" data-type="LINE" />
-        <line x1="132.34" y1="85.88" x2="134.84" y2="84.38" vector-effect="non-scaling-stroke" data-handle="49EE" data-type="LINE" />
-        <line x1="135.67" y1="105.58" x2="135.67" y2="104.88" vector-effect="non-scaling-stroke" data-handle="49EF" data-type="LINE" />
-        <line x1="129.02" y1="104.88" x2="129.02" y2="105.58" vector-effect="non-scaling-stroke" data-handle="49F0" data-type="LINE" />
-        <line x1="129.02" y1="105.58" x2="129.2" y2="106.31" vector-effect="non-scaling-stroke" data-handle="49F1" data-type="LINE" />
-        <line x1="135.49" y1="106.31" x2="135.67" y2="105.58" vector-effect="non-scaling-stroke" data-handle="49F2" data-type="LINE" />
-        <line x1="135.67" y1="104.88" x2="135.34" y2="103.53" vector-effect="non-scaling-stroke" data-handle="49F3" data-type="LINE" />
-        <line x1="129.34" y1="103.53" x2="129.02" y2="104.88" vector-effect="non-scaling-stroke" data-handle="49F4" data-type="LINE" />
-        <line x1="135.34" y1="103.53" x2="135.34" y2="100.88" vector-effect="non-scaling-stroke" data-handle="49F5" data-type="LINE" />
-        <line x1="129.34" y1="100.88" x2="129.34" y2="103.53" vector-effect="non-scaling-stroke" data-handle="49F6" data-type="LINE" />
-        <line x1="135.34" y1="100.88" x2="135.34" y2="90.38" vector-effect="non-scaling-stroke" data-handle="49F7" data-type="LINE" />
-        <line x1="129.35" y1="90.38" x2="129.35" y2="100.88" vector-effect="non-scaling-stroke" data-handle="49F8" data-type="LINE" />
-        <line x1="127.34" y1="88.01" x2="128.84" y2="88.88" vector-effect="non-scaling-stroke" data-handle="49F9" data-type="LINE" />
-        <line x1="135.84" y1="88.88" x2="137.34" y2="88.01" vector-effect="non-scaling-stroke" data-handle="49FA" data-type="LINE" />
-        <line x1="137.34" y1="79.38" x2="135.61" y2="78.38" vector-effect="non-scaling-stroke" data-handle="49FB" data-type="LINE" />
-        <line x1="129.08" y1="78.38" x2="127.34" y2="79.38" vector-effect="non-scaling-stroke" data-handle="49FC" data-type="LINE" />
-        <line x1="128.84" y1="88.88" x2="128.84" y2="89.88" vector-effect="non-scaling-stroke" data-handle="49FD" data-type="LINE" />
-        <line x1="135.84" y1="89.88" x2="135.84" y2="88.88" vector-effect="non-scaling-stroke" data-handle="49FE" data-type="LINE" />
-        <line x1="135.34" y1="90.38" x2="135.84" y2="89.88" vector-effect="non-scaling-stroke" data-handle="49FF" data-type="LINE" />
-        <line x1="228.44" y1="102.08" x2="268.8" y2="102.08" vector-effect="non-scaling-stroke" data-handle="4A00" data-type="LINE" />
-        <line x1="268.8" y1="86.07" x2="228.44" y2="86.07" vector-effect="non-scaling-stroke" data-handle="4A01" data-type="LINE" />
-        <line x1="79.97" y1="125.11" x2="79.97" y2="63.04" vector-effect="non-scaling-stroke" data-handle="4A05" data-type="LINE" />
-        <line x1="129.44" y1="109.88" x2="135.25" y2="109.88" vector-effect="non-scaling-stroke" data-handle="4A06" data-type="LINE" />
-        <line x1="128.84" y1="88.88" x2="135.84" y2="88.88" vector-effect="non-scaling-stroke" data-handle="4A07" data-type="LINE" />
-        <line x1="268.8" y1="86.07" x2="268.8" y2="102.08" vector-effect="non-scaling-stroke" data-handle="4A08" data-type="LINE" />
-        <line x1="129.34" y1="90.62" x2="135.35" y2="90.62" vector-effect="non-scaling-stroke" data-handle="4A0C" data-type="LINE" />
-        <line x1="269.74" y1="109.34" x2="269.74" y2="78.81" vector-effect="non-scaling-stroke" data-handle="4A0D" data-type="LINE" />
-        <line x1="127.19" y1="89.63" x2="137.49" y2="89.63" vector-effect="non-scaling-stroke" data-handle="4A0E" data-type="LINE" />
-        <line x1="228.44" y1="85.92" x2="228.44" y2="102.23" vector-effect="non-scaling-stroke" data-handle="4A11" data-type="LINE" />
-        <line x1="254.85" y1="84.29" x2="254.85" y2="103.87" vector-effect="non-scaling-stroke" data-handle="4A14" data-type="LINE" />
-        <line x1="256.84" y1="104.37" x2="259.84" y2="104.37" vector-effect="non-scaling-stroke" data-handle="4A15" data-type="LINE" />
-        <line x1="222.84" y1="103.77" x2="222.84" y2="84.39" vector-effect="non-scaling-stroke" data-handle="4A16" data-type="LINE" />
-        <line x1="129.34" y1="107.63" x2="135.35" y2="107.63" vector-effect="non-scaling-stroke" data-handle="4A17" data-type="LINE" />
-        <line x1="223.24" y1="104.17" x2="223.24" y2="83.99" vector-effect="non-scaling-stroke" data-handle="4A18" data-type="LINE" />
-        <line x1="127.19" y1="86.03" x2="137.49" y2="86.03" vector-effect="non-scaling-stroke" data-handle="4A19" data-type="LINE" />
-        <line x1="128.09" y1="85.13" x2="136.6" y2="85.13" vector-effect="non-scaling-stroke" data-handle="4A1A" data-type="LINE" />
-        <line x1="229.34" y1="104.37" x2="229.34" y2="83.79" vector-effect="non-scaling-stroke" data-handle="4A1C" data-type="LINE" />
-        <line x1="256.84" y1="105.49" x2="256.84" y2="101.9" vector-effect="non-scaling-stroke" data-handle="4A1D" data-type="LINE" />
-        <line x1="129.02" y1="105.58" x2="135.67" y2="105.58" vector-effect="non-scaling-stroke" data-handle="4A1E" data-type="LINE" />
-        <line x1="264.34" y1="108.94" x2="264.34" y2="79.21" vector-effect="non-scaling-stroke" data-handle="4A1F" data-type="LINE" />
-        <line x1="265.09" y1="79.05" x2="265.09" y2="109.1" vector-effect="non-scaling-stroke" data-handle="4A20" data-type="LINE" />
-        <line x1="128.09" y1="78.32" x2="136.6" y2="78.32" vector-effect="non-scaling-stroke" data-handle="4A21" data-type="LINE" />
-        <line x1="259.84" y1="104.63" x2="256.84" y2="104.63" vector-effect="non-scaling-stroke" data-handle="4A22" data-type="LINE" />
-        <line x1="220.84" y1="102.28" x2="220.84" y2="85.88" vector-effect="non-scaling-stroke" data-handle="4A23" data-type="LINE" />
-        <line x1="238.09" y1="84.71" x2="238.09" y2="103.44" vector-effect="non-scaling-stroke" data-handle="4A24" data-type="LINE" />
-        <line x1="256.84" y1="105.49" x2="259.84" y2="105.49" vector-effect="non-scaling-stroke" data-handle="4A25" data-type="LINE" />
-        <line x1="259.84" y1="105.49" x2="259.84" y2="101.9" vector-effect="non-scaling-stroke" data-handle="4A26" data-type="LINE" />
-        <line x1="127.34" y1="88.01" x2="137.34" y2="88.01" vector-effect="non-scaling-stroke" data-handle="4A28" data-type="LINE" />
-        <line x1="133.65" y1="84.38" x2="133.65" y2="78.38" vector-effect="non-scaling-stroke" data-handle="4A2A" data-type="LINE" />
-        <line x1="130.77" y1="84.38" x2="130.77" y2="78.38" vector-effect="non-scaling-stroke" data-handle="4A2B" data-type="LINE" />
-        <line x1="129.46" y1="84.38" x2="135.23" y2="84.38" vector-effect="non-scaling-stroke" data-handle="4A2C" data-type="LINE" />
-        <line x1="133.92" y1="84.38" x2="133.92" y2="78.38" vector-effect="non-scaling-stroke" data-handle="4A2D" data-type="LINE" />
-        <line x1="135.23" y1="84.38" x2="135.23" y2="78.38" vector-effect="non-scaling-stroke" data-handle="4A2E" data-type="LINE" />
-        <line x1="131.04" y1="84.38" x2="131.04" y2="78.38" vector-effect="non-scaling-stroke" data-handle="4A2F" data-type="LINE" />
-        <line x1="129.46" y1="84.38" x2="129.46" y2="78.38" vector-effect="non-scaling-stroke" data-handle="4A30" data-type="LINE" />
-        <line x1="223.59" y1="84.23" x2="223.59" y2="103.92" vector-effect="non-scaling-stroke" data-handle="4A31" data-type="LINE" />
-        <line x1="137.34" y1="79.38" x2="127.34" y2="79.38" vector-effect="non-scaling-stroke" data-handle="4A32" data-type="LINE" />
-        <line x1="129.16" y1="90.2" x2="135.52" y2="90.2" vector-effect="non-scaling-stroke" data-handle="4A34" data-type="LINE" />
-        <line x1="129.02" y1="104.88" x2="135.67" y2="104.88" vector-effect="non-scaling-stroke" data-handle="4A35" data-type="LINE" />
-        <line x1="129.93" y1="106.88" x2="134.76" y2="106.88" vector-effect="non-scaling-stroke" data-handle="4A36" data-type="LINE" />
-        <line x1="129.08" y1="78.38" x2="135.61" y2="78.38" vector-effect="non-scaling-stroke" data-handle="4A38" data-type="LINE" />
-        <line x1="128.84" y1="89.88" x2="135.84" y2="89.88" vector-effect="non-scaling-stroke" data-handle="4A39" data-type="LINE" />
-        <line x1="129.2" y1="106.31" x2="135.49" y2="106.31" vector-effect="non-scaling-stroke" data-handle="4A3A" data-type="LINE" />
-        <line x1="129.34" y1="90.38" x2="135.34" y2="90.38" vector-effect="non-scaling-stroke" data-handle="4A3B" data-type="LINE" />
-        <line x1="81.82" y1="58.81" x2="91.87" y2="58.81" vector-effect="non-scaling-stroke" data-handle="4A48" data-type="LINE" />
-        <line x1="89.42" y1="73.05" x2="89.42" y2="115.1" vector-effect="non-scaling-stroke" data-handle="4A50" data-type="LINE" />
-        <line x1="92.29" y1="74.85" x2="92.29" y2="113.3" vector-effect="non-scaling-stroke" data-handle="4A51" data-type="LINE" />
-        <line x1="93.38" y1="103.34" x2="93.38" y2="84.81" vector-effect="non-scaling-stroke" data-handle="4A52" data-type="LINE" />
-        <line x1="105.64" y1="104.35" x2="105.64" y2="83.8" vector-effect="non-scaling-stroke" data-handle="4A53" data-type="LINE" />
-        <line x1="102.34" y1="104.35" x2="102.34" y2="83.8" vector-effect="non-scaling-stroke" data-handle="4A54" data-type="LINE" />
-        <line x1="106.14" y1="103.85" x2="106.14" y2="84.3" vector-effect="non-scaling-stroke" data-handle="4A55" data-type="LINE" />
-        <line x1="102.1" y1="83.86" x2="102.1" y2="104.29" vector-effect="non-scaling-stroke" data-handle="4A56" data-type="LINE" />
-        <line x1="100.34" y1="103.34" x2="100.34" y2="84.81" vector-effect="non-scaling-stroke" data-handle="4A57" data-type="LINE" />
-        <line x1="222.94" y1="85.1" x2="222.94" y2="103.05" vector-effect="non-scaling-stroke" data-handle="4A59" data-type="LINE" />
-        <line x1="223.08" y1="103.23" x2="223.08" y2="84.92" vector-effect="non-scaling-stroke" data-handle="4A5D" data-type="LINE" />
-        <line x1="135.34" y1="100.88" x2="129.34" y2="100.88" vector-effect="non-scaling-stroke" data-handle="4A5E" data-type="LINE" />
-        <line x1="82.12" y1="59.11" x2="91.57" y2="59.11" vector-effect="non-scaling-stroke" data-handle="4A60" data-type="LINE" />
-        <line x1="264.39" y1="79.85" x2="264.39" y2="108.31" vector-effect="non-scaling-stroke" data-handle="4A64" data-type="LINE" />
-        <line x1="263.54" y1="84.71" x2="263.54" y2="103.44" vector-effect="non-scaling-stroke" data-handle="4A65" data-type="LINE" />
-        <line x1="223.79" y1="104.12" x2="223.79" y2="84.03" vector-effect="non-scaling-stroke" data-handle="4A66" data-type="LINE" />
-        <line x1="229.84" y1="84.71" x2="229.84" y2="103.44" vector-effect="non-scaling-stroke" data-handle="4A67" data-type="LINE" />
-        <line x1="255.59" y1="84.71" x2="255.59" y2="103.44" vector-effect="non-scaling-stroke" data-handle="4A68" data-type="LINE" />
-        <line x1="238.83" y1="84.29" x2="238.83" y2="103.87" vector-effect="non-scaling-stroke" data-handle="4A69" data-type="LINE" />
-        <line x1="223.33" y1="103.33" x2="223.33" y2="84.82" vector-effect="non-scaling-stroke" data-handle="4A6A" data-type="LINE" />
-        <line x1="129.34" y1="103.53" x2="135.34" y2="103.53" vector-effect="non-scaling-stroke" data-handle="4A6B" data-type="LINE" />
-        <line x1="79.96" y1="125.25" x2="79.96" y2="62.91" vector-effect="non-scaling-stroke" data-handle="4A6F" data-type="LINE" />
+        <path d="M135.52 90.2A0.6 0.6 0 0 0 135.35 90.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4939" data-type="ARC" />
+        <path d="M129.34 90.62A0.6 0.6 0 0 0 129.16 90.2" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493A" data-type="ARC" />
+        <path d="M264.74 78.81A0.4 0.4 0 0 0 264.34 79.21" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493B" data-type="ARC" />
+        <path d="M264.34 108.94A0.4 0.4 0 0 0 264.74 109.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493C" data-type="ARC" />
+        <path d="M223.24 83.99A0.4 0.4 0 0 0 222.84 84.39" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493D" data-type="ARC" />
+        <path d="M222.84 103.77A0.4 0.4 0 0 0 223.24 104.17" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493E" data-type="ARC" />
+        <path d="M79.84 63.53A1 1 0 0 0 79.96 62.91" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4942" data-type="ARC" />
+        <path d="M81.82 58.81A0.3 0.3 0 0 0 82.12 59.11" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4944" data-type="ARC" />
+        <path d="M79.96 125.25A1 1 0 0 0 79.84 124.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4945" data-type="ARC" />
+        <path d="M265.09 109.1A0.2 0.2 0 0 0 265.29 109.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4949" data-type="ARC" />
+        <path d="M265.29 78.85A0.2 0.2 0 0 0 265.09 79.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494A" data-type="ARC" />
+        <path d="M265.09 108.93A0.4 0.4 0 0 0 264.76 108.54" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494B" data-type="ARC" />
+        <path d="M264.76 79.61A0.4 0.4 0 0 0 265.09 79.22" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494C" data-type="ARC" />
+        <path d="M264.39 108.31A0.2 0.2 0 0 0 264.55 108.5" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494D" data-type="ARC" />
+        <path d="M264.55 79.65A0.2 0.2 0 0 0 264.39 79.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494E" data-type="ARC" />
+        <path d="M264.34 104.24A0.8 0.8 0 0 0 263.54 103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494F" data-type="ARC" />
+        <path d="M263.54 84.71A0.8 0.8 0 0 0 264.34 83.91" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4950" data-type="ARC" />
+        <path d="M223.59 103.92A0.2 0.2 0 0 0 223.79 104.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4951" data-type="ARC" />
+        <path d="M223.79 84.03A0.2 0.2 0 0 0 223.59 84.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4952" data-type="ARC" />
+        <path d="M229.34 84.21A0.5 0.5 0 0 0 229.84 84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4953" data-type="ARC" />
+        <path d="M229.84 103.44A0.5 0.5 0 0 0 229.34 103.94" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4954" data-type="ARC" />
+        <path d="M223.59 103.7A0.4 0.4 0 0 0 223.33 103.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4955" data-type="ARC" />
+        <path d="M223.33 84.82A0.4 0.4 0 0 0 223.59 84.45" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4956" data-type="ARC" />
+        <path d="M222.94 103.05A0.2 0.2 0 0 0 223.08 103.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4957" data-type="ARC" />
+        <path d="M223.08 84.92A0.2 0.2 0 0 0 222.94 85.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4958" data-type="ARC" />
+        <path d="M134.76 106.88A0.75 0.75 0 0 0 135.49 106.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4959" data-type="ARC" />
+        <path d="M129.2 106.31A0.75 0.75 0 0 0 129.93 106.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="495A" data-type="ARC" />
+        <path d="M91.57 59.11A0.3 0.3 0 0 0 91.87 58.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4964" data-type="ARC" />
+        <path d="M106.14 84.3A0.5 0.5 0 0 0 105.64 83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4967" data-type="ARC" />
+        <path d="M105.64 104.35A0.5 0.5 0 0 0 106.14 103.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4968" data-type="ARC" />
+        <path d="M89.42 115.1A2 2 0 0 0 92.29 113.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496A" data-type="ARC" />
+        <path d="M92.29 74.85A2 2 0 0 0 89.42 73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496B" data-type="ARC" />
+        <path d="M102.34 83.8A0.5 0.5 0 0 0 102.1 83.86" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496C" data-type="ARC" />
+        <path d="M102.1 104.29A0.5 0.5 0 0 0 102.34 104.35" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496D" data-type="ARC" />
+        <line x1="137.49" y1="89.63" x2="137.49" y2="86.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497B" data-type="LINE" />
+        <line x1="127.19" y1="86.03" x2="127.19" y2="89.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497C" data-type="LINE" />
+        <line x1="137.49" y1="86.03" x2="136.6" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497D" data-type="LINE" />
+        <line x1="128.09" y1="85.13" x2="127.19" y2="86.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497E" data-type="LINE" />
+        <line x1="127.34" y1="77.58" x2="128.09" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497F" data-type="LINE" />
+        <line x1="136.6" y1="78.32" x2="137.34" y2="77.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4980" data-type="LINE" />
+        <line x1="136.6" y1="85.13" x2="136.6" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4981" data-type="LINE" />
+        <line x1="128.09" y1="78.32" x2="128.09" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4982" data-type="LINE" />
+        <line x1="128.59" y1="89.63" x2="129.34" y2="90.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4983" data-type="LINE" />
+        <line x1="135.52" y1="90.2" x2="136.09" y2="89.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4984" data-type="LINE" />
+        <line x1="135.35" y1="107.63" x2="135.35" y2="90.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4985" data-type="LINE" />
+        <line x1="129.34" y1="90.62" x2="129.34" y2="107.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4986" data-type="LINE" />
+        <line x1="135.25" y1="109.88" x2="135.25" y2="107.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4987" data-type="LINE" />
+        <line x1="129.44" y1="107.63" x2="129.44" y2="109.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4988" data-type="LINE" />
+        <line x1="129.44" y1="109.88" x2="132.34" y2="111.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4989" data-type="LINE" />
+        <line x1="132.34" y1="111.62" x2="135.25" y2="109.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498A" data-type="LINE" />
+        <line x1="269.84" y1="78.71" x2="269.74" y2="78.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498B" data-type="LINE" />
+        <line x1="269.74" y1="109.34" x2="269.84" y2="109.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498C" data-type="LINE" />
+        <line x1="269.74" y1="78.81" x2="264.74" y2="78.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498D" data-type="LINE" />
+        <line x1="264.74" y1="109.34" x2="269.74" y2="109.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498E" data-type="LINE" />
+        <line x1="264.34" y1="83.79" x2="229.34" y2="83.79" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498F" data-type="LINE" />
+        <line x1="259.84" y1="104.37" x2="264.34" y2="104.37" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4990" data-type="LINE" />
+        <line x1="229.34" y1="104.37" x2="256.84" y2="104.37" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4991" data-type="LINE" />
+        <line x1="229.34" y1="83.99" x2="223.24" y2="83.99" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4992" data-type="LINE" />
+        <line x1="223.24" y1="104.17" x2="229.34" y2="104.17" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4993" data-type="LINE" />
+        <line x1="222.84" y1="85.88" x2="220.84" y2="85.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4994" data-type="LINE" />
+        <line x1="220.84" y1="102.28" x2="222.84" y2="102.28" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4995" data-type="LINE" />
+        <line x1="256.84" y1="104.32" x2="135.35" y2="104.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4996" data-type="LINE" />
+        <line x1="264.34" y1="104.32" x2="259.84" y2="104.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4997" data-type="LINE" />
+        <line x1="133.77" y1="107.32" x2="264.34" y2="107.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4998" data-type="LINE" />
+        <line x1="256.84" y1="105.49" x2="259.84" y2="105.49" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4999" data-type="LINE" />
+        <line x1="79.96" y1="62.91" x2="79.84" y2="62.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="499D" data-type="LINE" />
+        <line x1="91.87" y1="58.81" x2="91.87" y2="54.11" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A0" data-type="LINE" />
+        <line x1="81.82" y1="54.11" x2="81.82" y2="58.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A1" data-type="LINE" />
+        <line x1="135.59" y1="89.78" x2="135.59" y2="87.96" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A3" data-type="LINE" />
+        <line x1="129.09" y1="87.96" x2="129.09" y2="89.78" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A4" data-type="LINE" />
+        <line x1="79.84" y1="126.07" x2="79.96" y2="125.25" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A5" data-type="LINE" />
+        <line x1="220.84" y1="99.08" x2="202.84" y2="99.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AB" data-type="LINE" />
+        <line x1="202.84" y1="89.08" x2="202.84" y2="99.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AC" data-type="LINE" />
+        <line x1="220.84" y1="89.08" x2="202.84" y2="89.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AD" data-type="LINE" />
+        <line x1="202.84" y1="99.08" x2="201.55" y2="98.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AE" data-type="LINE" />
+        <line x1="202.84" y1="89.08" x2="201.55" y2="89.83" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AF" data-type="LINE" />
+        <line x1="135.34" y1="89.78" x2="135.34" y2="93.59" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B0" data-type="LINE" />
+        <line x1="129.34" y1="89.78" x2="129.34" y2="93.59" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B1" data-type="LINE" />
+        <line x1="136.59" y1="78.94" x2="136.59" y2="88.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B2" data-type="LINE" />
+        <line x1="128.09" y1="78.94" x2="128.09" y2="88.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B3" data-type="LINE" />
+        <line x1="137.34" y1="85.08" x2="127.34" y2="85.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B4" data-type="LINE" />
+        <line x1="137.34" y1="85.08" x2="137.31" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B5" data-type="LINE" />
+        <line x1="127.34" y1="85.08" x2="127.37" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B6" data-type="LINE" />
+        <line x1="79.84" y1="115.1" x2="89.42" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C4" data-type="LINE" />
+        <line x1="89.42" y1="73.05" x2="79.84" y2="73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C5" data-type="LINE" />
+        <line x1="92.29" y1="104.43" x2="93.38" y2="103.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C6" data-type="LINE" />
+        <line x1="93.38" y1="84.81" x2="92.29" y2="83.73" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C7" data-type="LINE" />
+        <line x1="102.34" y1="104.35" x2="105.64" y2="104.35" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C8" data-type="LINE" />
+        <line x1="105.64" y1="83.8" x2="102.34" y2="83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C9" data-type="LINE" />
+        <line x1="102.1" y1="83.86" x2="100.34" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CA" data-type="LINE" />
+        <line x1="100.34" y1="103.34" x2="102.1" y2="104.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CB" data-type="LINE" />
+        <line x1="100.34" y1="84.81" x2="93.38" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CC" data-type="LINE" />
+        <line x1="93.38" y1="103.34" x2="100.34" y2="103.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CD" data-type="LINE" />
+        <line x1="106.54" y1="98.33" x2="220.84" y2="98.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CE" data-type="LINE" />
+        <line x1="220.84" y1="89.83" x2="106.54" y2="89.83" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CF" data-type="LINE" />
+        <line x1="265.29" y1="109.3" x2="269.74" y2="109.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D1" data-type="LINE" />
+        <line x1="269.74" y1="78.85" x2="265.29" y2="78.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D2" data-type="LINE" />
+        <line x1="269.74" y1="109.3" x2="269.84" y2="109.2" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D3" data-type="LINE" />
+        <line x1="269.84" y1="78.95" x2="269.74" y2="78.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D4" data-type="LINE" />
+        <line x1="264.76" y1="79.61" x2="264.55" y2="79.65" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D5" data-type="LINE" />
+        <line x1="264.55" y1="108.5" x2="264.76" y2="108.54" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D6" data-type="LINE" />
+        <line x1="264.39" y1="82.65" x2="264.34" y2="82.73" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D7" data-type="LINE" />
+        <line x1="264.34" y1="105.42" x2="264.39" y2="105.5" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D8" data-type="LINE" />
+        <line x1="223.79" y1="104.12" x2="229.34" y2="104.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D9" data-type="LINE" />
+        <line x1="229.34" y1="84.03" x2="223.79" y2="84.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DA" data-type="LINE" />
+        <line x1="238.83" y1="103.87" x2="254.85" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DB" data-type="LINE" />
+        <line x1="254.85" y1="84.29" x2="238.83" y2="84.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DC" data-type="LINE" />
+        <line x1="238.83" y1="84.29" x2="238.09" y2="84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DD" data-type="LINE" />
+        <line x1="238.09" y1="103.44" x2="238.83" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DE" data-type="LINE" />
+        <line x1="254.85" y1="103.87" x2="255.59" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DF" data-type="LINE" />
+        <line x1="255.59" y1="84.71" x2="254.85" y2="84.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E0" data-type="LINE" />
+        <line x1="255.59" y1="103.44" x2="263.54" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E1" data-type="LINE" />
+        <line x1="263.54" y1="84.71" x2="255.59" y2="84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E2" data-type="LINE" />
+        <line x1="229.84" y1="103.44" x2="238.09" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E3" data-type="LINE" />
+        <line x1="238.09" y1="84.71" x2="229.84" y2="84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E4" data-type="LINE" />
+        <line x1="223.33" y1="84.82" x2="223.08" y2="84.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E5" data-type="LINE" />
+        <line x1="223.08" y1="103.23" x2="223.33" y2="103.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E6" data-type="LINE" />
+        <line x1="269.84" y1="85.47" x2="268.8" y2="86.07" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E7" data-type="LINE" />
+        <line x1="268.8" y1="102.08" x2="269.84" y2="102.68" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E8" data-type="LINE" />
+        <line x1="222.94" y1="102.23" x2="228.44" y2="102.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E9" data-type="LINE" />
+        <line x1="228.44" y1="85.92" x2="222.94" y2="85.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EA" data-type="LINE" />
+        <line x1="137.34" y1="88.01" x2="137.34" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EB" data-type="LINE" />
+        <line x1="127.34" y1="78.32" x2="127.34" y2="88.01" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EC" data-type="LINE" />
+        <line x1="129.84" y1="84.38" x2="132.34" y2="85.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49ED" data-type="LINE" />
+        <line x1="132.34" y1="85.88" x2="134.84" y2="84.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EE" data-type="LINE" />
+        <line x1="135.67" y1="105.58" x2="135.67" y2="104.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EF" data-type="LINE" />
+        <line x1="129.02" y1="104.88" x2="129.02" y2="105.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F0" data-type="LINE" />
+        <line x1="129.02" y1="105.58" x2="129.2" y2="106.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F1" data-type="LINE" />
+        <line x1="135.49" y1="106.31" x2="135.67" y2="105.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F2" data-type="LINE" />
+        <line x1="135.67" y1="104.88" x2="135.34" y2="103.53" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F3" data-type="LINE" />
+        <line x1="129.34" y1="103.53" x2="129.02" y2="104.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F4" data-type="LINE" />
+        <line x1="135.34" y1="103.53" x2="135.34" y2="100.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F5" data-type="LINE" />
+        <line x1="129.34" y1="100.88" x2="129.34" y2="103.53" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F6" data-type="LINE" />
+        <line x1="135.34" y1="100.88" x2="135.34" y2="90.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F7" data-type="LINE" />
+        <line x1="129.35" y1="90.38" x2="129.35" y2="100.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F8" data-type="LINE" />
+        <line x1="127.34" y1="88.01" x2="128.84" y2="88.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F9" data-type="LINE" />
+        <line x1="135.84" y1="88.88" x2="137.34" y2="88.01" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FA" data-type="LINE" />
+        <line x1="137.34" y1="79.38" x2="135.61" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FB" data-type="LINE" />
+        <line x1="129.08" y1="78.38" x2="127.34" y2="79.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FC" data-type="LINE" />
+        <line x1="128.84" y1="88.88" x2="128.84" y2="89.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FD" data-type="LINE" />
+        <line x1="135.84" y1="89.88" x2="135.84" y2="88.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FE" data-type="LINE" />
+        <line x1="135.34" y1="90.38" x2="135.84" y2="89.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FF" data-type="LINE" />
+        <line x1="228.44" y1="102.08" x2="268.8" y2="102.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A00" data-type="LINE" />
+        <line x1="268.8" y1="86.07" x2="228.44" y2="86.07" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A01" data-type="LINE" />
+        <line x1="79.97" y1="125.11" x2="79.97" y2="63.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A05" data-type="LINE" />
+        <line x1="129.44" y1="109.88" x2="135.25" y2="109.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A06" data-type="LINE" />
+        <line x1="128.84" y1="88.88" x2="135.84" y2="88.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A07" data-type="LINE" />
+        <line x1="268.8" y1="86.07" x2="268.8" y2="102.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A08" data-type="LINE" />
+        <line x1="129.34" y1="90.62" x2="135.35" y2="90.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A0C" data-type="LINE" />
+        <line x1="269.74" y1="109.34" x2="269.74" y2="78.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A0D" data-type="LINE" />
+        <line x1="127.19" y1="89.63" x2="137.49" y2="89.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A0E" data-type="LINE" />
+        <line x1="228.44" y1="85.92" x2="228.44" y2="102.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A11" data-type="LINE" />
+        <line x1="254.85" y1="84.29" x2="254.85" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A14" data-type="LINE" />
+        <line x1="256.84" y1="104.37" x2="259.84" y2="104.37" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A15" data-type="LINE" />
+        <line x1="222.84" y1="103.77" x2="222.84" y2="84.39" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A16" data-type="LINE" />
+        <line x1="129.34" y1="107.63" x2="135.35" y2="107.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A17" data-type="LINE" />
+        <line x1="223.24" y1="104.17" x2="223.24" y2="83.99" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A18" data-type="LINE" />
+        <line x1="127.19" y1="86.03" x2="137.49" y2="86.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A19" data-type="LINE" />
+        <line x1="128.09" y1="85.13" x2="136.6" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1A" data-type="LINE" />
+        <line x1="229.34" y1="104.37" x2="229.34" y2="83.79" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1C" data-type="LINE" />
+        <line x1="256.84" y1="105.49" x2="256.84" y2="101.9" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1D" data-type="LINE" />
+        <line x1="129.02" y1="105.58" x2="135.67" y2="105.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1E" data-type="LINE" />
+        <line x1="264.34" y1="108.94" x2="264.34" y2="79.21" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1F" data-type="LINE" />
+        <line x1="265.09" y1="79.05" x2="265.09" y2="109.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A20" data-type="LINE" />
+        <line x1="128.09" y1="78.32" x2="136.6" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A21" data-type="LINE" />
+        <line x1="259.84" y1="104.63" x2="256.84" y2="104.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A22" data-type="LINE" />
+        <line x1="220.84" y1="102.28" x2="220.84" y2="85.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A23" data-type="LINE" />
+        <line x1="238.09" y1="84.71" x2="238.09" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A24" data-type="LINE" />
+        <line x1="256.84" y1="105.49" x2="259.84" y2="105.49" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A25" data-type="LINE" />
+        <line x1="259.84" y1="105.49" x2="259.84" y2="101.9" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A26" data-type="LINE" />
+        <line x1="127.34" y1="88.01" x2="137.34" y2="88.01" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A28" data-type="LINE" />
+        <line x1="133.65" y1="84.38" x2="133.65" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2A" data-type="LINE" />
+        <line x1="130.77" y1="84.38" x2="130.77" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2B" data-type="LINE" />
+        <line x1="129.46" y1="84.38" x2="135.23" y2="84.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2C" data-type="LINE" />
+        <line x1="133.92" y1="84.38" x2="133.92" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2D" data-type="LINE" />
+        <line x1="135.23" y1="84.38" x2="135.23" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2E" data-type="LINE" />
+        <line x1="131.04" y1="84.38" x2="131.04" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2F" data-type="LINE" />
+        <line x1="129.46" y1="84.38" x2="129.46" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A30" data-type="LINE" />
+        <line x1="223.59" y1="84.23" x2="223.59" y2="103.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A31" data-type="LINE" />
+        <line x1="137.34" y1="79.38" x2="127.34" y2="79.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A32" data-type="LINE" />
+        <line x1="129.16" y1="90.2" x2="135.52" y2="90.2" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A34" data-type="LINE" />
+        <line x1="129.02" y1="104.88" x2="135.67" y2="104.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A35" data-type="LINE" />
+        <line x1="129.93" y1="106.88" x2="134.76" y2="106.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A36" data-type="LINE" />
+        <line x1="129.08" y1="78.38" x2="135.61" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A38" data-type="LINE" />
+        <line x1="128.84" y1="89.88" x2="135.84" y2="89.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A39" data-type="LINE" />
+        <line x1="129.2" y1="106.31" x2="135.49" y2="106.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A3A" data-type="LINE" />
+        <line x1="129.34" y1="90.38" x2="135.34" y2="90.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A3B" data-type="LINE" />
+        <line x1="81.82" y1="58.81" x2="91.87" y2="58.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A48" data-type="LINE" />
+        <line x1="89.42" y1="73.05" x2="89.42" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A50" data-type="LINE" />
+        <line x1="92.29" y1="74.85" x2="92.29" y2="113.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A51" data-type="LINE" />
+        <line x1="93.38" y1="103.34" x2="93.38" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A52" data-type="LINE" />
+        <line x1="105.64" y1="104.35" x2="105.64" y2="83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A53" data-type="LINE" />
+        <line x1="102.34" y1="104.35" x2="102.34" y2="83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A54" data-type="LINE" />
+        <line x1="106.14" y1="103.85" x2="106.14" y2="84.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A55" data-type="LINE" />
+        <line x1="102.1" y1="83.86" x2="102.1" y2="104.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A56" data-type="LINE" />
+        <line x1="100.34" y1="103.34" x2="100.34" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A57" data-type="LINE" />
+        <line x1="222.94" y1="85.1" x2="222.94" y2="103.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A59" data-type="LINE" />
+        <line x1="223.08" y1="103.23" x2="223.08" y2="84.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5D" data-type="LINE" />
+        <line x1="135.34" y1="100.88" x2="129.34" y2="100.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5E" data-type="LINE" />
+        <line x1="82.12" y1="59.11" x2="91.57" y2="59.11" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A60" data-type="LINE" />
+        <line x1="264.39" y1="79.85" x2="264.39" y2="108.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A64" data-type="LINE" />
+        <line x1="263.54" y1="84.71" x2="263.54" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A65" data-type="LINE" />
+        <line x1="223.79" y1="104.12" x2="223.79" y2="84.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A66" data-type="LINE" />
+        <line x1="229.84" y1="84.71" x2="229.84" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A67" data-type="LINE" />
+        <line x1="255.59" y1="84.71" x2="255.59" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A68" data-type="LINE" />
+        <line x1="238.83" y1="84.29" x2="238.83" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A69" data-type="LINE" />
+        <line x1="223.33" y1="103.33" x2="223.33" y2="84.82" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A6A" data-type="LINE" />
+        <line x1="129.34" y1="103.53" x2="135.34" y2="103.53" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A6B" data-type="LINE" />
+        <line x1="79.96" y1="125.25" x2="79.96" y2="62.91" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A6F" data-type="LINE" />
       </g>
       <g id="layer-sk3" class="cad-layer" data-layer="SK3" stroke="#ff0000" stroke-width="1.323">
-        <path d="M71.83 119.12A10 10 0 0 0 79.84 115.1" vector-effect="non-scaling-stroke" data-handle="4948" data-type="ARC" />
-        <path d="M58.62 69.04A0.8 0.8 0 0 0 57.93 69.44" vector-effect="non-scaling-stroke" data-handle="4965" data-type="ARC" />
-        <path d="M57.93 118.71A0.8 0.8 0 0 0 58.62 119.12" vector-effect="non-scaling-stroke" data-handle="4966" data-type="ARC" />
-        <path d="M79.84 73.05A10 10 0 0 0 71.83 69.04" vector-effect="non-scaling-stroke" data-handle="4969" data-type="ARC" />
-        <line x1="58.62" y1="119.12" x2="71.83" y2="119.12" vector-effect="non-scaling-stroke" data-handle="49BD" data-type="LINE" />
-        <line x1="71.83" y1="69.04" x2="58.62" y2="69.04" vector-effect="non-scaling-stroke" data-handle="49BE" data-type="LINE" />
-        <line x1="57.93" y1="69.44" x2="55.87" y2="73.05" vector-effect="non-scaling-stroke" data-handle="49BF" data-type="LINE" />
-        <line x1="55.87" y1="115.1" x2="57.93" y2="118.71" vector-effect="non-scaling-stroke" data-handle="49C0" data-type="LINE" />
-        <line x1="41.59" y1="73.05" x2="39.94" y2="72.1" vector-effect="non-scaling-stroke" data-handle="49C1" data-type="LINE" />
-        <line x1="41.59" y1="115.1" x2="55.87" y2="115.1" vector-effect="non-scaling-stroke" data-handle="49C2" data-type="LINE" />
-        <line x1="55.87" y1="73.05" x2="41.59" y2="73.05" vector-effect="non-scaling-stroke" data-handle="49C3" data-type="LINE" />
-        <line x1="39.94" y1="116.05" x2="41.59" y2="115.1" vector-effect="non-scaling-stroke" data-handle="49D0" data-type="LINE" />
-        <line x1="71.83" y1="95.54" x2="71.83" y2="119.12" vector-effect="non-scaling-stroke" data-handle="4A3D" data-type="LINE" />
-        <line x1="58.62" y1="119.12" x2="58.62" y2="69.04" vector-effect="non-scaling-stroke" data-handle="4A4C" data-type="LINE" />
-        <line x1="71.83" y1="69.04" x2="71.83" y2="92.61" vector-effect="non-scaling-stroke" data-handle="4A4D" data-type="LINE" />
-        <line x1="57.93" y1="69.44" x2="57.93" y2="118.71" vector-effect="non-scaling-stroke" data-handle="4A4E" data-type="LINE" />
-        <line x1="55.87" y1="73.05" x2="55.87" y2="115.1" vector-effect="non-scaling-stroke" data-handle="4A4F" data-type="LINE" />
-        <line x1="41.59" y1="73.05" x2="41.59" y2="81.97" vector-effect="non-scaling-stroke" data-handle="4A5C" data-type="LINE" />
-        <line x1="41.59" y1="115.1" x2="41.59" y2="106.18" vector-effect="non-scaling-stroke" data-handle="4A5F" data-type="LINE" />
+        <path d="M71.83 119.12A10 10 0 0 0 79.84 115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4948" data-type="ARC" />
+        <path d="M58.62 69.04A0.8 0.8 0 0 0 57.93 69.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4965" data-type="ARC" />
+        <path d="M57.93 118.71A0.8 0.8 0 0 0 58.62 119.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4966" data-type="ARC" />
+        <path d="M79.84 73.05A10 10 0 0 0 71.83 69.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4969" data-type="ARC" />
+        <line x1="58.62" y1="119.12" x2="71.83" y2="119.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49BD" data-type="LINE" />
+        <line x1="71.83" y1="69.04" x2="58.62" y2="69.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49BE" data-type="LINE" />
+        <line x1="57.93" y1="69.44" x2="55.87" y2="73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49BF" data-type="LINE" />
+        <line x1="55.87" y1="115.1" x2="57.93" y2="118.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C0" data-type="LINE" />
+        <line x1="41.59" y1="73.05" x2="39.94" y2="72.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C1" data-type="LINE" />
+        <line x1="41.59" y1="115.1" x2="55.87" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C2" data-type="LINE" />
+        <line x1="55.87" y1="73.05" x2="41.59" y2="73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C3" data-type="LINE" />
+        <line x1="39.94" y1="116.05" x2="41.59" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D0" data-type="LINE" />
+        <line x1="71.83" y1="95.54" x2="71.83" y2="119.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A3D" data-type="LINE" />
+        <line x1="58.62" y1="119.12" x2="58.62" y2="69.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4C" data-type="LINE" />
+        <line x1="71.83" y1="69.04" x2="71.83" y2="92.61" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4D" data-type="LINE" />
+        <line x1="57.93" y1="69.44" x2="57.93" y2="118.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4E" data-type="LINE" />
+        <line x1="55.87" y1="73.05" x2="55.87" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4F" data-type="LINE" />
+        <line x1="41.59" y1="73.05" x2="41.59" y2="81.97" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5C" data-type="LINE" />
+        <line x1="41.59" y1="115.1" x2="41.59" y2="106.18" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5F" data-type="LINE" />
       </g>
       <g id="layer-4" class="cad-layer" data-layer="4" stroke="#ffff00" stroke-width="1">
-        <line x1="79.84" y1="94.08" x2="269.84" y2="94.08" vector-effect="non-scaling-stroke" data-handle="4AB2" data-type="LINE" />
+        <line x1="79.84" y1="94.08" x2="269.84" y2="94.08" stroke-dasharray="29.426 3.678 7.357 3.678" vector-effect="non-scaling-stroke" data-handle="4AB2" data-type="LINE" />
       </g>
       <g id="layer-inftotal" class="cad-layer" data-layer="INFTOTAL" stroke="#c0c0c0" stroke-width="1">
         <line x1="0" y1="0" x2="318.08" y2="0" vector-effect="non-scaling-stroke" data-handle="4E40" data-type="LINE" />

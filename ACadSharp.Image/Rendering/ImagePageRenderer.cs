@@ -1,4 +1,5 @@
 using ACadSharp.Entities;
+using ACadSharp.Header;
 using ACadSharp.Image.Rendering.Svg;
 using ACadSharp.Tables;
 using ACadSharp.Types.Units;
@@ -170,7 +171,11 @@ internal sealed class ImagePageRenderer
         double scale = pageContext.SinglePrecision
             ? (float)pageContext.Scale * (float)viewport.ScaleFactor
             : pageContext.Scale * viewport.ScaleFactor;
-        ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(pageContext, viewport, viewportSurface, viewportWidth, modelBounds, scale);
+        bool paperSpaceLineTypeScaling = (viewport.Document?.Header.PaperSpaceLineTypeScaling ?? SpaceLineTypeScaling.Viewport) == SpaceLineTypeScaling.Viewport;
+        double lineTypeScale = paperSpaceLineTypeScaling
+            ? pageContext.LineTypeScale
+            : pageContext.LineTypeScale * viewport.ScaleFactor;
+        ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(pageContext, viewport, viewportSurface, viewportWidth, modelBounds, scale, lineTypeScale);
 
         foreach (Entity entity in viewport.SelectEntities())
         {

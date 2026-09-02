@@ -1,18 +1,19 @@
-using System.Numerics;
 using ACadSharp.Entities;
 using CSMath;
-using SixLabors.Fonts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Processing;
 
 namespace ACadSharp.Image.Rendering;
 
-internal sealed class TextRenderer(ImageConfiguration configuration)
+/// <summary>
+/// Converts <see cref="MText"/> and <see cref="TextEntity"/> into <see cref="SurfaceText"/> runs and hands them to the surface.
+/// </summary>
+internal sealed class TextRenderer
 {
-    private readonly ImageConfiguration _configuration = configuration;
-
+    /// <summary>
+    /// Draws a multiline text entity.
+    /// </summary>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="style">The resolved style for the entity.</param>
+    /// <param name="mtext">The entity to draw.</param>
     public void Draw(ImageRenderContext context, ImageStyle style, MText mtext)
     {
         string text = NormalizeText(mtext.PlainText);
@@ -21,24 +22,26 @@ internal sealed class TextRenderer(ImageConfiguration configuration)
             return;
         }
 
-        PointF origin = context.ToPixelPoint(mtext.InsertPoint);
-        Font font = this.CreateFont(context, mtext.Height);
-        TextOptions options = new(font)
-        {
-            Dpi = context.Configuration.Dpi,
-            Origin = origin,
-            HorizontalAlignment = GetHorizontalAlignment(mtext.AttachmentPoint),
-            VerticalAlignment = GetVerticalAlignment(mtext.AttachmentPoint),
-            WrappingLength = mtext.RectangleWidth > 0 ? context.ToPixelLength(mtext.RectangleWidth) : -1,
-            LineSpacing = (float)mtext.LineSpacing,
-        };
+        SurfaceText run = new(
+            text,
+            context.ToSurfacePoint(mtext.InsertPoint),
+            context.ToSurfaceLength(mtext.Height),
+            mtext.Rotation,
+            GetAnchor(mtext.AttachmentPoint),
+            GetBaseline(mtext.AttachmentPoint),
+            mtext.RectangleWidth > 0 ? context.ToSurfaceLength(mtext.RectangleWidth) : -1d,
+            mtext.LineSpacing,
+            FixedLength: -1d);
 
-        IPathCollection glyphs = TextBuilder.GenerateGlyphs(text, options);
-        DrawingOptions drawingOptions = CreateDrawingOptions(origin, mtext.Rotation);
-
-        context.Canvas.Mutate(x => x.Fill(drawingOptions, style.StrokeColor, glyphs));
+        context.Surface.DrawText(style, run);
     }
 
+    /// <summary>
+    /// Draws a single-line text entity.
+    /// </summary>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="style">The resolved style for the entity.</param>
+    /// <param name="textEntity">The entity to draw.</param>
     public void Draw(ImageRenderContext context, ImageStyle style, TextEntity textEntity)
     {
         string text = NormalizeText(textEntity.Value);
@@ -47,42 +50,31 @@ internal sealed class TextRenderer(ImageConfiguration configuration)
             return;
         }
 
-        PointF origin = context.ToPixelPoint(GetTextOrigin(textEntity));
-        Font font = this.CreateFont(context, textEntity.Height);
-        TextOptions options = new(font)
-        {
-            Dpi = context.Configuration.Dpi,
-            Origin = origin,
-            HorizontalAlignment = GetHorizontalAlignment(textEntity.HorizontalAlignment),
-            VerticalAlignment = GetVerticalAlignment(textEntity.VerticalAlignment),
-        };
+        SurfaceText run = new(
+            text,
+            context.ToSurfacePoint(GetTextOrigin(textEntity)),
+            context.ToSurfaceLength(textEntity.Height),
+            textEntity.Rotation,
+            GetAnchor(textEntity.HorizontalAlignment),
+            GetBaseline(textEntity.VerticalAlignment),
+            WrappingWidth: -1d,
+            LineSpacingFactor: 1d,
+            GetFixedLength(context, textEntity));
 
-        IPathCollection glyphs = TextBuilder.GenerateGlyphs(text, options);
-        DrawingOptions drawingOptions = CreateDrawingOptions(origin, textEntity.Rotation);
-
-        context.Canvas.Mutate(x => x.Fill(drawingOptions, style.StrokeColor, glyphs));
+        context.Surface.DrawText(style, run);
     }
 
-    private Font CreateFont(ImageRenderContext context, double height)
+    private static double GetFixedLength(ImageRenderContext context, TextEntity textEntity)
     {
-        float size = Math.Max(1f, context.ToPixelLength(height));
-        if (SystemFonts.TryGet(this._configuration.FontFamilyName, out FontFamily family))
+        if (textEntity.HorizontalAlignment is not (TextHorizontalAlignment.Aligned or TextHorizontalAlignment.Fit))
         {
-            return family.CreateFont(size);
+            return -1d;
         }
 
-        return SystemFonts.Families.First().CreateFont(size);
-    }
-
-    private static DrawingOptions CreateDrawingOptions(PointF origin, double rotation)
-    {
-        DrawingOptions options = new();
-        if (Math.Abs(rotation) > double.Epsilon)
-        {
-            options.Transform = Matrix3x2.CreateRotation((float)-rotation, new Vector2(origin.X, origin.Y));
-        }
-
-        return options;
+        double dx = textEntity.AlignmentPoint.X - textEntity.InsertPoint.X;
+        double dy = textEntity.AlignmentPoint.Y - textEntity.InsertPoint.Y;
+        double length = Math.Sqrt((dx * dx) + (dy * dy));
+        return length > 0 ? context.ToSurfaceLength(length) : -1d;
     }
 
     private static XYZ GetTextOrigin(TextEntity textEntity)
@@ -92,43 +84,43 @@ internal sealed class TextRenderer(ImageConfiguration configuration)
             : textEntity.AlignmentPoint;
     }
 
-    private static HorizontalAlignment GetHorizontalAlignment(AttachmentPointType attachment)
+    private static SurfaceTextAnchor GetAnchor(AttachmentPointType attachment)
     {
         return attachment switch
         {
-            AttachmentPointType.TopCenter or AttachmentPointType.MiddleCenter or AttachmentPointType.BottomCenter => HorizontalAlignment.Center,
-            AttachmentPointType.TopRight or AttachmentPointType.MiddleRight or AttachmentPointType.BottomRight => HorizontalAlignment.Right,
-            _ => HorizontalAlignment.Left,
+            AttachmentPointType.TopCenter or AttachmentPointType.MiddleCenter or AttachmentPointType.BottomCenter => SurfaceTextAnchor.Middle,
+            AttachmentPointType.TopRight or AttachmentPointType.MiddleRight or AttachmentPointType.BottomRight => SurfaceTextAnchor.End,
+            _ => SurfaceTextAnchor.Start,
         };
     }
 
-    private static VerticalAlignment GetVerticalAlignment(AttachmentPointType attachment)
+    private static SurfaceTextBaseline GetBaseline(AttachmentPointType attachment)
     {
         return attachment switch
         {
-            AttachmentPointType.TopLeft or AttachmentPointType.TopCenter or AttachmentPointType.TopRight => VerticalAlignment.Top,
-            AttachmentPointType.MiddleLeft or AttachmentPointType.MiddleCenter or AttachmentPointType.MiddleRight => VerticalAlignment.Center,
-            _ => VerticalAlignment.Bottom,
+            AttachmentPointType.TopLeft or AttachmentPointType.TopCenter or AttachmentPointType.TopRight => SurfaceTextBaseline.Hanging,
+            AttachmentPointType.MiddleLeft or AttachmentPointType.MiddleCenter or AttachmentPointType.MiddleRight => SurfaceTextBaseline.Central,
+            _ => SurfaceTextBaseline.Alphabetic,
         };
     }
 
-    private static HorizontalAlignment GetHorizontalAlignment(TextHorizontalAlignment alignment)
+    private static SurfaceTextAnchor GetAnchor(TextHorizontalAlignment alignment)
     {
         return alignment switch
         {
-            TextHorizontalAlignment.Center or TextHorizontalAlignment.Aligned or TextHorizontalAlignment.Middle or TextHorizontalAlignment.Fit => HorizontalAlignment.Center,
-            TextHorizontalAlignment.Right => HorizontalAlignment.Right,
-            _ => HorizontalAlignment.Left,
+            TextHorizontalAlignment.Center or TextHorizontalAlignment.Aligned or TextHorizontalAlignment.Middle or TextHorizontalAlignment.Fit => SurfaceTextAnchor.Middle,
+            TextHorizontalAlignment.Right => SurfaceTextAnchor.End,
+            _ => SurfaceTextAnchor.Start,
         };
     }
 
-    private static VerticalAlignment GetVerticalAlignment(TextVerticalAlignmentType alignment)
+    private static SurfaceTextBaseline GetBaseline(TextVerticalAlignmentType alignment)
     {
         return alignment switch
         {
-            TextVerticalAlignmentType.Middle => VerticalAlignment.Center,
-            TextVerticalAlignmentType.Top => VerticalAlignment.Top,
-            _ => VerticalAlignment.Bottom,
+            TextVerticalAlignmentType.Middle => SurfaceTextBaseline.Central,
+            TextVerticalAlignmentType.Top => SurfaceTextBaseline.Hanging,
+            _ => SurfaceTextBaseline.Alphabetic,
         };
     }
 

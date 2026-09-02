@@ -2,10 +2,6 @@ using ACadSharp.Entities;
 using ACadSharp.Extensions;
 using ACadSharp.IO;
 using CSMath;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Processing;
 
 namespace ACadSharp.Image.Rendering;
 
@@ -13,6 +9,13 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
 {
     private readonly ImageConfiguration _configuration = configuration;
 
+    /// <summary>
+    /// Draws a spline, preferring exact Bezier segments and falling back to sampled vertexes.
+    /// </summary>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="style">The resolved style for the entity.</param>
+    /// <param name="spline">The spline to draw.</param>
+    /// <returns><see langword="true"/> when geometry was produced; otherwise <see langword="false"/>.</returns>
     public bool Draw(ImageRenderContext context, ImageStyle style, Spline spline)
     {
         if (this.DrawBezierSpline(context, style, spline))
@@ -23,27 +26,25 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
         XY[] sampledVertices = this.SampleSpline(spline);
         if (sampledVertices.Length > 1)
         {
-            PointF[] points = new PointF[sampledVertices.Length];
+            SurfacePoint[] points = new SurfacePoint[sampledVertices.Length];
             for (int i = 0; i < sampledVertices.Length; i++)
             {
-                points[i] = context.ToPixelPoint(sampledVertices[i]);
+                points[i] = context.ToSurfacePoint(sampledVertices[i]);
             }
 
-            points = ClosePoints(points, spline.IsClosed || spline.IsPeriodic);
-            context.Canvas.Mutate(x => x.DrawLine(style.StrokeColor, style.StrokeWidth, points));
+            context.Surface.DrawPolyline(style, points, ShouldClosePoints(points, spline.IsClosed || spline.IsPeriodic));
             return true;
         }
 
         if (spline.TryPolygonalVertexes(this._configuration.ArcPrecision, out List<XYZ>? polygonalPoints) && polygonalPoints.Count > 1)
         {
-            PointF[] points = new PointF[polygonalPoints.Count];
+            SurfacePoint[] points = new SurfacePoint[polygonalPoints.Count];
             for (int i = 0; i < polygonalPoints.Count; i++)
             {
-                points[i] = context.ToPixelPoint(polygonalPoints[i].Convert<XY>());
+                points[i] = context.ToSurfacePoint(polygonalPoints[i].Convert<XY>());
             }
 
-            points = ClosePoints(points, spline.IsClosed || spline.IsPeriodic);
-            context.Canvas.Mutate(x => x.DrawLine(style.StrokeColor, style.StrokeWidth, points));
+            context.Surface.DrawPolyline(style, points, ShouldClosePoints(points, spline.IsClosed || spline.IsPeriodic));
             return true;
         }
 
@@ -58,24 +59,18 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
             return false;
         }
 
-        PathBuilder builder = new();
         IReadOnlyList<XYZ> controlPoints = spline.ControlPoints;
-        for (int segment = 0; segment < segmentCount; segment++)
+        SurfacePoint[] points = new SurfacePoint[(segmentCount * 3) + 1];
+        for (int i = 0; i < points.Length; i++)
         {
-            int index = segment * 3;
-            builder.AddCubicBezier(
-                context.ToPixelPoint(controlPoints[index]),
-                context.ToPixelPoint(controlPoints[index + 1]),
-                context.ToPixelPoint(controlPoints[index + 2]),
-                context.ToPixelPoint(controlPoints[index + 3]));
+            points[i] = context.ToSurfacePoint(controlPoints[i]);
         }
 
-        IPath path = builder.Build();
-        context.Canvas.Mutate(x => x.Draw(style.StrokeColor, style.StrokeWidth, path));
+        context.Surface.DrawCubicBezier(style, points, spline.IsClosed || spline.IsPeriodic);
         return true;
     }
 
-    private static bool TryGetBezierSegments(Spline spline, out int segmentCount)
+    internal static bool TryGetBezierSegments(Spline spline, out int segmentCount)
     {
         segmentCount = 0;
         if (spline.Degree != 3 ||
@@ -236,22 +231,21 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
         return span;
     }
 
-    private static PointF[] ClosePoints(PointF[] points, bool close)
+    /// <summary>
+    /// Determines whether a polyline should be closed based on a heuristic.
+    /// </summary>
+    /// <param name="points">The polyline points in surface coordinates.</param>
+    /// <param name="close">Whether the source geometry asks for a closed shape.</param>
+    /// <returns><see langword="true"/> when the closing segment should be drawn.</returns>
+    /// <remarks>
+    /// The heuristic compares the distance between the last and first points (closing length)
+    /// to the average segment length. If the closing length is within 3x the average segment
+    /// length, the polyline is considered closeable. This handles cases where polylines are
+    /// nearly closed but have small gaps due to precision or modeling errors.
+    /// </remarks>
+    internal static bool ShouldClosePoints(IReadOnlyList<SurfacePoint> points, bool close)
     {
-        if (!close || !ShouldClose(points))
-        {
-            return points;
-        }
-
-        PointF[] closedPoints = new PointF[points.Length + 1];
-        Array.Copy(points, closedPoints, points.Length);
-        closedPoints[^1] = points[0];
-        return closedPoints;
-    }
-
-    private static bool ShouldClose(IReadOnlyList<PointF> points)
-    {
-        if (points.Count < 3)
+        if (!close || points.Count < 3)
         {
             return false;
         }
@@ -267,11 +261,11 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
         return closingLength <= averageSegmentLength * 3f;
     }
 
-    private static float Distance(PointF a, PointF b)
+    private static float Distance(SurfacePoint a, SurfacePoint b)
     {
-        float dx = a.X - b.X;
-        float dy = a.Y - b.Y;
-        return MathF.Sqrt(dx * dx + dy * dy);
+        float dx = (float)a.X - (float)b.X;
+        float dy = (float)a.Y - (float)b.Y;
+        return MathF.Sqrt((dx * dx) + (dy * dy));
     }
 
     private readonly record struct SplinePoint(double X, double Y, double Z, double Weight)

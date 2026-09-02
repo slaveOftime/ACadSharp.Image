@@ -1,10 +1,6 @@
 using ACadSharp.Entities;
-using ACadSharp.Image.Extensions;
 using CSMath;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
-using ImageColor = SixLabors.ImageSharp.Color;
-using ImagePoint = SixLabors.ImageSharp.Point;
 using Rgba32 = SixLabors.ImageSharp.PixelFormats.Rgba32;
 
 namespace ACadSharp.Image.Rendering;
@@ -51,8 +47,20 @@ internal sealed class ImagePageRenderer
     /// </remarks>
     public RenderedImagePage Render(ImagePage page)
     {
-        var image = new Image<Rgba32>(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);
-        ImageRenderContext context = ImageRenderContext.CreatePageContext(image, page, this._configuration);
+        Image<Rgba32> image = new(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);
+        using RasterDrawingSurface surface = new(image, this._configuration, ownsCanvas: false);
+        this.RenderTo(surface, page);
+        return new RenderedImagePage(page.Name, image);
+    }
+
+    /// <summary>
+    /// Renders the page onto an arbitrary drawing surface.
+    /// </summary>
+    /// <param name="surface">The surface receiving the page content.</param>
+    /// <param name="page">The page to render.</param>
+    internal void RenderTo(IDrawingSurface surface, ImagePage page)
+    {
+        ImageRenderContext context = ImageRenderContext.CreatePageContext(surface, page, this._configuration);
 
         foreach (Viewport viewport in page.Viewports)
         {
@@ -63,31 +71,28 @@ internal sealed class ImagePageRenderer
         {
             this._dispatcher.Draw(context, entity);
         }
-
-        return new RenderedImagePage(page.Name, image);
     }
 
     private void DrawViewport(ImageRenderContext pageContext, Viewport viewport)
     {
         BoundingBox viewportBounds = viewport.GetBoundingBox();
-        int viewportWidth = Math.Max(1, (int)Math.Ceiling(pageContext.ToPixelLength(viewportBounds.LengthX)));
-        int viewportHeight = Math.Max(1, (int)Math.Ceiling(pageContext.ToPixelLength(viewportBounds.LengthY)));
+        double viewportWidth = Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthX)));
+        double viewportHeight = Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthY)));
         BoundingBox modelBounds = viewport.GetModelBoundingBox();
 
-        using var viewportImage = new Image<Rgba32>(viewportWidth, viewportHeight, ImageColor.Transparent);
-        ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(
-            viewportImage,
-            pageContext.Layout,
-            this._configuration,
-            modelBounds,
-            pageContext.PixelsPerUnit * (float)viewport.ScaleFactor);
+        SurfacePoint topLeft = pageContext.ToSurfacePoint(new XY(viewportBounds.Min.X, viewportBounds.Max.Y));
+        ViewportSurface viewportSurface = pageContext.Surface.BeginViewport(new SurfaceRect(topLeft.X, topLeft.Y, viewportWidth, viewportHeight));
+
+        double scale = pageContext.SinglePrecision
+            ? (float)pageContext.Scale * (float)viewport.ScaleFactor
+            : pageContext.Scale * viewport.ScaleFactor;
+        ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(pageContext, viewport, viewportSurface, modelBounds, scale);
 
         foreach (Entity entity in viewport.SelectEntities())
         {
             this._dispatcher.Draw(viewportContext, entity);
         }
 
-        PointF destination = pageContext.ToPixelPoint(new XY(viewportBounds.Min.X, viewportBounds.Max.Y));
-        pageContext.Canvas.Mutate(x => x.DrawImage(viewportImage, new ImagePoint((int)MathF.Round(destination.X), (int)MathF.Round(destination.Y)), 1f));
+        pageContext.Surface.EndViewport(viewportSurface);
     }
 }

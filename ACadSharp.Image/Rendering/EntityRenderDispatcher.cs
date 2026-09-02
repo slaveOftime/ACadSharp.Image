@@ -3,10 +3,6 @@ using ACadSharp.Extensions;
 using ACadSharp.IO;
 using ACadSharp.Tables;
 using CSMath;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Processing;
 
 namespace ACadSharp.Image.Rendering;
 
@@ -36,14 +32,14 @@ internal sealed class EntityRenderDispatcher
     {
         this._configuration = configuration;
         this._splineRenderer = new SplineRenderer(configuration);
-        this._styleResolver = new ImageStyleResolver(configuration);
-        this._textRenderer = new TextRenderer(configuration);
+        this._styleResolver = new ImageStyleResolver();
+        this._textRenderer = new TextRenderer();
     }
 
     /// <summary>
-    /// Draws a single CAD entity onto the rendering canvas.
+    /// Draws a single CAD entity onto the drawing surface.
     /// </summary>
-    /// <param name="context">The rendering context containing the canvas and coordinate transforms.</param>
+    /// <param name="context">The rendering context containing the surface and coordinate transforms.</param>
     /// <param name="entity">The entity to draw.</param>
     /// <remarks>
     /// <para>
@@ -57,7 +53,7 @@ internal sealed class EntityRenderDispatcher
     /// </remarks>
     public void Draw(ImageRenderContext context, Entity entity)
     {
-        ImageStyle style = this._styleResolver.Resolve(entity);
+        ImageStyle style = this._styleResolver.Resolve(entity, context);
 
         switch (entity)
         {
@@ -71,13 +67,13 @@ internal sealed class EntityRenderDispatcher
                 this.DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
                 break;
             case Line line:
-                context.Canvas.Mutate(x => x.DrawLine(style.StrokeColor, style.StrokeWidth, context.ToPixelPoint(line.StartPoint), context.ToPixelPoint(line.EndPoint)));
+                context.Surface.DrawLine(style, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
                 break;
             case Dimension dimension:
                 this.DrawDimension(context, dimension);
                 break;
             case Solid solid:
-                this.DrawSolid(context, style, solid);
+                DrawSolid(context, style, solid);
                 break;
             case ACadSharp.Entities.Point point:
                 this.DrawPoint(context, style, point);
@@ -108,10 +104,8 @@ internal sealed class EntityRenderDispatcher
 
     private void DrawPoint(ImageRenderContext context, ImageStyle style, ACadSharp.Entities.Point point)
     {
-        PointF center = context.ToPixelPoint(point.Location);
         float radius = Math.Max(1f, this._configuration.DotSizePixels / 2f);
-
-        context.Canvas.Mutate(x => x.Fill(style.StrokeColor, new EllipsePolygon(center.X, center.Y, radius)));
+        context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), radius);
     }
 
     private void DrawDimension(ImageRenderContext context, Dimension dimension)
@@ -140,80 +134,35 @@ internal sealed class EntityRenderDispatcher
         }
     }
 
-    private void DrawSolid(ImageRenderContext context, ImageStyle style, Solid solid)
+    private static void DrawSolid(ImageRenderContext context, ImageStyle style, Solid solid)
     {
-        PointF[] points =
+        SurfacePoint[] points =
         [
-            context.ToPixelPoint(solid.FirstCorner),
-            context.ToPixelPoint(solid.SecondCorner),
-            context.ToPixelPoint(solid.ThirdCorner),
-            context.ToPixelPoint(solid.FourthCorner),
+            context.ToSurfacePoint(solid.FirstCorner),
+            context.ToSurfacePoint(solid.SecondCorner),
+            context.ToSurfacePoint(solid.ThirdCorner),
+            context.ToSurfacePoint(solid.FourthCorner),
         ];
 
-        context.Canvas.Mutate(x => x.FillPolygon(style.StrokeColor, points));
+        context.Surface.FillPolygon(style, points);
     }
 
     private void DrawPolyline(ImageRenderContext context, ImageStyle style, IEnumerable<XY> vertices, bool close)
     {
-        PointF[] points = vertices.Select(context.ToPixelPoint).ToArray();
+        SurfacePoint[] points = vertices.Select(context.ToSurfacePoint).ToArray();
         if (points.Length < 2)
         {
             return;
         }
 
-        if (close && this.ShouldClose(points))
-        {
-            PointF[] closedPoints = new PointF[points.Length + 1];
-            Array.Copy(points, closedPoints, points.Length);
-            closedPoints[^1] = points[0];
-            points = closedPoints;
-        }
-
-        context.Canvas.Mutate(x => x.DrawLine(style.StrokeColor, style.StrokeWidth, points));
+        context.Surface.DrawPolyline(style, points, SplineRenderer.ShouldClosePoints(points, close));
     }
 
     private void DrawBlockContents(ImageRenderContext context, Insert insert)
     {
         foreach (Entity entity in insert.Explode())
         {
-            Draw(context, entity);
+            this.Draw(context, entity);
         }
     }
-
-    /// <summary>
-    /// Determines whether a polyline should be closed based on a heuristic.
-    /// </summary>
-    /// <remarks>
-    /// The heuristic compares the distance between the last and first points (closing length)
-    /// to the average segment length. If the closing length is within 3x the average segment
-    /// length, the polyline is considered closeable. This handles cases where polylines are
-    /// nearly closed but have small gaps due to precision or modeling errors.
-    /// </remarks>
-    private bool ShouldClose(IReadOnlyList<PointF> points)
-    {
-        if (points.Count < 3)
-        {
-            return false;
-        }
-
-        float totalLength = 0f;
-        for (int i = 1; i < points.Count; i++)
-        {
-            totalLength += Distance(points[i - 1], points[i]);
-        }
-
-        float averageSegmentLength = totalLength / (points.Count - 1);
-        float closingLength = Distance(points[^1], points[0]);
-
-        // 3x multiplier provides tolerance for small gaps in nearly-closed polylines
-        return closingLength <= averageSegmentLength * 3f;
-    }
-
-    private static float Distance(PointF a, PointF b)
-    {
-        float dx = a.X - b.X;
-        float dy = a.Y - b.Y;
-        return MathF.Sqrt(dx * dx + dy * dy);
-    }
-
 }

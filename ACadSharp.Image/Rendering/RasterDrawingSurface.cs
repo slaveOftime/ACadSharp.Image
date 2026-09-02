@@ -14,7 +14,7 @@ namespace ACadSharp.Image.Rendering;
 /// <see cref="IDrawingSurface"/> backed by an ImageSharp <see cref="Image{Rgba32}"/>.
 /// </summary>
 /// <remarks>
-/// Every primitive maps onto the same ImageSharp.Drawing call the pre-abstraction renderer used, so output is pixel-identical.
+/// Primitives map onto the same ImageSharp.Drawing calls the pre-abstraction renderer used; callers keep the closing heuristic and curve tessellation, so routed output is pixel-identical.
 /// Curves are not supported natively; callers tessellate them (<see cref="SupportsCurves"/> is false).
 /// </remarks>
 internal sealed class RasterDrawingSurface : IDrawingSurface

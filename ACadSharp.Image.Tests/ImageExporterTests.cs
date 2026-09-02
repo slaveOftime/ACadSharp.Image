@@ -69,11 +69,12 @@ public sealed class ImageExporterTests
         };
 
         using Image<Rgba32> canvas = new(configuration.Width, configuration.Height);
-        ImageRenderContext context = ImageRenderContext.CreatePageContext(canvas, page, configuration);
+        using RasterDrawingSurface surface = new(canvas, configuration, ownsCanvas: false);
+        ImageRenderContext context = ImageRenderContext.CreatePageContext(surface, page, configuration);
 
-        Assert.Equal(5f, context.PixelsPerUnit);
-        Assert.Equal(10f, context.OffsetX);
-        Assert.Equal(20f, context.OffsetY);
+        Assert.Equal(5d, context.Scale);
+        Assert.Equal(10d, context.OffsetX);
+        Assert.Equal(20d, context.OffsetY);
     }
 
     [Fact]
@@ -135,7 +136,8 @@ public sealed class ImageExporterTests
                 PaperHeight = 10,
             },
         };
-        ImageRenderContext context = new(canvas, configuration, page.Layout, 100, 100, -5, -5, 10f);
+        using RasterDrawingSurface surface = new(canvas, configuration, ownsCanvas: false);
+        ImageRenderContext context = new(surface, configuration, page.Layout, 100, 100, -5, -5, 10f, 0, 0, singlePrecision: true, lineTypeScale: 10f);
         EntityRenderDispatcher dispatcher = new(configuration);
         Spline spline = new()
         {

@@ -128,22 +128,114 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
 
     public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle)
     {
-        throw new NotImplementedException("Task 4");
+        if (Math.Abs(sweepAngle) >= (2d * Math.PI) - 1e-9)
+        {
+            this.DrawEllipse(style, center, radiusX, radiusY, rotation);
+            return;
+        }
+
+        SurfacePoint start = PointOnEllipse(center, radiusX, radiusY, rotation, startAngle);
+        SurfacePoint end = PointOnEllipse(center, radiusX, radiusY, rotation, startAngle + sweepAngle);
+        int largeArc = Math.Abs(sweepAngle) > Math.PI ? 1 : 0;
+        int sweepFlag = sweepAngle > 0 ? 1 : 0;
+        string d = $"M{this.N(start.X)} {this.N(start.Y)}A{this.N(radiusX)} {this.N(radiusY)} {this.N(rotation * 180d / Math.PI)} {largeArc} {sweepFlag} {this.N(end.X)} {this.N(end.Y)}";
+        this.Append(this.Stroked(new XElement(Ns + "path", new XAttribute("d", d)), style));
     }
 
     public void DrawEllipse(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation)
     {
-        throw new NotImplementedException("Task 4");
+        if (Math.Abs(radiusX - radiusY) < 1e-9)
+        {
+            this.Append(this.Stroked(new XElement(Ns + "circle",
+                new XAttribute("cx", this.N(center.X)), new XAttribute("cy", this.N(center.Y)), new XAttribute("r", this.N(radiusX))), style));
+            return;
+        }
+
+        XElement ellipse = new(Ns + "ellipse",
+            new XAttribute("cx", this.N(center.X)), new XAttribute("cy", this.N(center.Y)),
+            new XAttribute("rx", this.N(radiusX)), new XAttribute("ry", this.N(radiusY)));
+        if (Math.Abs(rotation) > 1e-12)
+        {
+            ellipse.Add(new XAttribute("transform", $"rotate({this.N(rotation * 180d / Math.PI)} {this.N(center.X)} {this.N(center.Y)})"));
+        }
+
+        this.Append(this.Stroked(ellipse, style));
     }
 
     public void DrawCubicBezier(ImageStyle style, IReadOnlyList<SurfacePoint> controlPoints, bool closed)
     {
-        throw new NotImplementedException("Task 4");
+        if (controlPoints.Count < 4)
+        {
+            return;
+        }
+
+        StringBuilder d = new();
+        d.Append('M').Append(this.N(controlPoints[0].X)).Append(' ').Append(this.N(controlPoints[0].Y));
+        for (int i = 1; i + 2 < controlPoints.Count; i += 3)
+        {
+            d.Append('C');
+            for (int j = 0; j < 3; j++)
+            {
+                if (j > 0)
+                {
+                    d.Append(' ');
+                }
+
+                d.Append(this.N(controlPoints[i + j].X)).Append(' ').Append(this.N(controlPoints[i + j].Y));
+            }
+        }
+
+        if (closed)
+        {
+            d.Append('Z');
+        }
+
+        this.Append(this.Stroked(new XElement(Ns + "path", new XAttribute("d", d.ToString())), style));
     }
 
     public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed)
     {
-        throw new NotImplementedException("Task 4");
+        if (points.Count < 2)
+        {
+            return;
+        }
+
+        StringBuilder d = new();
+        d.Append('M').Append(this.N(points[0].X)).Append(' ').Append(this.N(points[0].Y));
+        int segmentCount = closed ? points.Count : points.Count - 1;
+        for (int i = 0; i < segmentCount; i++)
+        {
+            SurfacePoint start = points[i];
+            SurfacePoint end = points[(i + 1) % points.Count];
+            double bulge = i < bulges.Count ? bulges[i] : 0d;
+            if (Math.Abs(bulge) < 1e-12 || start == end)
+            {
+                d.Append('L').Append(this.N(end.X)).Append(' ').Append(this.N(end.Y));
+                continue;
+            }
+
+            CurveTessellation.BulgeArc(start, end, bulge, out _, out double radius, out _, out double sweep);
+            int largeArc = Math.Abs(bulge) > 1d ? 1 : 0;
+            int sweepFlag = sweep > 0 ? 1 : 0;
+            d.Append('A').Append(this.N(radius)).Append(' ').Append(this.N(radius)).Append(" 0 ").Append(largeArc).Append(' ').Append(sweepFlag).Append(' ')
+                .Append(this.N(end.X)).Append(' ').Append(this.N(end.Y));
+        }
+
+        if (closed)
+        {
+            d.Append('Z');
+        }
+
+        this.Append(this.Stroked(new XElement(Ns + "path", new XAttribute("d", d.ToString())), style));
+    }
+
+    private static SurfacePoint PointOnEllipse(SurfacePoint center, double radiusX, double radiusY, double rotation, double angle)
+    {
+        double x = radiusX * Math.Cos(angle);
+        double y = radiusY * Math.Sin(angle);
+        double cos = Math.Cos(rotation);
+        double sin = Math.Sin(rotation);
+        return new SurfacePoint(center.X + (x * cos) - (y * sin), center.Y + (x * sin) + (y * cos));
     }
 
     public void FillPolygon(ImageStyle style, IReadOnlyList<SurfacePoint> points)

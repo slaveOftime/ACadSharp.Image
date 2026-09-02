@@ -23,6 +23,18 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
             return true;
         }
 
+        if (context.Surface.SupportsCurves && SplineBezierConverter.TryConvert(spline, out List<XYZ> bezier))
+        {
+            SurfacePoint[] points = new SurfacePoint[bezier.Count];
+            for (int i = 0; i < bezier.Count; i++)
+            {
+                points[i] = context.ToSurfacePoint(bezier[i]);
+            }
+
+            context.Surface.DrawCubicBezier(style, points, spline.IsClosed || spline.IsPeriodic);
+            return true;
+        }
+
         XY[] sampledVertices = this.SampleSpline(spline);
         if (sampledVertices.Length > 1)
         {
@@ -168,7 +180,7 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
         return vertices.ToArray();
     }
 
-    private static XY EvaluateSplinePoint(
+    internal static XY EvaluateSplinePoint(
         int degree,
         IReadOnlyList<double> knots,
         IReadOnlyList<XYZ> controlPoints,

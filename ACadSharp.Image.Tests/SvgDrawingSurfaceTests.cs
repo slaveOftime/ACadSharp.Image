@@ -209,4 +209,67 @@ public sealed class SvgDrawingSurfaceTests
         Assert.Equal("0.5", (string?)line.Attribute("opacity"));
         Assert.Equal("12346", (string?)line.Attribute("x2"));
     }
+
+    [Fact]
+    public void ArcIsWrittenAsPathWithFlags()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+
+        // Quarter turn clockwise on screen (positive surface sweep) from angle 0.
+        surface.DrawArc(new ImageStyle(Color.Black, 1f), new SurfacePoint(50, 25), 10, 10, 0, 0, Math.PI / 2);
+
+        XElement path = Assert.Single(surface.ToDocument().Descendants(Ns + "path"));
+        Assert.Equal("M60 25A10 10 0 0 1 50 35", (string?)path.Attribute("d"));
+    }
+
+    [Fact]
+    public void CounterClockwiseArcHasSweepFlagZeroAndLargeArcWhenOverHalfTurn()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+
+        surface.DrawArc(new ImageStyle(Color.Black, 1f), new SurfacePoint(50, 25), 10, 10, 0, 0, -1.5 * Math.PI);
+
+        XElement path = Assert.Single(surface.ToDocument().Descendants(Ns + "path"));
+        Assert.Equal("M60 25A10 10 0 1 0 50 35", (string?)path.Attribute("d"));
+    }
+
+    [Fact]
+    public void FullSweepBecomesEllipseAndCirclesUseCircle()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+
+        surface.DrawArc(new ImageStyle(Color.Black, 1f), new SurfacePoint(50, 25), 10, 5, Math.PI / 4, 0, 2 * Math.PI);
+        surface.DrawEllipse(new ImageStyle(Color.Black, 1f), new SurfacePoint(10, 10), 3, 3, 0);
+
+        XDocument document = surface.ToDocument();
+        XElement ellipse = Assert.Single(document.Descendants(Ns + "ellipse"));
+        Assert.Equal("10", (string?)ellipse.Attribute("rx"));
+        Assert.Equal("5", (string?)ellipse.Attribute("ry"));
+        Assert.Equal("rotate(45 50 25)", (string?)ellipse.Attribute("transform"));
+        XElement circle = Assert.Single(document.Descendants(Ns + "circle"));
+        Assert.Equal("3", (string?)circle.Attribute("r"));
+        Assert.Null(circle.Attribute("fill"));
+    }
+
+    [Fact]
+    public void BulgePolylineWritesArcCommands()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+
+        surface.DrawBulgePolyline(new ImageStyle(Color.Black, 1f), [new(0, 0), new(10, 0), new(10, 10)], [1d, 0d], closed: false);
+
+        XElement path = Assert.Single(surface.ToDocument().Descendants(Ns + "path"));
+        Assert.Equal("M0 0A5 5 0 0 0 10 0L10 10", (string?)path.Attribute("d"));
+    }
+
+    [Fact]
+    public void CubicBezierWritesCCommands()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+
+        surface.DrawCubicBezier(new ImageStyle(Color.Black, 1f), [new(0, 0), new(1, 2), new(3, 2), new(4, 0)], closed: true);
+
+        XElement path = Assert.Single(surface.ToDocument().Descendants(Ns + "path"));
+        Assert.Equal("M0 0C1 2 3 2 4 0Z", (string?)path.Attribute("d"));
+    }
 }

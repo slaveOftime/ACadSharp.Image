@@ -70,11 +70,20 @@ internal sealed class EntityRenderDispatcher
         {
             switch (entity)
             {
+                case Arc arc when context.Surface.SupportsCurves:
+                    DrawArc(context, style, arc);
+                    break;
                 case Arc arc:
                     DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), false);
                     break;
+                case Circle circle when context.Surface.SupportsCurves:
+                    context.Surface.DrawEllipse(style, context.ToSurfacePoint(circle.Center), context.ToSurfaceLength(circle.Radius), context.ToSurfaceLength(circle.Radius), 0d);
+                    break;
                 case Circle circle:
                     DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
+                    break;
+                case Ellipse ellipse when context.Surface.SupportsCurves:
+                    DrawEllipse(context, style, ellipse);
                     break;
                 case Ellipse ellipse:
                     DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
@@ -90,6 +99,9 @@ internal sealed class EntityRenderDispatcher
                     break;
                 case ACadSharp.Entities.Point point:
                     this.DrawPoint(context, style, point);
+                    break;
+                case IPolyline polyline when context.Surface.SupportsCurves:
+                    DrawBulgePolyline(context, style, polyline);
                     break;
                 case IPolyline polyline:
                     DrawPolyline(context, style, polyline.GetPoints<XYZ>(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), polyline.IsClosed);
@@ -192,6 +204,71 @@ internal sealed class EntityRenderDispatcher
         ];
 
         context.Surface.FillPolygon(style, points);
+    }
+
+    /// <summary>
+    /// Emits an arc natively. Drawing angles turn counter-clockwise; the surface Y axis points down, so both the start
+    /// angle and the sweep change sign.
+    /// </summary>
+    private static void DrawArc(ImageRenderContext context, ImageStyle style, Arc arc)
+    {
+        double sweep = arc.EndAngle - arc.StartAngle;
+        while (sweep <= 0d)
+        {
+            sweep += 2d * Math.PI;
+        }
+
+        double radius = context.ToSurfaceLength(arc.Radius);
+        context.Surface.DrawArc(style, context.ToSurfacePoint(arc.Center), radius, radius, 0d, -arc.StartAngle, -sweep);
+    }
+
+    /// <summary>
+    /// Emits an ellipse or elliptical arc natively.
+    /// </summary>
+    /// <remarks>
+    /// <c>Ellipse.MajorAxis</c> and <c>Ellipse.MinorAxis</c> are full axis lengths in ACadSharp 3.7.1
+    /// (<c>MajorAxis</c> is twice the length of <c>MajorAxisEndPoint</c>), so they are halved into surface radii.
+    /// </remarks>
+    private static void DrawEllipse(ImageRenderContext context, ImageStyle style, Ellipse ellipse)
+    {
+        double radiusX = context.ToSurfaceLength(ellipse.MajorAxis / 2d);
+        double radiusY = context.ToSurfaceLength(ellipse.MinorAxis / 2d);
+        SurfacePoint center = context.ToSurfacePoint(ellipse.Center);
+        if (ellipse.IsFullEllipse)
+        {
+            context.Surface.DrawEllipse(style, center, radiusX, radiusY, -ellipse.Rotation);
+            return;
+        }
+
+        double sweep = ellipse.EndParameter - ellipse.StartParameter;
+        while (sweep <= 0d)
+        {
+            sweep += 2d * Math.PI;
+        }
+
+        context.Surface.DrawArc(style, center, radiusX, radiusY, -ellipse.Rotation, -ellipse.StartParameter, -sweep);
+    }
+
+    /// <summary>
+    /// Emits a polyline with its bulges intact instead of tessellating the arc segments.
+    /// </summary>
+    private static void DrawBulgePolyline(ImageRenderContext context, ImageStyle style, IPolyline polyline)
+    {
+        List<SurfacePoint> points = new();
+        List<double> bulges = new();
+        foreach (IVertex vertex in polyline.Vertices)
+        {
+            // IVertex.Location is a CSMath.IVector; it only exposes an indexer.
+            points.Add(context.ToSurfacePoint(new XY(vertex.Location[0], vertex.Location[1])));
+            bulges.Add(vertex.Bulge);
+        }
+
+        if (points.Count < 2)
+        {
+            return;
+        }
+
+        context.Surface.DrawBulgePolyline(style, points, bulges, polyline.IsClosed);
     }
 
     private static void DrawPolyline(ImageRenderContext context, ImageStyle style, IEnumerable<XY> vertices, bool close)

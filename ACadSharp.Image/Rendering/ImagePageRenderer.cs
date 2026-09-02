@@ -1,4 +1,6 @@
 using ACadSharp.Entities;
+using ACadSharp.Image.Rendering.Svg;
+using ACadSharp.Types.Units;
 using CSMath;
 using SixLabors.ImageSharp;
 using Rgba32 = SixLabors.ImageSharp.PixelFormats.Rgba32;
@@ -48,6 +50,11 @@ internal sealed class ImagePageRenderer
     /// </remarks>
     public RenderedPage Render(ImagePage page, ImageExportFormat format)
     {
+        if (format == ImageExportFormat.Svg)
+        {
+            return this.RenderSvg(page);
+        }
+
         Image<Rgba32> image = new(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);
         try
         {
@@ -70,8 +77,16 @@ internal sealed class ImagePageRenderer
     /// <param name="page">The page to render.</param>
     internal void RenderTo(IDrawingSurface surface, ImagePage page)
     {
-        ImageRenderContext context = ImageRenderContext.CreatePageContext(surface, page, this._configuration);
+        this.RenderTo(ImageRenderContext.CreatePageContext(surface, page, this._configuration), page);
+    }
 
+    /// <summary>
+    /// Renders the page's viewports and then its page-level entities through the given page context.
+    /// </summary>
+    /// <param name="context">The page-level context.</param>
+    /// <param name="page">The page to render.</param>
+    private void RenderTo(ImageRenderContext context, ImagePage page)
+    {
         foreach (Viewport viewport in page.Viewports)
         {
             this.DrawViewport(context, viewport);
@@ -83,11 +98,40 @@ internal sealed class ImagePageRenderer
         }
     }
 
+    /// <summary>
+    /// Renders the page into SVG markup.
+    /// </summary>
+    /// <param name="page">The page to render.</param>
+    /// <returns>The rendered SVG page.</returns>
+    private RenderedSvgPage RenderSvg(ImagePage page)
+    {
+        SurfaceRect viewBox = ImageRenderContext.ComputeSvgViewBox(page, this._configuration);
+        SvgOptions options = this._configuration.Svg;
+        using SvgDrawingSurface surface = new(
+            this._configuration,
+            viewBox,
+            options.EmitSize ? this._configuration.Width : null,
+            options.EmitSize ? this._configuration.Height : null);
+
+        double? strokeUnits = options.NonScalingStroke
+            ? null
+            : ImageRenderContext.UnitsPerMillimeter(page.Document?.Header.InsUnits ?? UnitsType.Unitless);
+        ImageRenderContext context = ImageRenderContext.CreateSvgPageContext(surface, page, this._configuration, strokeUnits);
+
+        this.RenderTo(context, page);
+
+        return new RenderedSvgPage(page.Name, surface.ToSvgString());
+    }
+
     private void DrawViewport(ImageRenderContext pageContext, Viewport viewport)
     {
         BoundingBox viewportBounds = viewport.GetBoundingBox();
-        double viewportWidth = Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthX)));
-        double viewportHeight = Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthY)));
+        double viewportWidth = pageContext.SinglePrecision
+            ? Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthX)))
+            : pageContext.ToSurfaceLength(viewportBounds.LengthX);
+        double viewportHeight = pageContext.SinglePrecision
+            ? Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthY)))
+            : pageContext.ToSurfaceLength(viewportBounds.LengthY);
         BoundingBox modelBounds = viewport.GetModelBoundingBox();
 
         SurfacePoint topLeft = pageContext.ToSurfacePoint(new XY(viewportBounds.Min.X, viewportBounds.Max.Y));

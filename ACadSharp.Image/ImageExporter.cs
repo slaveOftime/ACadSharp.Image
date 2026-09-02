@@ -101,6 +101,7 @@ public sealed class ImageExporter
         {
             Layout = layout,
             Name = SanitizeFileName(layout.Name),
+            Document = layout.Document,
         };
 
         foreach (Entity entity in layout.AssociatedBlock.Entities)
@@ -135,6 +136,7 @@ public sealed class ImageExporter
         ImagePage page = new()
         {
             Name = SanitizeFileName(block.Name),
+            Document = block.Document,
         };
 
         page.Add(block, this.ShouldIncludeEntity);

@@ -1,5 +1,6 @@
 using ACadSharp.Entities;
 using ACadSharp.Objects;
+using ACadSharp.Types.Units;
 using CSMath;
 
 namespace ACadSharp.Image.Rendering;
@@ -32,7 +33,8 @@ internal sealed class ImageRenderContext
         bool singlePrecision,
         double lineTypeScale,
         Viewport? viewport = null,
-        ImageRenderContext? parent = null)
+        ImageRenderContext? parent = null,
+        double? strokeUnitsPerMillimeter = null)
     {
         this.Surface = surface;
         this.Configuration = configuration;
@@ -48,6 +50,7 @@ internal sealed class ImageRenderContext
         this.LineTypeScale = lineTypeScale;
         this.Viewport = viewport;
         this.Parent = parent;
+        this.StrokeUnitsPerMillimeter = strokeUnitsPerMillimeter;
     }
 
     /// <summary>Surface that receives the primitives produced from this context.</summary>
@@ -83,7 +86,12 @@ internal sealed class ImageRenderContext
     /// <summary>True for the raster backend: reproduces the original float arithmetic exactly.</summary>
     public bool SinglePrecision { get; }
 
-    /// <summary>Surface units per linetype unit. Currently equal to <see cref="Scale"/>; a later change makes it differ inside viewports with paper-space linetype scaling.</summary>
+    /// <summary>
+    /// Surface units per linetype unit. Equal to <see cref="Scale"/> for the raster backend and for SVG in
+    /// drawing-unit stroke mode; the SVG non-scaling-stroke page context uses the raster fit scale instead, because the
+    /// browser computes dash patterns in pixel space there. A later change makes it differ inside viewports with
+    /// paper-space linetype scaling.
+    /// </summary>
     public double LineTypeScale { get; }
 
     /// <summary>Viewport whose contents are being drawn, or null for page-level content.</summary>
@@ -91,6 +99,12 @@ internal sealed class ImageRenderContext
 
     /// <summary>Context that opened this one, or null for the page context.</summary>
     public ImageRenderContext? Parent { get; }
+
+    /// <summary>
+    /// Drawing units per millimetre used to express stroke widths, or null when stroke widths are pixels.
+    /// The raster backend and the SVG non-scaling-stroke mode leave this null; SVG drawing-unit mode sets it.
+    /// </summary>
+    public double? StrokeUnitsPerMillimeter { get; }
 
     /// <summary>
     /// Creates the page-level context that maps paper space onto the full surface.
@@ -164,7 +178,111 @@ internal sealed class ImageRenderContext
             singlePrecision: parent.SinglePrecision,
             lineTypeScale: scale,
             viewport: viewport,
-            parent: parent);
+            parent: parent,
+            strokeUnitsPerMillimeter: parent.StrokeUnitsPerMillimeter);
+    }
+
+    /// <summary>
+    /// Computes the SVG viewBox for a page: the page rectangle in drawing units grown by the configured padding,
+    /// converted to drawing units with the same fit scale the raster backend would use.
+    /// </summary>
+    /// <param name="page">Page being rendered.</param>
+    /// <param name="configuration">Configuration driving the export.</param>
+    /// <returns>The viewBox rectangle in drawing units.</returns>
+    public static SurfaceRect ComputeSvgViewBox(ImagePage page, ImageConfiguration configuration)
+    {
+        int drawableWidth = configuration.Width - configuration.PaddingLeft - configuration.PaddingRight;
+        int drawableHeight = configuration.Height - configuration.PaddingTop - configuration.PaddingBottom;
+        if (drawableWidth <= 0 || drawableHeight <= 0)
+        {
+            throw new InvalidOperationException("Padding must leave at least one drawable pixel in both dimensions.");
+        }
+
+        Layout layout = page.Layout ?? new Layout("default_page");
+        double pageWidth = Math.Max(1d, layout.PaperWidth);
+        double pageHeight = Math.Max(1d, layout.PaperHeight);
+        double fit = Math.Min(drawableWidth / pageWidth, drawableHeight / pageHeight);
+
+        double left = configuration.PaddingLeft / fit;
+        double top = configuration.PaddingTop / fit;
+        double right = configuration.PaddingRight / fit;
+        double bottom = configuration.PaddingBottom / fit;
+        return new SurfaceRect(-left, -top, pageWidth + left + right, pageHeight + top + bottom);
+    }
+
+    /// <summary>
+    /// Pixels per drawing unit the raster fit would use for this page; SVG uses it to convert padding and,
+    /// in non-scaling-stroke mode, dash lengths into pixels.
+    /// </summary>
+    /// <param name="page">Page being rendered.</param>
+    /// <param name="configuration">Configuration driving the export.</param>
+    /// <returns>The fit scale in pixels per drawing unit.</returns>
+    public static double ComputeSvgFitScale(ImagePage page, ImageConfiguration configuration)
+    {
+        int drawableWidth = configuration.Width - configuration.PaddingLeft - configuration.PaddingRight;
+        int drawableHeight = configuration.Height - configuration.PaddingTop - configuration.PaddingBottom;
+        Layout layout = page.Layout ?? new Layout("default_page");
+        return Math.Min(drawableWidth / Math.Max(1d, layout.PaperWidth), drawableHeight / Math.Max(1d, layout.PaperHeight));
+    }
+
+    /// <summary>
+    /// Creates the page-level context for the SVG backend: drawing units one-to-one, the padding living in the
+    /// viewBox margin rather than in an offset.
+    /// </summary>
+    /// <param name="surface">Surface receiving the page content.</param>
+    /// <param name="page">Page being rendered.</param>
+    /// <param name="configuration">Configuration driving the export.</param>
+    /// <param name="strokeUnitsPerMillimeter">Drawing units per millimetre for stroke widths, or null to keep pixel widths.</param>
+    /// <returns>A double-precision context whose surface units are drawing units.</returns>
+    public static ImageRenderContext CreateSvgPageContext(IDrawingSurface surface, ImagePage page, ImageConfiguration configuration, double? strokeUnitsPerMillimeter)
+    {
+        Layout layout = page.Layout ?? new Layout("default_page");
+        double pageWidth = Math.Max(1d, layout.PaperWidth);
+        double pageHeight = Math.Max(1d, layout.PaperHeight);
+        double originX = -page.Translation.X - layout.UnprintableMargin.Left;
+        double originY = -page.Translation.Y - layout.UnprintableMargin.Bottom;
+
+        // With vector-effect="non-scaling-stroke" the browser computes the dash pattern in pixel space like the width,
+        // so dash lengths must be pixels too. In drawing-unit mode they are drawing units (scale 1).
+        double lineTypeScale = strokeUnitsPerMillimeter == null ? ComputeSvgFitScale(page, configuration) : 1d;
+
+        return new ImageRenderContext(
+            surface,
+            configuration,
+            layout,
+            pageWidth,
+            pageHeight,
+            originX,
+            originY,
+            scale: 1d,
+            offsetX: 0d,
+            offsetY: 0d,
+            singlePrecision: false,
+            lineTypeScale: lineTypeScale,
+            strokeUnitsPerMillimeter: strokeUnitsPerMillimeter);
+    }
+
+    /// <summary>
+    /// Drawing units per millimetre for a document unit setting. Unitless and unknown units are treated as millimetres.
+    /// </summary>
+    /// <param name="units">The document insertion units.</param>
+    /// <returns>The number of drawing units in one millimetre.</returns>
+    internal static double UnitsPerMillimeter(UnitsType units)
+    {
+        return units switch
+        {
+            UnitsType.Millimeters => 1d,
+            UnitsType.Centimeters => 0.1d,
+            UnitsType.Meters => 0.001d,
+            UnitsType.Kilometers => 0.000001d,
+            UnitsType.Inches => 1d / 25.4d,
+            UnitsType.Feet => 1d / 304.8d,
+            UnitsType.Yards => 1d / 914.4d,
+            UnitsType.Miles => 1d / 1609344d,
+            UnitsType.Microns => 1000d,
+            UnitsType.Decimeters => 0.01d,
+            _ => 1d,
+        };
     }
 
     /// <summary>
@@ -209,12 +327,24 @@ internal sealed class ImageRenderContext
     }
 
     /// <summary>
-    /// Stroke width in surface units for a line weight. Raster: pixels from the configuration table.
+    /// Stroke width for a line weight. Pixels from the configuration table unless
+    /// <see cref="StrokeUnitsPerMillimeter"/> is set, in which case drawing units.
     /// </summary>
     /// <param name="lineWeight">Line weight to convert.</param>
-    /// <returns>The stroke width in surface units.</returns>
+    /// <returns>The stroke width in pixels or drawing units.</returns>
     public float ToStrokeWidth(LineWeightType lineWeight)
     {
-        return this.Configuration.GetLineWeightPixels(lineWeight);
+        if (this.StrokeUnitsPerMillimeter is not double unitsPerMillimeter)
+        {
+            return this.Configuration.GetLineWeightPixels(lineWeight);
+        }
+
+        double millimeters = this.Configuration.GetLineWeightMillimeters(lineWeight);
+        if (millimeters <= 0d)
+        {
+            millimeters = 0.25d;
+        }
+
+        return (float)(millimeters * unitsPerMillimeter * this.Configuration.LineWeightScale);
     }
 }

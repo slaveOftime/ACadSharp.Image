@@ -40,6 +40,11 @@ public sealed class ImagePage
     public IReadOnlyList<Viewport> Viewports => this._readOnlyViewports;
 
     /// <summary>
+    /// Gets or sets the document the page content came from, when known. Used for header settings such as units and linetype scale.
+    /// </summary>
+    public CadDocument? Document { get; set; }
+
+    /// <summary>
     /// Gets or sets the translation offset applied to the page content.
     /// </summary>
     public XY Translation { get; set; } = XY.Zero;

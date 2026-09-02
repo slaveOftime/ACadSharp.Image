@@ -22,7 +22,7 @@ public sealed class RenderedImagePage : RenderedPage
     /// </summary>
     /// <param name="name">Page name.</param>
     /// <param name="canvas">Rendered canvas; ownership transfers to the page.</param>
-    /// <param name="format">Raster format used by <see cref="RenderedPage.Save(Stream)"/>. Must not be <c>Svg</c>.</param>
+    /// <param name="format">Raster format used by <see cref="RenderedPage.Save(Stream)"/>. Must not be <see cref="ImageExportFormat.Svg"/>.</param>
     /// <param name="quality">Quality 1..100 for lossy formats.</param>
     public RenderedImagePage(string name, SixLabors.ImageSharp.Image<Rgba32> canvas, ImageExportFormat format = ImageExportFormat.Png, int quality = 90)
         : base(name, format)
@@ -54,6 +54,8 @@ public sealed class RenderedImagePage : RenderedPage
             case ImageExportFormat.Webp:
                 this.Canvas.Save(stream, new WebpEncoder { Quality = this._quality });
                 break;
+            case ImageExportFormat.Svg:
+                throw new NotSupportedException("RenderedImagePage holds a raster canvas; render with ImageExportFormat.Svg to obtain a RenderedSvgPage.");
             default:
                 this.Canvas.Save(stream, new PngEncoder());
                 break;

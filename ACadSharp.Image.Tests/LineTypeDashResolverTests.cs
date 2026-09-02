@@ -32,6 +32,12 @@ public sealed class LineTypeDashResolverTests
     }
 
     [Fact]
+    public void AllDashPatternIsSolid()
+    {
+        Assert.Null(LineTypeDashResolver.BuildPattern(Dashed(1, 2), 1d, 1f));
+    }
+
+    [Fact]
     public void DashGapPatternScales()
     {
         float[]? pattern = LineTypeDashResolver.BuildPattern(Dashed(0.5, -0.25), 4d, 1f);

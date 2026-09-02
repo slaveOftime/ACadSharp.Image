@@ -154,6 +154,29 @@ internal sealed class ImagePageRenderer
         return new RenderedSvgPage(page.Name, surface.ToSvgString());
     }
 
+    /// <summary>
+    /// Surface units per linetype unit inside a viewport, decided by the PSLTSCALE header variable.
+    /// </summary>
+    /// <param name="header">Header of the document being rendered, or null when there is none.</param>
+    /// <param name="pageLineTypeScale">Surface units per linetype unit on the page around the viewport.</param>
+    /// <param name="viewportScaleFactor">Model units per paper unit shown by the viewport.</param>
+    /// <returns>
+    /// <paramref name="pageLineTypeScale"/> when linetypes are scaled to paper space, so dashes are the same length
+    /// everywhere on the sheet; otherwise it times <paramref name="viewportScaleFactor"/>, so dashes keep their model-space
+    /// length and shrink with the viewport.
+    /// </returns>
+    /// <remarks>
+    /// The branch is on the raw DXF value of <c>$PSLTSCALE</c> (0 = model-space lengths, 1 = paper-space lengths, and the
+    /// AutoCAD default) rather than on the name of the <see cref="SpaceLineTypeScaling"/> member, because the ACadSharp
+    /// 3.7.1 names are swapped with respect to those semantics: <c>SpaceLineTypeScaling.Viewport</c> is 0 and
+    /// <c>SpaceLineTypeScaling.Normal</c> is 1.
+    /// </remarks>
+    internal static double ResolveViewportLineTypeScale(CadHeader? header, double pageLineTypeScale, double viewportScaleFactor)
+    {
+        int psltscale = header == null ? 1 : (int)header.PaperSpaceLineTypeScaling;
+        return psltscale == 1 ? pageLineTypeScale : pageLineTypeScale * viewportScaleFactor;
+    }
+
     private void DrawViewport(ImageRenderContext pageContext, Viewport viewport)
     {
         BoundingBox viewportBounds = viewport.GetBoundingBox();
@@ -171,10 +194,7 @@ internal sealed class ImagePageRenderer
         double scale = pageContext.SinglePrecision
             ? (float)pageContext.Scale * (float)viewport.ScaleFactor
             : pageContext.Scale * viewport.ScaleFactor;
-        bool paperSpaceLineTypeScaling = (viewport.Document?.Header.PaperSpaceLineTypeScaling ?? SpaceLineTypeScaling.Viewport) == SpaceLineTypeScaling.Viewport;
-        double lineTypeScale = paperSpaceLineTypeScaling
-            ? pageContext.LineTypeScale
-            : pageContext.LineTypeScale * viewport.ScaleFactor;
+        double lineTypeScale = ResolveViewportLineTypeScale(viewport.Document?.Header, pageContext.LineTypeScale, viewport.ScaleFactor);
         ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(pageContext, viewport, viewportSurface, viewportWidth, modelBounds, scale, lineTypeScale);
 
         foreach (Entity entity in viewport.SelectEntities())

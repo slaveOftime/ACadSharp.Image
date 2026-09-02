@@ -129,6 +129,7 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 
 - `SvgOptions.Precision` (int?, default null = adaptive). Adaptive: `decimals = clamp(4 - floor(log10(max(W, H))), 0, 8)`, giving a resolution of one ten-thousandth of the larger viewBox side.
 - All numbers written with `InvariantCulture`, trailing zeros trimmed.
+- The adaptive precision applies to coordinates, radii, sizes and the viewBox only. Style scalars (`stroke-width`, `stroke-dasharray` values, `opacity`) always use a fixed 3 decimals, so a 0.25 line weight on a 20 m drawing is not rounded to 0.
 
 ### 5.5 Stroke widths
 

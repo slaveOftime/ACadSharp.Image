@@ -21,6 +21,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     private readonly ImageConfiguration _configuration;
     private readonly SvgOptions _options;
     private readonly SvgNumberFormatter _numbers;
+    private readonly SvgNumberFormatter _styleNumbers = new(3);
     private readonly XElement _root;
     private readonly XElement _defs;
     private readonly XElement _defaults;
@@ -77,7 +78,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             clone.AddFirst(new XElement(this._defs));
         }
 
-        return new XDocument(new XDeclaration("1.0", "utf-8", null), clone);
+        return new XDocument(clone);
     }
 
     public string ToSvgString()
@@ -221,12 +222,12 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
 
         if (layer == null || Math.Abs(style.StrokeWidth - layer.StrokeWidth) > 1e-6f)
         {
-            element.Add(new XAttribute("stroke-width", this.N(style.StrokeWidth)));
+            element.Add(new XAttribute("stroke-width", this.S(style.StrokeWidth)));
         }
 
         if (style.DashPattern is { Length: > 0 })
         {
-            element.Add(new XAttribute("stroke-dasharray", string.Join(" ", style.DashPattern.Select(v => this.N(v)))));
+            element.Add(new XAttribute("stroke-dasharray", string.Join(" ", style.DashPattern.Select(v => this.S(v)))));
         }
 
         if (this._options.NonScalingStroke)
@@ -249,7 +250,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     {
         if (style.Opacity < 1f)
         {
-            element.Add(new XAttribute("opacity", this.N(Math.Clamp(style.Opacity, 0f, 1f))));
+            element.Add(new XAttribute("opacity", this.S(Math.Clamp(style.Opacity, 0f, 1f))));
         }
 
         if (this._options.EmitEntityAttributes && this._entities.Count > 0)
@@ -305,7 +306,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             new XAttribute("data-layer", name));
         if (layer != null)
         {
-            group.Add(new XAttribute("stroke", Hex(layer.Color)), new XAttribute("stroke-width", this.N(layer.StrokeWidth)));
+            group.Add(new XAttribute("stroke", Hex(layer.Color)), new XAttribute("stroke-width", this.S(layer.StrokeWidth)));
         }
 
         container.Element.Add(group);
@@ -314,6 +315,8 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     }
 
     private string N(double value) => this._numbers.Format(value);
+
+    private string S(double value) => this._styleNumbers.Format(value);
 
     private string Points(IReadOnlyList<SurfacePoint> points)
     {
@@ -340,7 +343,8 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     private static string BuildFontStack(string fontFamilyName)
     {
         List<string> families = new();
-        foreach (string candidate in new[] { fontFamilyName, "Arial", "Helvetica", "sans-serif" })
+        string[] candidates = { fontFamilyName, "Arial", "Helvetica", "sans-serif" };
+        foreach (string candidate in candidates)
         {
             if (!string.IsNullOrWhiteSpace(candidate) && !families.Contains(candidate, StringComparer.OrdinalIgnoreCase))
             {

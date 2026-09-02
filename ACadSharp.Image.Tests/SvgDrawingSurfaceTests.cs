@@ -36,10 +36,11 @@ public sealed class SvgDrawingSurfaceTests
         Assert.Null(root.Attribute("height"));
         XElement cadRoot = Assert.Single(root.Elements(Ns + "g"));
         Assert.Equal("cad-root", (string?)cadRoot.Attribute("class"));
-        Assert.Empty(cadRoot.Attributes().Where(a => a.Name != "class"));
+        Assert.DoesNotContain(cadRoot.Attributes(), a => a.Name != "class");
         XElement defaults = Assert.Single(cadRoot.Elements(Ns + "g"));
         Assert.Equal("none", (string?)defaults.Attribute("fill"));
         Assert.Contains("Arial", (string?)defaults.Attribute("font-family"));
+        Assert.DoesNotContain("<?xml", surface.ToSvgString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -60,7 +61,7 @@ public sealed class SvgDrawingSurfaceTests
         using SvgDrawingSurface opaque = CreateSurface();
         using SvgDrawingSurface transparent = CreateSurface(c => c.BackgroundColor = Color.Transparent);
 
-        Assert.Single(opaque.ToDocument().Descendants(Ns + "rect").Where(r => (string?)r.Attribute("class") == "cad-background"));
+        Assert.Single(opaque.ToDocument().Descendants(Ns + "rect"), r => (string?)r.Attribute("class") == "cad-background");
         Assert.Empty(transparent.ToDocument().Descendants(Ns + "rect"));
     }
 
@@ -189,5 +190,23 @@ public sealed class SvgDrawingSurfaceTests
 
         XElement line = Assert.Single(surface.ToDocument().Descendants(Ns + "line"));
         Assert.Null(line.Attribute("vector-effect"));
+    }
+
+    [Fact]
+    public void StyleScalarsUseFixedPrecisionRegardlessOfCoordinatePrecision()
+    {
+        ImageConfiguration configuration = new();
+        using SvgDrawingSurface surface = new(configuration, new SurfaceRect(0, 0, 20000, 10000), null, null);
+        ImageStyle style = new(Color.Black, 0.25f, [0.5f, 0.25f], 0.5f);
+
+        surface.BeginEntity(Entity("L"), Layer("L"));
+        surface.DrawLine(style, new SurfacePoint(0, 0), new SurfacePoint(12345.678, 0));
+        surface.EndEntity();
+
+        XElement line = Assert.Single(surface.ToDocument().Descendants(Ns + "line"));
+        Assert.Equal("0.25", (string?)line.Attribute("stroke-width"));
+        Assert.Equal("0.5 0.25", (string?)line.Attribute("stroke-dasharray"));
+        Assert.Equal("0.5", (string?)line.Attribute("opacity"));
+        Assert.Equal("12346", (string?)line.Attribute("x2"));
     }
 }

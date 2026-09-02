@@ -272,4 +272,46 @@ public sealed class SvgDrawingSurfaceTests
         XElement path = Assert.Single(surface.ToDocument().Descendants(Ns + "path"));
         Assert.Equal("M0 0C1 2 3 2 4 0Z", (string?)path.Attribute("d"));
     }
+
+    [Fact]
+    public void TextIsWrittenAsTextElement()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        SurfaceText run = new("Hello", new SurfacePoint(10, 20), 2.5, Math.PI / 6, SurfaceTextAnchor.Middle, SurfaceTextBaseline.Central, -1, 1, 12);
+
+        surface.BeginEntity(Entity("Anno", "TEXT"), Layer("Anno"));
+        surface.DrawText(new ImageStyle(Color.Black, 1f), run);
+        surface.EndEntity();
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        Assert.Equal("Hello", text.Value);
+        Assert.Equal("10", (string?)text.Attribute("x"));
+        Assert.Equal("20", (string?)text.Attribute("y"));
+        Assert.Equal("2.5", (string?)text.Attribute("font-size"));
+        Assert.Equal("middle", (string?)text.Attribute("text-anchor"));
+        Assert.Equal("central", (string?)text.Attribute("dominant-baseline"));
+        Assert.Equal("rotate(-30 10 20)", (string?)text.Attribute("transform"));
+        Assert.Equal("12", (string?)text.Attribute("textLength"));
+        Assert.Equal("spacingAndGlyphs", (string?)text.Attribute("lengthAdjust"));
+        Assert.Equal("#000000", (string?)text.Attribute("fill"));
+        Assert.Equal("none", (string?)text.Attribute("stroke"));
+    }
+
+    [Fact]
+    public void MultiLineTextUsesTspans()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        SurfaceText run = new("A\nB\nC", new SurfacePoint(0, 0), 2, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, -1);
+
+        surface.DrawText(new ImageStyle(Color.Black, 1f), run);
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        List<XElement> spans = text.Elements(Ns + "tspan").ToList();
+        Assert.Equal(3, spans.Count);
+        Assert.Null(spans[0].Attribute("dy"));
+        Assert.Equal("3.33", (string?)spans[1].Attribute("dy"));
+        Assert.Equal("0", (string?)spans[1].Attribute("x"));
+        Assert.Null(text.Attribute("dominant-baseline"));
+        Assert.Null(text.Attribute("transform"));
+    }
 }

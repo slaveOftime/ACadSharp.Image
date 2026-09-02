@@ -284,7 +284,57 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
 
     public void DrawText(ImageStyle style, SurfaceText text)
     {
-        throw new NotImplementedException("Task 5");
+        if (string.IsNullOrWhiteSpace(text.Text))
+        {
+            return;
+        }
+
+        XElement element = new(Ns + "text",
+            new XAttribute("x", this.N(text.Origin.X)),
+            new XAttribute("y", this.N(text.Origin.Y)),
+            new XAttribute("font-size", this.N(text.Height)));
+
+        if (text.Anchor != SurfaceTextAnchor.Start)
+        {
+            element.Add(new XAttribute("text-anchor", text.Anchor == SurfaceTextAnchor.Middle ? "middle" : "end"));
+        }
+
+        if (text.Baseline != SurfaceTextBaseline.Alphabetic)
+        {
+            element.Add(new XAttribute("dominant-baseline", text.Baseline == SurfaceTextBaseline.Central ? "central" : "hanging"));
+        }
+
+        if (Math.Abs(text.Rotation) > 1e-12)
+        {
+            element.Add(new XAttribute("transform", $"rotate({this.N(-text.Rotation * 180d / Math.PI)} {this.N(text.Origin.X)} {this.N(text.Origin.Y)})"));
+        }
+
+        if (text.FixedLength > 0)
+        {
+            element.Add(new XAttribute("textLength", this.N(text.FixedLength)), new XAttribute("lengthAdjust", "spacingAndGlyphs"));
+        }
+
+        string[] lines = text.Text.Replace("\r\n", "\n").Split('\n');
+        if (lines.Length == 1)
+        {
+            element.Add(lines[0]);
+        }
+        else
+        {
+            double lineHeight = text.Height * (text.LineSpacingFactor <= 0 ? 1d : text.LineSpacingFactor) * 5d / 3d;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                XElement span = new(Ns + "tspan", new XAttribute("x", this.N(text.Origin.X)), lines[i]);
+                if (i > 0)
+                {
+                    span.Add(new XAttribute("dy", this.N(lineHeight)));
+                }
+
+                element.Add(span);
+            }
+        }
+
+        this.Append(this.Filled(element, style));
     }
 
     public ViewportSurface BeginViewport(SurfaceRect bounds)

@@ -21,7 +21,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     private readonly ImageConfiguration _configuration;
     private readonly SvgOptions _options;
     private readonly SvgNumberFormatter _numbers;
-    private readonly SvgNumberFormatter _styleNumbers = new(3);
+    private readonly SvgNumberFormatter _styleNumbers;
     private readonly XElement _root;
     private readonly XElement _defs;
     private readonly XElement _defaults;
@@ -29,11 +29,12 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     private readonly Stack<(EntityRenderInfo Info, LayerRenderInfo Layer)> _entities = new();
     private int _clipCounter;
 
-    public SvgDrawingSurface(ImageConfiguration configuration, SurfaceRect viewBox, double? sizeWidth, double? sizeHeight)
+    public SvgDrawingSurface(ImageConfiguration configuration, SurfaceRect viewBox, double? sizeWidth, double? sizeHeight, double? strokeUnitsPerMillimeter = null)
     {
         this._configuration = configuration;
         this._options = configuration.Svg;
         this._numbers = new SvgNumberFormatter(this._options.Precision ?? SvgNumberFormatter.AdaptiveDecimals(viewBox.Width, viewBox.Height));
+        this._styleNumbers = new SvgNumberFormatter(StyleDecimalsFor(strokeUnitsPerMillimeter));
 
         this._root = new XElement(Ns + "svg",
             new XAttribute("viewBox", $"{this.N(viewBox.X)} {this.N(viewBox.Y)} {this.N(viewBox.Width)} {this.N(viewBox.Height)}"));
@@ -69,6 +70,25 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     }
 
     public bool SupportsCurves => true;
+
+    /// <summary>
+    /// Decimals used for style scalars such as stroke widths and dash lengths.
+    /// </summary>
+    internal int StyleDecimals => this._styleNumbers.Decimals;
+
+    /// <summary>
+    /// Style scalars are three decimals for pixels and millimetre-scale drawing units. When a drawing unit is much
+    /// larger than a millimetre (metres, kilometres) a 0.25 mm stroke is a tiny number of drawing units, so the
+    /// precision grows with the unit to keep the width from rounding away to zero.
+    /// </summary>
+    /// <param name="strokeUnitsPerMillimeter">Drawing units per millimetre for stroke widths, or null for pixel widths.</param>
+    /// <returns>The number of decimals for style scalars, 3..8.</returns>
+    private static int StyleDecimalsFor(double? strokeUnitsPerMillimeter)
+    {
+        return strokeUnitsPerMillimeter is double unitsPerMillimeter && unitsPerMillimeter > 0d
+            ? Math.Clamp(3 - (int)Math.Floor(Math.Log10(unitsPerMillimeter)), 3, 8)
+            : 3;
+    }
 
     public XDocument ToDocument()
     {

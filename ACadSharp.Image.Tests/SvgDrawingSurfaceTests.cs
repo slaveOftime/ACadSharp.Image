@@ -23,6 +23,19 @@ public sealed class SvgDrawingSurfaceTests
 
     private static LayerRenderInfo Layer(string name) => new(name, Color.FromRgb(255, 0, 0), 1f);
 
+    [Theory]
+    [InlineData(null, 3)]
+    [InlineData(1d, 3)]
+    [InlineData(0.001d, 6)]
+    [InlineData(1e-6d, 8)]
+    [InlineData(1d / 25.4d, 5)]
+    public void StyleDecimalsFollowTheStrokeUnit(double? strokeUnitsPerMillimeter, int expected)
+    {
+        using SvgDrawingSurface surface = new(new ImageConfiguration(), new SurfaceRect(0, 0, 100, 50), null, null, strokeUnitsPerMillimeter);
+
+        Assert.Equal(expected, surface.StyleDecimals);
+    }
+
     [Fact]
     public void RootHasViewBoxAndNoSizeByDefault()
     {

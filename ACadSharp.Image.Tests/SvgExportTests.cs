@@ -2,6 +2,7 @@ using System.Xml.Linq;
 using ACadSharp.Entities;
 using ACadSharp.Image.Rendering.Svg;
 using ACadSharp.Tables;
+using ACadSharp.Types.Units;
 using CSMath;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -48,7 +49,7 @@ public sealed class SvgExportTests
     public void YAxisIsFlipped()
     {
         BlockRecord block = new("flip");
-        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)));
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 5, 0)));
         ImageExporter exporter = new();
         exporter.Add(block);
 
@@ -56,9 +57,10 @@ public sealed class SvgExportTests
         XDocument document = XDocument.Parse(((RenderedSvgPage)page).Content);
         XElement line = Assert.Single(document.Descendants(Ns + "line"));
 
-        // Drawing (0,0) is the bottom-left, so it lands at SVG y = 10; drawing (10,10) lands at y = 0.
+        // The page is 10 x 5. Drawing (0,0) is the bottom-left, so it lands at SVG y = 5; drawing (10,5) lands at y = 0.
+        // The asymmetric page distinguishes a true Y flip from a transpose.
         Assert.Equal("0", (string?)line.Attribute("x1"));
-        Assert.Equal("10", (string?)line.Attribute("y1"));
+        Assert.Equal("5", (string?)line.Attribute("y1"));
         Assert.Equal("10", (string?)line.Attribute("x2"));
         Assert.Equal("0", (string?)line.Attribute("y2"));
     }
@@ -125,6 +127,46 @@ public sealed class SvgExportTests
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public void MetreUnitsKeepDrawingUnitStrokeWidthsVisible()
+    {
+        CadDocument document = new();
+        document.Header.InsUnits = UnitsType.Meters;
+        document.ModelSpace.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 0, 0)) { LineWeight = ACadSharp.LineWeightType.W50 });
+
+        ImageExporter exporter = new();
+        exporter.Configuration.Svg.NonScalingStroke = false;
+        exporter.AddModelSpace(document);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Svg));
+        XDocument svg = XDocument.Parse(((RenderedSvgPage)page).Content);
+
+        // 0.50 mm x 0.001 drawing units per millimetre; the fixed 3-decimal style formatter would have rounded this to 0.001.
+        XElement line = Assert.Single(svg.Descendants(Ns + "line"));
+        Assert.Equal("0.0005", (string?)line.Attribute("stroke-width"));
+
+        // The layer default falls back to 0.25 mm, which the 3-decimal formatter would have rounded away to "0".
+        XElement layer = Assert.Single(svg.Descendants(Ns + "g"), g => g.Attribute("data-layer") != null);
+        Assert.Equal("0.00025", (string?)layer.Attribute("stroke-width"));
+    }
+
+    [Fact]
+    public void MillimetreUnitsKeepThreeDecimalStyleScalars()
+    {
+        CadDocument document = new();
+        document.Header.InsUnits = UnitsType.Millimeters;
+        document.ModelSpace.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 0, 0)) { LineWeight = ACadSharp.LineWeightType.W50 });
+
+        ImageExporter exporter = new();
+        exporter.Configuration.Svg.NonScalingStroke = false;
+        exporter.AddModelSpace(document);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Svg));
+        XElement line = Assert.Single(XDocument.Parse(((RenderedSvgPage)page).Content).Descendants(Ns + "line"));
+
+        Assert.Equal("0.5", (string?)line.Attribute("stroke-width"));
     }
 
     [Fact]

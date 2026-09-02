@@ -107,15 +107,17 @@ internal sealed class ImagePageRenderer
     {
         SurfaceRect viewBox = ImageRenderContext.ComputeSvgViewBox(page, this._configuration);
         SvgOptions options = this._configuration.Svg;
+        double? strokeUnits = options.NonScalingStroke
+            ? null
+            : ImageRenderContext.UnitsPerMillimeter(page.Document?.Header.InsUnits ?? UnitsType.Unitless);
+
         using SvgDrawingSurface surface = new(
             this._configuration,
             viewBox,
             options.EmitSize ? this._configuration.Width : null,
-            options.EmitSize ? this._configuration.Height : null);
+            options.EmitSize ? this._configuration.Height : null,
+            strokeUnits);
 
-        double? strokeUnits = options.NonScalingStroke
-            ? null
-            : ImageRenderContext.UnitsPerMillimeter(page.Document?.Header.InsUnits ?? UnitsType.Unitless);
         ImageRenderContext context = ImageRenderContext.CreateSvgPageContext(surface, page, this._configuration, strokeUnits);
 
         this.RenderTo(context, page);

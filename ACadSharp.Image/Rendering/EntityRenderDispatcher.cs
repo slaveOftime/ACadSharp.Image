@@ -57,10 +57,10 @@ internal sealed class EntityRenderDispatcher
     /// </remarks>
     public void Draw(ImageRenderContext context, Entity entity)
     {
-        this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null);
+        this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parentOpacity: 1f);
     }
 
-    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName)
+    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, float parentOpacity)
     {
         if (!HasFiniteGeometry(entity))
         {
@@ -77,7 +77,7 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        ImageStyle style = this._styleResolver.Resolve(entity, context);
+        ImageStyle style = this._styleResolver.Resolve(entity, context, parentOpacity);
         EntityRenderInfo info = new(layerName, entity.ObjectName, entity.Handle, parentHandle, blockName);
         LayerRenderInfo layerInfo = CreateLayerInfo(layer, layerName, context);
 
@@ -108,7 +108,7 @@ internal sealed class EntityRenderDispatcher
                     context.Surface.DrawLine(style, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
                     break;
                 case Dimension dimension:
-                    this.DrawDimension(context, dimension, layer);
+                    this.DrawDimension(context, dimension, layer, style.Opacity);
                     break;
                 case Solid solid:
                     DrawSolid(context, style, solid);
@@ -135,7 +135,7 @@ internal sealed class EntityRenderDispatcher
                     this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
                     break;
                 case Insert insert:
-                    this.DrawBlockContents(context, insert, layer);
+                    this.DrawBlockContents(context, insert, layer, style.Opacity);
                     break;
                 default:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
@@ -184,7 +184,7 @@ internal sealed class EntityRenderDispatcher
         context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), context.ToSurfacePixels(radius));
     }
 
-    private void DrawDimension(ImageRenderContext context, Dimension dimension, Layer? layer)
+    private void DrawDimension(ImageRenderContext context, Dimension dimension, Layer? layer, float parentOpacity)
     {
         BlockRecord? block = dimension.Block;
         if (block == null)
@@ -206,7 +206,7 @@ internal sealed class EntityRenderDispatcher
                 continue;
             }
 
-            this.Draw(context, entity, layer, dimension.Handle, blockName: null);
+            this.Draw(context, entity, layer, dimension.Handle, blockName: null, parentOpacity);
         }
     }
 
@@ -343,11 +343,11 @@ internal sealed class EntityRenderDispatcher
         context.Surface.DrawPolyline(style, points, SplineRenderer.ShouldClosePoints(points, close));
     }
 
-    private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer)
+    private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, float parentOpacity)
     {
         foreach (Entity entity in insert.Explode())
         {
-            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name);
+            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parentOpacity);
         }
     }
 }

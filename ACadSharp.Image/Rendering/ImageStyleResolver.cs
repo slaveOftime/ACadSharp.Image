@@ -18,14 +18,37 @@ internal sealed class ImageStyleResolver
     /// </summary>
     /// <param name="entity">The entity whose style should be resolved.</param>
     /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="parentOpacity">The opacity to inherit when the entity's transparency is ByBlock.</param>
     /// <returns>
-    /// An <see cref="ImageStyle"/> containing the stroke color (in RGBA)
-    /// and stroke width (in surface units) for the entity.
+    /// An <see cref="ImageStyle"/> containing the stroke color (in RGBA),
+    /// stroke width (in surface units), and opacity for the entity.
     /// </returns>
-    public ImageStyle Resolve(Entity entity, ImageRenderContext context)
+    public ImageStyle Resolve(Entity entity, ImageRenderContext context, float parentOpacity)
     {
         return new ImageStyle(
             entity.GetActiveColor().ToImageColor(context.Configuration.ResolveForegroundColor()),
-            context.ToStrokeWidth(entity.GetActiveLineWeightType()));
+            context.ToStrokeWidth(entity.GetActiveLineWeightType()),
+            null,
+            ResolveOpacity(entity, parentOpacity));
+    }
+
+    /// <summary>
+    /// Maps CAD transparency to opacity. ByLayer is opaque (ACadSharp 3.7.1 layers carry no transparency);
+    /// ByBlock inherits the parent's opacity; explicit values 0..90 mean that percentage transparent.
+    /// </summary>
+    internal static float ResolveOpacity(Entity entity, float parentOpacity)
+    {
+        Transparency transparency = entity.Transparency;
+        if (transparency.IsByLayer)
+        {
+            return 1f;
+        }
+
+        if (transparency.IsByBlock)
+        {
+            return parentOpacity;
+        }
+
+        return Math.Clamp(1f - (transparency.Value / 100f), 0f, 1f);
     }
 }

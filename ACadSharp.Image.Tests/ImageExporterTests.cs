@@ -43,7 +43,7 @@ public sealed class ImageExporterTests
         exporter.Configuration.Height = 600;
         exporter.Add(block);
 
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Assert.Equal(800, page.Canvas.Width);
         Assert.Equal(600, page.Canvas.Height);
@@ -113,7 +113,7 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Assert.NotNull(page.Canvas);
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Spline", StringComparison.OrdinalIgnoreCase));
@@ -189,7 +189,7 @@ public sealed class ImageExporterTests
         exporter.Configuration.OnNotification += (_, args) => notifications.Add(args);
         exporter.Add(pageBlock);
 
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Rgba32 white = SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>();
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Insert", StringComparison.OrdinalIgnoreCase));
@@ -209,7 +209,7 @@ public sealed class ImageExporterTests
         exporter.Add(block);
 
         // Should render successfully without NaN propagation issues
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Assert.NotNull(page.Canvas);
         Assert.Equal(ImageConfiguration.DefaultWidth, page.Canvas.Width);
@@ -289,5 +289,43 @@ public sealed class ImageExporterTests
 
         ImagePage page = exporter.Pages[0];
         Assert.Single(page.Entities); // Only Layer2 entity
+    }
+
+    [Fact]
+    public void RenderReturnsRasterPagesCarryingTheRequestedFormat()
+    {
+        BlockRecord block = new("format-block");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)));
+
+        ImageExporter exporter = new();
+        exporter.Add(block);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Jpeg));
+
+        RenderedImagePage raster = Assert.IsType<RenderedImagePage>(page);
+        Assert.Equal(ImageExportFormat.Jpeg, raster.Format);
+        Assert.Equal("format-block", raster.Name);
+    }
+
+    [Fact]
+    public void RenderedPageSavesToStreamInItsFormat()
+    {
+        BlockRecord block = new("stream-block");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)));
+
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 32;
+        exporter.Configuration.Height = 32;
+        exporter.Add(block);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Png));
+        using MemoryStream stream = new();
+        page.Save(stream);
+
+        byte[] bytes = stream.ToArray();
+        Assert.Equal(0x89, bytes[0]);
+        Assert.Equal((byte)'P', bytes[1]);
+        Assert.Equal((byte)'N', bytes[2]);
+        Assert.Equal((byte)'G', bytes[3]);
     }
 }

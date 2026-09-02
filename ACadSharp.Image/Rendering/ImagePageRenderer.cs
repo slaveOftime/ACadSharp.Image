@@ -31,10 +31,11 @@ internal sealed class ImagePageRenderer
     }
 
     /// <summary>
-    /// Renders the specified page into a <see cref="RenderedImagePage"/>.
+    /// Renders the specified page into a <see cref="RenderedPage"/>.
     /// </summary>
     /// <param name="page">The page to render.</param>
-    /// <returns>A <see cref="RenderedImagePage"/> containing the rendered canvas.</returns>
+    /// <param name="format">The output format the rendered page will be saved as.</param>
+    /// <returns>A <see cref="RenderedPage"/> containing the rendered canvas.</returns>
     /// <remarks>
     /// <para>
     /// The rendering process follows these steps:
@@ -45,12 +46,12 @@ internal sealed class ImagePageRenderer
     /// </list>
     /// </para>
     /// </remarks>
-    public RenderedImagePage Render(ImagePage page)
+    public RenderedPage Render(ImagePage page, ImageExportFormat format)
     {
         Image<Rgba32> image = new(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);
         using RasterDrawingSurface surface = new(image, this._configuration, ownsCanvas: false);
         this.RenderTo(surface, page);
-        return new RenderedImagePage(page.Name, image);
+        return new RenderedImagePage(page.Name, image, format, this._configuration.OutputQuality);
     }
 
     /// <summary>

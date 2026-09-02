@@ -1,55 +1,67 @@
+using SixLabors.ImageSharp.Formats.Bmp;
+using SixLabors.ImageSharp.Formats.Gif;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Webp;
 using Rgba32 = SixLabors.ImageSharp.PixelFormats.Rgba32;
 
 namespace ACadSharp.Image;
 
 /// <summary>
-/// Represents a single rendered page (layout or model space view) as an image.
+/// A page rendered to a raster canvas.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Instances of this class are produced by <see cref="ImageExporter"/> and wrap
-/// a <see cref="SixLabors.ImageSharp.Image{Rgba32}"/> canvas along with a descriptive name.
-/// </para>
-/// <para>
-/// This class implements <see cref="IDisposable"/> and owns the underlying image buffer.
-/// Callers must dispose of the instance when finished to release unmanaged resources.
-/// </para>
+/// Owns the underlying <see cref="SixLabors.ImageSharp.Image{Rgba32}"/>; dispose the page to release it.
 /// </remarks>
-public sealed class RenderedImagePage : IDisposable
+public sealed class RenderedImagePage : RenderedPage
 {
-    /// <summary>
-    /// Gets the name of this page (e.g., layout name or "Model").
-    /// </summary>
-    public string Name { get; }
-
-    /// <summary>
-    /// Gets the rendered image canvas.
-    /// </summary>
-    /// <remarks>
-    /// The canvas is a 32-bit RGBA image. It should not be modified after
-    /// the page has been rendered.
-    /// </remarks>
-    public SixLabors.ImageSharp.Image<Rgba32> Canvas { get; }
+    private readonly int _quality;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RenderedImagePage"/> class.
     /// </summary>
-    /// <param name="name">The name of the page.</param>
-    /// <param name="canvas">The rendered image canvas.</param>
-    public RenderedImagePage(string name, SixLabors.ImageSharp.Image<Rgba32> canvas)
+    /// <param name="name">Page name.</param>
+    /// <param name="canvas">Rendered canvas; ownership transfers to the page.</param>
+    /// <param name="format">Raster format used by <see cref="RenderedPage.Save(Stream)"/>. Must not be <see cref="ImageExportFormat.Svg"/>.</param>
+    /// <param name="quality">Quality 1..100 for lossy formats.</param>
+    public RenderedImagePage(string name, SixLabors.ImageSharp.Image<Rgba32> canvas, ImageExportFormat format = ImageExportFormat.Png, int quality = 90)
+        : base(name, format)
     {
-        this.Name = name;
         this.Canvas = canvas;
+        this._quality = quality;
     }
 
     /// <summary>
-    /// Releases the unmanaged resources used by the underlying image canvas.
+    /// Gets the rendered image canvas (32-bit RGBA).
     /// </summary>
-    /// <remarks>
-    /// After calling this method, the <see cref="Canvas"/> property should no longer
-    /// be accessed. The method is safe to call multiple times.
-    /// </remarks>
-    public void Dispose()
+    public SixLabors.ImageSharp.Image<Rgba32> Canvas { get; }
+
+    /// <inheritdoc/>
+    public override void Save(Stream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        switch (this.Format)
+        {
+            case ImageExportFormat.Bmp:
+                this.Canvas.Save(stream, new BmpEncoder());
+                break;
+            case ImageExportFormat.Jpeg:
+                this.Canvas.Save(stream, new JpegEncoder { Quality = this._quality });
+                break;
+            case ImageExportFormat.Gif:
+                this.Canvas.Save(stream, new GifEncoder());
+                break;
+            case ImageExportFormat.Webp:
+                this.Canvas.Save(stream, new WebpEncoder { Quality = this._quality });
+                break;
+            default:
+                this.Canvas.Save(stream, new PngEncoder());
+                break;
+        }
+    }
+
+    /// <inheritdoc/>
+    public override void Dispose()
     {
         this.Canvas.Dispose();
     }

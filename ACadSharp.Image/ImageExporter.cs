@@ -4,17 +4,11 @@ using ACadSharp.Entities;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using ACadSharp.Image.Rendering;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Bmp;
-using SixLabors.ImageSharp.Formats.Gif;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Formats.Webp;
 
 namespace ACadSharp.Image;
 
 /// <summary>
-/// Exports CAD drawings to raster images in various formats.
+/// Exports CAD drawings to raster images or SVG.
 /// </summary>
 /// <remarks>
 /// The <see cref="ImageExporter"/> is the main entry point for exporting CAD content to images.
@@ -174,20 +168,17 @@ public sealed class ImageExporter
     }
 
     /// <summary>
-    /// Renders all added pages to image format without saving to disk.
+    /// Renders all added pages without saving to disk.
     /// </summary>
-    /// <returns>A list of rendered image pages.</returns>
-    /// <remarks>
-    /// The returned pages must be disposed after use to free resources.
-    /// This method is useful for custom processing or testing without file I/O.
-    /// </remarks>
-    public IReadOnlyList<RenderedImagePage> Render()
+    /// <param name="format">Output format the pages will be saved as. Defaults to PNG.</param>
+    /// <returns>Rendered pages; dispose each when finished.</returns>
+    public IReadOnlyList<RenderedPage> Render(ImageExportFormat format = ImageExportFormat.Png)
     {
         ImagePageRenderer renderer = new(this.Configuration);
-        RenderedImagePage[] pages = new RenderedImagePage[this._pages.Count];
+        RenderedPage[] pages = new RenderedPage[this._pages.Count];
         for (int i = 0; i < this._pages.Count; i++)
         {
-            pages[i] = renderer.Render(this._pages[i]);
+            pages[i] = renderer.Render(this._pages[i], format);
         }
 
         return pages;
@@ -196,16 +187,11 @@ public sealed class ImageExporter
     /// <summary>
     /// Renders all added pages and saves the output to the specified path.
     /// </summary>
-    /// <param name="outputPath">The file path to save the image to.</param>
-    /// <param name="format">The image format to use. Defaults to PNG.</param>
+    /// <param name="outputPath">A file path when there is one page, or a directory when there are several.</param>
+    /// <param name="format">The output format. Defaults to PNG.</param>
     public void Save(string outputPath, ImageExportFormat format = ImageExportFormat.Png)
     {
-        this.SaveInternal(outputPath, format);
-    }
-
-    private void SaveInternal(string outputPath, ImageExportFormat format)
-    {
-        IReadOnlyList<RenderedImagePage> pages = this.Render();
+        IReadOnlyList<RenderedPage> pages = this.Render(format);
 
         try
         {
@@ -219,8 +205,7 @@ public sealed class ImageExporter
 
             if (pages.Count == 1 && !string.IsNullOrWhiteSpace(extension))
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-                this.SavePage(pages[0], fullPath, format);
+                pages[0].Save(fullPath);
                 return;
             }
 
@@ -232,43 +217,17 @@ public sealed class ImageExporter
                 ? "page"
                 : Path.GetFileNameWithoutExtension(fullPath);
 
-            Directory.CreateDirectory(directory);
-
             for (int i = 0; i < pages.Count; i++)
             {
-                string pagePath = Path.Combine(directory, $"{prefix}-{i + 1:D2}-{pages[i].Name}{format.GetFileExtension()}");
-                this.SavePage(pages[i], pagePath, format);
+                pages[i].Save(Path.Combine(directory, $"{prefix}-{i + 1:D2}-{pages[i].Name}{format.GetFileExtension()}"));
             }
         }
         finally
         {
-            foreach (RenderedImagePage page in pages)
+            foreach (RenderedPage page in pages)
             {
                 page.Dispose();
             }
-        }
-    }
-
-    private void SavePage(RenderedImagePage page, string path, ImageExportFormat format)
-    {
-        switch (format)
-        {
-            case ImageExportFormat.Bmp:
-                page.Canvas.Save(path, new BmpEncoder());
-                break;
-            case ImageExportFormat.Jpeg:
-                page.Canvas.Save(path, new JpegEncoder { Quality = this.Configuration.OutputQuality });
-                break;
-            case ImageExportFormat.Gif:
-                page.Canvas.Save(path, new GifEncoder());
-                break;
-            case ImageExportFormat.Webp:
-                page.Canvas.Save(path, new WebpEncoder { Quality = this.Configuration.OutputQuality });
-                break;
-            case ImageExportFormat.Png:
-            default:
-                page.Canvas.Save(path, new PngEncoder());
-                break;
         }
     }
 

@@ -91,9 +91,9 @@ public sealed class SampleParityTests
         }
 
         List<Image<Rgba32>> images = new();
-        foreach (RenderedImagePage page in exporter.Render())
+        foreach (RenderedPage page in exporter.Render())
         {
-            images.Add(page.Canvas);
+            images.Add(Assert.IsType<RenderedImagePage>(page).Canvas);
         }
 
         return images;

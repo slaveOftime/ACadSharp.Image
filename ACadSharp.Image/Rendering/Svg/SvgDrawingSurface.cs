@@ -339,12 +339,29 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
 
     public ViewportSurface BeginViewport(SurfaceRect bounds)
     {
-        throw new NotImplementedException("Task 6");
+        this._clipCounter++;
+        string clipId = SvgIdSanitizer.Sanitize(this._options.IdPrefix, "clip", this._clipCounter.ToString(CultureInfo.InvariantCulture));
+        this._defs.Add(new XElement(Ns + "clipPath",
+            new XAttribute("id", clipId),
+            new XAttribute("clipPathUnits", "userSpaceOnUse"),
+            new XElement(Ns + "rect",
+                new XAttribute("x", this.N(bounds.X)), new XAttribute("y", this.N(bounds.Y)),
+                new XAttribute("width", this.N(bounds.Width)), new XAttribute("height", this.N(bounds.Height)))));
+
+        XElement group = new(Ns + "g", new XAttribute("class", "cad-viewport"), new XAttribute("clip-path", $"url(#{clipId})"));
+        this._containers.Peek().Element.Add(group);
+        this._containers.Push(new Container(group, $"clip-{this._clipCounter.ToString(CultureInfo.InvariantCulture)}-layer"));
+        return new ViewportSurface(this, bounds.X, bounds.Y + bounds.Height);
     }
 
     public void EndViewport(ViewportSurface viewport)
     {
-        throw new NotImplementedException("Task 6");
+        if (this._containers.Count <= 1)
+        {
+            throw new InvalidOperationException("EndViewport was called without a matching BeginViewport.");
+        }
+
+        this._containers.Pop();
     }
 
     public void Dispose()

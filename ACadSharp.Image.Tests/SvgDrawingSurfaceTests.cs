@@ -314,4 +314,45 @@ public sealed class SvgDrawingSurfaceTests
         Assert.Null(text.Attribute("dominant-baseline"));
         Assert.Null(text.Attribute("transform"));
     }
+
+    [Fact]
+    public void ViewportWrapsContentsInClippedGroupWithOwnLayerGroups()
+    {
+        using SvgDrawingSurface surface = CreateSurface(c => c.Svg.IdPrefix = "x-");
+        ImageStyle style = new(Color.Black, 1f);
+
+        surface.BeginEntity(Entity("Title"), Layer("Title"));
+        surface.DrawLine(style, new SurfacePoint(0, 0), new SurfacePoint(1, 1));
+        surface.EndEntity();
+
+        ViewportSurface viewport = surface.BeginViewport(new SurfaceRect(10, 5, 40, 30));
+        Assert.Same(surface, viewport.Surface);
+        Assert.Equal(10d, viewport.OffsetX);
+        Assert.Equal(35d, viewport.BottomY);
+        surface.BeginEntity(Entity("Title"), Layer("Title"));
+        surface.DrawLine(style, new SurfacePoint(12, 6), new SurfacePoint(20, 20));
+        surface.EndEntity();
+        surface.EndViewport(viewport);
+
+        XDocument document = surface.ToDocument();
+        XElement clipPath = Assert.Single(document.Descendants(Ns + "clipPath"));
+        Assert.Equal("x-clip-1", (string?)clipPath.Attribute("id"));
+        Assert.Equal("userSpaceOnUse", (string?)clipPath.Attribute("clipPathUnits"));
+        XElement rect = Assert.Single(clipPath.Elements(Ns + "rect"));
+        Assert.Equal("10", (string?)rect.Attribute("x"));
+        Assert.Equal("30", (string?)rect.Attribute("height"));
+
+        XElement group = Assert.Single(document.Descendants(Ns + "g"), g => (string?)g.Attribute("clip-path") == "url(#x-clip-1)");
+        Assert.Equal("cad-viewport", (string?)group.Attribute("class"));
+        // The viewport has its own "Title" layer group, separate from the page-level one, with a distinct id.
+        List<XElement> titleGroups = document.Descendants(Ns + "g").Where(g => (string?)g.Attribute("data-layer") == "Title").ToList();
+        Assert.Equal(2, titleGroups.Count);
+        Assert.Equal("x-layer-title", (string?)titleGroups[0].Attribute("id"));
+        Assert.Equal("x-clip-1-layer-title", (string?)titleGroups[1].Attribute("id"));
+        Assert.Single(group.Descendants(Ns + "line"));
+        Assert.True(document.Descendants(Ns + "defs").Single().ElementsBeforeSelf().Count() == 0);
+
+        List<string> ids = document.Descendants().Select(e => (string?)e.Attribute("id")).Where(id => id != null).ToList()!;
+        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
+    }
 }

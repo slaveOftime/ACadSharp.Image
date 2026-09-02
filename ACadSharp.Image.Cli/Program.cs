@@ -80,6 +80,12 @@ internal static class Program
         {
             configuration.HideLayer(layer);
         }
+
+        configuration.Svg.NonScalingStroke = !options.SvgScalingStroke;
+        configuration.Svg.EmitEntityAttributes = !options.SvgNoEntityAttributes;
+        configuration.Svg.EmitSize = options.SvgEmitSize;
+        configuration.Svg.IdPrefix = options.SvgIdPrefix;
+        configuration.Svg.Precision = options.SvgPrecision;
     }
 
     private static CadDocument LoadDocument(string inputPath)
@@ -149,6 +155,11 @@ internal static class Program
         int quality = 90;
         bool exportPaperLayouts = false;
         List<string> hideLayers = new();
+        bool svgScalingStroke = false;
+        bool svgNoEntityAttributes = false;
+        bool svgEmitSize = false;
+        string svgIdPrefix = string.Empty;
+        int? svgPrecision = null;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -195,6 +206,21 @@ internal static class Program
                 case "--hide-layer":
                     hideLayers.Add(GetRequiredValue(args, ref i, current));
                     break;
+                case "--svg-no-scaling-stroke":
+                    svgScalingStroke = true;
+                    break;
+                case "--svg-no-entity-attributes":
+                    svgNoEntityAttributes = true;
+                    break;
+                case "--svg-size":
+                    svgEmitSize = true;
+                    break;
+                case "--svg-id-prefix":
+                    svgIdPrefix = GetRequiredValue(args, ref i, current);
+                    break;
+                case "--svg-precision":
+                    svgPrecision = ParseRange(GetRequiredValue(args, ref i, current), current, 0, 8);
+                    break;
                 default:
                     throw new InvalidOperationException($"Unknown argument '{current}'.");
             }
@@ -205,7 +231,17 @@ internal static class Program
             throw new InvalidOperationException("An input .dxf or .dwg file is required.");
         }
 
-        return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers);
+        return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers, svgScalingStroke, svgNoEntityAttributes, svgEmitSize, svgIdPrefix, svgPrecision);
+    }
+
+    private static int ParseRange(string value, string argumentName, int min, int max)
+    {
+        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) && parsed >= min && parsed <= max)
+        {
+            return parsed;
+        }
+
+        throw new InvalidOperationException($"Argument {argumentName} must be between {min} and {max}.");
     }
 
     private static int ParsePositiveInt(string value, string argumentName)
@@ -295,7 +331,7 @@ Usage:
 
 Options:
   -o, --output <path>         Output file or directory path.
-  -f, --format <format>       png, bmp, jpg, jpeg, gif, webp.
+  -f, --format <format>       png, bmp, jpg, jpeg, gif, webp, svg.
   -w, --width <pixels>        Output width in pixels. Default: 1600.
   -H, --height <pixels>       Output height in pixels. Default: 900.
   -p, --padding <value>       Padding in pixels: <all>, <x,y>, or <left,top,right,bottom>.
@@ -303,6 +339,12 @@ Options:
   -q, --quality <1-100>       Output quality for lossy formats. Default: 90.
       --paper-layouts         Export paper layouts instead of model space.
       --hide-layer <name>     Hide entities on the specified layer. Can be used multiple times.
+      --svg-no-scaling-stroke Write SVG stroke widths in drawing units instead of constant pixels.
+      --svg-no-entity-attributes
+                              Omit data-handle/data-type/data-parent/data-block attributes from SVG.
+      --svg-size              Emit width/height on the SVG root from --width/--height.
+      --svg-id-prefix <text>  Prefix for SVG ids so several drawings can share one page.
+      --svg-precision <0-8>   Decimal places for SVG coordinates. Default: adaptive.
       --help, -h, -?          Show this help text.
 """);
     }

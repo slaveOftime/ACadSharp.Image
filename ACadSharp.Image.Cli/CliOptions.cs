@@ -13,5 +13,10 @@ internal sealed record CliOptions(
     string BackgroundColor,
     int Quality,
     bool ExportPaperLayouts,
-    IReadOnlyList<string> HideLayers
+    IReadOnlyList<string> HideLayers,
+    bool SvgScalingStroke,
+    bool SvgNoEntityAttributes,
+    bool SvgEmitSize,
+    string SvgIdPrefix,
+    int? SvgPrecision
 );

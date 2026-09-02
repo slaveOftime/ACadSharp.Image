@@ -25,7 +25,7 @@ internal sealed class ImageStyleResolver
     public ImageStyle Resolve(Entity entity, ImageRenderContext context)
     {
         return new ImageStyle(
-            entity.GetActiveColor().ToImageColor(),
+            entity.GetActiveColor().ToImageColor(context.Configuration.ResolveForegroundColor()),
             context.ToStrokeWidth(entity.GetActiveLineWeightType()));
     }
 }

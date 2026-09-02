@@ -171,10 +171,10 @@ internal sealed class EntityRenderDispatcher
     {
         if (layer == null)
         {
-            return new LayerRenderInfo(layerName, SixLabors.ImageSharp.Color.Black, context.ToStrokeWidth(LineWeightType.Default));
+            return new LayerRenderInfo(layerName, context.Configuration.ResolveForegroundColor(), context.ToStrokeWidth(LineWeightType.Default));
         }
 
-        return new LayerRenderInfo(layerName, layer.Color.ToImageColor(), context.ToStrokeWidth(layer.LineWeight));
+        return new LayerRenderInfo(layerName, layer.Color.ToImageColor(context.Configuration.ResolveForegroundColor()), context.ToStrokeWidth(layer.LineWeight));
     }
 
     private void DrawPoint(ImageRenderContext context, ImageStyle style, ACadSharp.Entities.Point point)

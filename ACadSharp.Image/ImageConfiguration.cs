@@ -526,6 +526,27 @@ public sealed class ImageConfiguration
         this.OnNotification?.Invoke(this, new NotificationEventArgs(message, notificationType, ex));
     }
 
+    /// <summary>
+    /// Colour used for AutoCAD colour index 7: <see cref="ForegroundColor"/> when set, else black on light or transparent
+    /// backgrounds and white on dark ones.
+    /// </summary>
+    internal ImageColor ResolveForegroundColor()
+    {
+        if (this.ForegroundColor is ImageColor explicitColor)
+        {
+            return explicitColor;
+        }
+
+        SixLabors.ImageSharp.PixelFormats.Rgba32 background = this.BackgroundColor.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+        if (background.A == 0)
+        {
+            return ImageColor.Black;
+        }
+
+        double luminance = (0.299d * background.R) + (0.587d * background.G) + (0.114d * background.B);
+        return luminance < 128d ? ImageColor.White : ImageColor.Black;
+    }
+
     private static int ValidateNonNegative(int value, string propertyName)
     {
         return value >= 0

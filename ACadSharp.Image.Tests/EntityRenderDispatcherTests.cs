@@ -1,6 +1,8 @@
 using System.Reflection;
+using System.Xml.Linq;
 using ACadSharp.Entities;
 using ACadSharp.Image.Rendering;
+using ACadSharp.Image.Rendering.Svg;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
@@ -9,7 +11,7 @@ namespace ACadSharp.Image.Tests;
 
 public sealed class EntityRenderDispatcherTests
 {
-    private static ImageRenderContext CreateContext(RecordingDrawingSurface surface, ImageConfiguration configuration)
+    private static ImageRenderContext CreateContext(IDrawingSurface surface, ImageConfiguration configuration)
     {
         Layout layout = new("test") { PaperWidth = 100, PaperHeight = 100 };
         return new ImageRenderContext(surface, configuration, layout, 100, 100, 0, 0, 1d, 0, 0, singlePrecision: false, lineTypeScale: 1d);
@@ -114,7 +116,7 @@ public sealed class EntityRenderDispatcherTests
 
         Assert.Contains(surface.Calls, c => c.StartsWith("DrawArc", StringComparison.Ordinal) && c.Contains("sweep=-1.57", StringComparison.Ordinal));
         Assert.Contains(surface.Calls, c => c.StartsWith("DrawEllipse", StringComparison.Ordinal) && c.Contains("rx=2", StringComparison.Ordinal));
-        Assert.Contains(surface.Calls, c => c.StartsWith("DrawBulgePolyline n=2", StringComparison.Ordinal));
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawBulgePolyline n=2", StringComparison.Ordinal) && c.Contains("bulges=1,0", StringComparison.Ordinal));
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawPolyline", StringComparison.Ordinal));
     }
 
@@ -142,5 +144,64 @@ public sealed class EntityRenderDispatcherTests
         dispatcher.Draw(CreateContext(surface, configuration), new Ellipse { Center = new XYZ(0, 0, 0), MajorAxisEndPoint = new XYZ(4, 0, 0), RadiusRatio = 0.5 });
 
         Assert.Contains(surface.Calls, c => c.StartsWith("DrawEllipse", StringComparison.Ordinal) && c.Contains("rx=4 ry=2", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EllipseRotationAndPartialSweepAreNegatedForTheSurface()
+    {
+        RecordingDrawingSurface surface = new() { SupportsCurves = true };
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        ImageRenderContext context = CreateContext(surface, configuration);
+
+        // Major axis along +Y, so the drawing rotation is +PI/2 and the surface rotation is -PI/2.
+        dispatcher.Draw(context, new Ellipse { Center = new XYZ(0, 0, 0), MajorAxisEndPoint = new XYZ(0, 4, 0), RadiusRatio = 0.5 });
+        dispatcher.Draw(context, new Ellipse
+        {
+            Center = new XYZ(0, 0, 0),
+            MajorAxisEndPoint = new XYZ(2, 0, 0),
+            RadiusRatio = 0.5,
+            StartParameter = 0,
+            EndParameter = Math.PI / 2,
+        });
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawEllipse", StringComparison.Ordinal) && c.Contains("rot=-1.57", StringComparison.Ordinal));
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawArc", StringComparison.Ordinal)
+            && c.Contains("rx=2 ry=1", StringComparison.Ordinal)
+            && c.Contains("sweep=-1.57", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NonWorldNormalFallsBackToTessellation()
+    {
+        RecordingDrawingSurface surface = new() { SupportsCurves = true };
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        // A (0,0,-1) extrusion mirrors X in the OCS; only PolygonalVertexes applies it, so the native path must be skipped.
+        dispatcher.Draw(CreateContext(surface, configuration), new Circle { Center = new XYZ(10, 0, 0), Radius = 1, Normal = new XYZ(0, 0, -1) });
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawPolyline", StringComparison.Ordinal));
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawEllipse", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void InfiniteArcSweepNormalizesToAFullTurnInsteadOfHanging()
+    {
+        RecordingDrawingSurface surface = new() { SupportsCurves = true };
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), new Arc { Center = new XYZ(10, 10, 0), Radius = 5, StartAngle = 0, EndAngle = double.NegativeInfinity });
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawArc", StringComparison.Ordinal) && c.Contains("sweep=-6.28", StringComparison.Ordinal));
+
+        // A full turn reaches the SVG surface as a closed ellipse (a circle here), never an arc path.
+        using SvgDrawingSurface svg = new(configuration, new SurfaceRect(0, 0, 100, 100), null, null);
+        dispatcher.Draw(CreateContext(svg, configuration), new Arc { Center = new XYZ(10, 10, 0), Radius = 5, StartAngle = 0, EndAngle = double.NegativeInfinity });
+
+        XDocument document = svg.ToDocument();
+        Assert.Single(document.Descendants(SvgDrawingSurface.Ns + "circle"));
+        Assert.Empty(document.Descendants(SvgDrawingSurface.Ns + "path"));
     }
 }

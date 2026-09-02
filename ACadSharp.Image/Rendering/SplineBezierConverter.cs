@@ -40,6 +40,12 @@ internal static class SplineBezierConverter
                 multiplicity++;
             }
 
+            if (multiplicity > degree)
+            {
+                // A knot repeated more than degree times splits the curve; it is not a single Bezier chain.
+                return false;
+            }
+
             for (int m = multiplicity; m < degree; m++)
             {
                 InsertKnot(k, p, u, degree);

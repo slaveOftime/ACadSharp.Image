@@ -35,13 +35,13 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
 
     public void DrawPolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, bool closed) => this.Calls.Add($"DrawPolyline n={points.Count} closed={closed}");
 
-    public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle) => this.Calls.Add($"DrawArc {center} rx={radiusX} ry={radiusY} start={startAngle} sweep={sweepAngle}");
+    public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle) => this.Calls.Add($"DrawArc {center} rx={radiusX} ry={radiusY} rot={rotation} start={startAngle} sweep={sweepAngle}");
 
-    public void DrawEllipse(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation) => this.Calls.Add($"DrawEllipse {center} rx={radiusX} ry={radiusY}");
+    public void DrawEllipse(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation) => this.Calls.Add($"DrawEllipse {center} rx={radiusX} ry={radiusY} rot={rotation}");
 
     public void DrawCubicBezier(ImageStyle style, IReadOnlyList<SurfacePoint> controlPoints, bool closed) => this.Calls.Add($"DrawCubicBezier n={controlPoints.Count} closed={closed}");
 
-    public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed) => this.Calls.Add($"DrawBulgePolyline n={points.Count} closed={closed}");
+    public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed) => this.Calls.Add($"DrawBulgePolyline n={points.Count} closed={closed} bulges={string.Join(",", bulges)}");
 
     public void FillPolygon(ImageStyle style, IReadOnlyList<SurfacePoint> points) => this.Calls.Add($"FillPolygon n={points.Count}");
 

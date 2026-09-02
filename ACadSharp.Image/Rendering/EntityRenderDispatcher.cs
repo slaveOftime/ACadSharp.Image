@@ -70,19 +70,19 @@ internal sealed class EntityRenderDispatcher
         {
             switch (entity)
             {
-                case Arc arc when context.Surface.SupportsCurves:
+                case Arc arc when context.Surface.SupportsCurves && IsWorldPlane(arc.Normal):
                     DrawArc(context, style, arc);
                     break;
                 case Arc arc:
                     DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), false);
                     break;
-                case Circle circle when context.Surface.SupportsCurves:
+                case Circle circle when context.Surface.SupportsCurves && IsWorldPlane(circle.Normal):
                     context.Surface.DrawEllipse(style, context.ToSurfacePoint(circle.Center), context.ToSurfaceLength(circle.Radius), context.ToSurfaceLength(circle.Radius), 0d);
                     break;
                 case Circle circle:
                     DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
                     break;
-                case Ellipse ellipse when context.Surface.SupportsCurves:
+                case Ellipse ellipse when context.Surface.SupportsCurves && IsWorldPlane(ellipse.Normal):
                     DrawEllipse(context, style, ellipse);
                     break;
                 case Ellipse ellipse:
@@ -207,17 +207,46 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
+    /// True when an entity's extrusion is the world Z axis, so its OCS coordinates are already world coordinates.
+    /// </summary>
+    /// <remarks>
+    /// Native curve output uses the raw centre, radii and angles; ACadSharp applies the OCS transform only inside
+    /// <c>PolygonalVertexes</c>. Anything but the default normal (a <c>(0,0,-1)</c> extrusion mirrors X, for example)
+    /// therefore has to fall back to the tessellating path.
+    /// </remarks>
+    private static bool IsWorldPlane(XYZ normal)
+    {
+        return Math.Abs(normal.X) < 1e-9 && Math.Abs(normal.Y) < 1e-9 && Math.Abs(normal.Z - 1d) < 1e-9;
+    }
+
+    /// <summary>
+    /// Brings a drawing sweep into (0, 2*PI]. An exact zero (equal start and end angles) becomes a full turn,
+    /// and non-finite input degrades to a full turn rather than looping.
+    /// </summary>
+    private static double NormalizeSweep(double sweep)
+    {
+        double full = 2d * Math.PI;
+        if (double.IsNaN(sweep) || double.IsInfinity(sweep))
+        {
+            return full;
+        }
+
+        sweep %= full;
+        if (sweep <= 0d)
+        {
+            sweep += full;
+        }
+
+        return sweep;
+    }
+
+    /// <summary>
     /// Emits an arc natively. Drawing angles turn counter-clockwise; the surface Y axis points down, so both the start
     /// angle and the sweep change sign.
     /// </summary>
     private static void DrawArc(ImageRenderContext context, ImageStyle style, Arc arc)
     {
-        double sweep = arc.EndAngle - arc.StartAngle;
-        while (sweep <= 0d)
-        {
-            sweep += 2d * Math.PI;
-        }
-
+        double sweep = NormalizeSweep(arc.EndAngle - arc.StartAngle);
         double radius = context.ToSurfaceLength(arc.Radius);
         context.Surface.DrawArc(style, context.ToSurfacePoint(arc.Center), radius, radius, 0d, -arc.StartAngle, -sweep);
     }
@@ -240,12 +269,7 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        double sweep = ellipse.EndParameter - ellipse.StartParameter;
-        while (sweep <= 0d)
-        {
-            sweep += 2d * Math.PI;
-        }
-
+        double sweep = NormalizeSweep(ellipse.EndParameter - ellipse.StartParameter);
         context.Surface.DrawArc(style, center, radiusX, radiusY, -ellipse.Rotation, -ellipse.StartParameter, -sweep);
     }
 

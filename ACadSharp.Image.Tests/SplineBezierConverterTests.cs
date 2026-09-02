@@ -72,4 +72,18 @@ public sealed class SplineBezierConverterTests
         unclamped.Knots[0] = -1d;
         Assert.False(SplineBezierConverter.TryConvert(unclamped, out _));
     }
+
+    [Fact]
+    public void RejectsInteriorKnotMultiplicityAboveDegree()
+    {
+        // A multiplicity-4 interior knot breaks the curve into two independent splines; it is not a Bezier chain.
+        Spline spline = new() { Degree = 3 };
+        spline.Knots.AddRange([0d, 0d, 0d, 0d, 1d, 1d, 1d, 1d, 2d, 2d, 2d, 2d]);
+        spline.ControlPoints.AddRange([
+            new XYZ(0, 0, 0), new XYZ(1, 1, 0), new XYZ(2, 1, 0), new XYZ(3, 0, 0),
+            new XYZ(4, 0, 0), new XYZ(5, -1, 0), new XYZ(6, -1, 0), new XYZ(7, 0, 0),
+        ]);
+
+        Assert.False(SplineBezierConverter.TryConvert(spline, out _));
+    }
 }

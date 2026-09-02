@@ -1,5 +1,6 @@
 ﻿using ACadSharp.Entities;
 using ACadSharp.Extensions;
+using ACadSharp.Image.Extensions;
 using ACadSharp.IO;
 using ACadSharp.Tables;
 using CSMath;
@@ -53,53 +54,98 @@ internal sealed class EntityRenderDispatcher
     /// </remarks>
     public void Draw(ImageRenderContext context, Entity entity)
     {
-        ImageStyle style = this._styleResolver.Resolve(entity, context);
+        this.Draw(context, entity, parentLayerName: null, parentHandle: null, blockName: null);
+    }
 
-        switch (entity)
+    private void Draw(ImageRenderContext context, Entity entity, string? parentLayerName, ulong? parentHandle, string? blockName)
+    {
+        ImageStyle style = this._styleResolver.Resolve(entity, context);
+        string layerName = GetEffectiveLayerName(entity, parentLayerName);
+        EntityRenderInfo info = new(layerName, entity.ObjectName, entity.Handle, parentHandle, blockName);
+        LayerRenderInfo layerInfo = CreateLayerInfo(entity.Layer, layerName, context);
+
+        context.Surface.BeginEntity(info, layerInfo);
+        try
         {
-            case Arc arc:
-                this.DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), false);
-                break;
-            case Circle circle:
-                this.DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
-                break;
-            case Ellipse ellipse:
-                this.DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
-                break;
-            case Line line:
-                context.Surface.DrawLine(style, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
-                break;
-            case Dimension dimension:
-                this.DrawDimension(context, dimension);
-                break;
-            case Solid solid:
-                DrawSolid(context, style, solid);
-                break;
-            case ACadSharp.Entities.Point point:
-                this.DrawPoint(context, style, point);
-                break;
-            case IPolyline polyline:
-                this.DrawPolyline(context, style, polyline.GetPoints<XYZ>(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), polyline.IsClosed);
-                break;
-            case Spline spline:
-                this._splineRenderer.Draw(context, style, spline);
-                break;
-            case MText mtext:
-                this._textRenderer.Draw(context, style, mtext);
-                break;
-            case TextEntity textEntity:
-                this._textRenderer.Draw(context, style, textEntity);
-                break;
-            case IText text:
-                this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
-                break;
-            case Insert insert:
-                this.DrawBlockContents(context, insert);
-                break;
-            default:
-                this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
-                break;
+            switch (entity)
+            {
+                case Arc arc:
+                    this.DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), false);
+                    break;
+                case Circle circle:
+                    this.DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
+                    break;
+                case Ellipse ellipse:
+                    this.DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
+                    break;
+                case Line line:
+                    context.Surface.DrawLine(style, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
+                    break;
+                case Dimension dimension:
+                    this.DrawDimension(context, dimension, layerName);
+                    break;
+                case Solid solid:
+                    DrawSolid(context, style, solid);
+                    break;
+                case ACadSharp.Entities.Point point:
+                    this.DrawPoint(context, style, point);
+                    break;
+                case IPolyline polyline:
+                    this.DrawPolyline(context, style, polyline.GetPoints<XYZ>(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), polyline.IsClosed);
+                    break;
+                case Spline spline:
+                    this._splineRenderer.Draw(context, style, spline);
+                    break;
+                case MText mtext:
+                    this._textRenderer.Draw(context, style, mtext);
+                    break;
+                case TextEntity textEntity:
+                    this._textRenderer.Draw(context, style, textEntity);
+                    break;
+                case IText text:
+                    this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
+                    break;
+                case Insert insert:
+                    this.DrawBlockContents(context, insert, layerName);
+                    break;
+                default:
+                    this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
+                    break;
+            }
         }
+        finally
+        {
+            context.Surface.EndEntity();
+        }
+    }
+
+    /// <summary>
+    /// Entities on layer "0" inside a block take the layer of the insert that placed them.
+    /// </summary>
+    internal static string GetEffectiveLayerName(Entity entity, string? parentLayerName)
+    {
+        string? own = entity.Layer?.Name;
+        if (string.IsNullOrEmpty(own))
+        {
+            return parentLayerName ?? Layer.DefaultName;
+        }
+
+        if (parentLayerName != null && string.Equals(own, Layer.DefaultName, StringComparison.Ordinal))
+        {
+            return parentLayerName;
+        }
+
+        return own;
+    }
+
+    private static LayerRenderInfo CreateLayerInfo(Layer? layer, string layerName, ImageRenderContext context)
+    {
+        if (layer == null)
+        {
+            return new LayerRenderInfo(layerName, SixLabors.ImageSharp.Color.Black, context.ToStrokeWidth(LineWeightType.Default));
+        }
+
+        return new LayerRenderInfo(layerName, layer.Color.ToImageColor(), context.ToStrokeWidth(layer.LineWeight));
     }
 
     private void DrawPoint(ImageRenderContext context, ImageStyle style, ACadSharp.Entities.Point point)
@@ -108,7 +154,7 @@ internal sealed class EntityRenderDispatcher
         context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), radius);
     }
 
-    private void DrawDimension(ImageRenderContext context, Dimension dimension)
+    private void DrawDimension(ImageRenderContext context, Dimension dimension, string layerName)
     {
         BlockRecord? block = dimension.Block;
         if (block == null)
@@ -130,7 +176,7 @@ internal sealed class EntityRenderDispatcher
                 continue;
             }
 
-            this.Draw(context, entity);
+            this.Draw(context, entity, layerName, dimension.Handle, blockName: null);
         }
     }
 
@@ -158,11 +204,11 @@ internal sealed class EntityRenderDispatcher
         context.Surface.DrawPolyline(style, points, SplineRenderer.ShouldClosePoints(points, close));
     }
 
-    private void DrawBlockContents(ImageRenderContext context, Insert insert)
+    private void DrawBlockContents(ImageRenderContext context, Insert insert, string layerName)
     {
         foreach (Entity entity in insert.Explode())
         {
-            this.Draw(context, entity);
+            this.Draw(context, entity, layerName, insert.Handle, insert.Block?.Name);
         }
     }
 }

@@ -95,6 +95,12 @@ public sealed class SampleParityTests
         }
 
         IReadOnlyList<RenderedPage> pages = exporter.Render(ImageExportFormat.Svg);
+        if (!update)
+        {
+            int baselineCount = Directory.GetFiles(baselineDirectory, $"{baseName}.*.svg").Length;
+            Assert.True(baselineCount == pages.Count, $"Expected {baselineCount} golden SVG pages for {baseName}, renderer produced {pages.Count}.");
+        }
+
         for (int i = 0; i < pages.Count; i++)
         {
             string goldenPath = Path.Combine(baselineDirectory, $"{baseName}.{i + 1:D2}.svg");

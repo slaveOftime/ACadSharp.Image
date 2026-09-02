@@ -69,6 +69,48 @@ public sealed class SampleParityTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(Samples))]
+    public void SampleSvgsMatchGoldens(string fileName, bool paperLayouts)
+    {
+        string repoRoot = FindRepoRoot();
+        string samplePath = Path.Combine(repoRoot, "Samples", fileName);
+        string baselineDirectory = Path.Combine(repoRoot, "ACadSharp.Image.Tests", "Baselines");
+        bool update = Environment.GetEnvironmentVariable("ACADSHARP_IMAGE_UPDATE_BASELINES") == "1";
+        string baseName = Path.GetFileNameWithoutExtension(fileName).Replace(' ', '-') + (paperLayouts ? ".paper" : ".model");
+
+        CadDocument document = Path.GetExtension(samplePath).ToLowerInvariant() == ".dwg" ? DwgReader.Read(samplePath) : DxfReader.Read(samplePath);
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 800;
+        exporter.Configuration.Height = 500;
+        exporter.Configuration.SetPadding(10);
+        exporter.Configuration.FontFamilyName = FontFamily;
+        if (paperLayouts)
+        {
+            exporter.AddPaperLayouts(document);
+        }
+        else
+        {
+            exporter.AddModelSpace(document);
+        }
+
+        IReadOnlyList<RenderedPage> pages = exporter.Render(ImageExportFormat.Svg);
+        for (int i = 0; i < pages.Count; i++)
+        {
+            string goldenPath = Path.Combine(baselineDirectory, $"{baseName}.{i + 1:D2}.svg");
+            string actual = Assert.IsType<RenderedSvgPage>(pages[i]).Content.Replace("\r\n", "\n");
+            if (update)
+            {
+                File.WriteAllText(goldenPath, actual);
+                continue;
+            }
+
+            Assert.True(File.Exists(goldenPath), $"Missing golden {goldenPath}. Run with ACADSHARP_IMAGE_UPDATE_BASELINES=1 to create it.");
+            string expected = File.ReadAllText(goldenPath).Replace("\r\n", "\n");
+            Assert.Equal(expected, actual);
+        }
+    }
+
     internal static IReadOnlyList<Image<Rgba32>> RenderSample(string samplePath, bool paperLayouts)
     {
         CadDocument document = Path.GetExtension(samplePath).ToLowerInvariant() == ".dwg"

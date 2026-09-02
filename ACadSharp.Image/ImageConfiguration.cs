@@ -211,6 +211,11 @@ public sealed class ImageConfiguration
     public string FontFamilyName { get; set; } = "Arial";
 
     /// <summary>
+    /// Gets the settings that only affect SVG output.
+    /// </summary>
+    public SvgOptions Svg { get; } = new();
+
+    /// <summary>
     /// Gets the set of layer names that should be hidden during export.
     /// Layer names are case-insensitive.
     /// </summary>
@@ -298,11 +303,7 @@ public sealed class ImageConfiguration
     /// </remarks>
     public float GetLineWeightPixels(LineWeightType lineWeight)
     {
-        double millimeters = this._lineWeightValues.TryGetValue(lineWeight, out double configured)
-            ? configured
-            : LineWeightDefaultValues.TryGetValue(lineWeight, out double fallback)
-                ? fallback
-                : 0d;
+        double millimeters = this.GetLineWeightMillimeters(lineWeight);
 
         if (millimeters <= 0d)
         {
@@ -311,6 +312,18 @@ public sealed class ImageConfiguration
 
         float pixels = (float)(millimeters * this.Dpi / 25.4d);
         return Math.Max(1f, pixels * this.LineWeightScale);
+    }
+
+    /// <summary>
+    /// Gets the configured millimetre value for a line weight (overrides first, then <see cref="LineWeightDefaultValues"/>, else 0).
+    /// </summary>
+    public double GetLineWeightMillimeters(LineWeightType lineWeight)
+    {
+        return this._lineWeightValues.TryGetValue(lineWeight, out double configured)
+            ? configured
+            : LineWeightDefaultValues.TryGetValue(lineWeight, out double fallback)
+                ? fallback
+                : 0d;
     }
 
     /// <summary>

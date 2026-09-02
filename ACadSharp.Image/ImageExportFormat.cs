@@ -31,5 +31,10 @@ public enum ImageExportFormat
     /// WebP format. Modern format supporting lossy and lossless compression,
     /// transparency, and excellent compression ratios.
     /// </summary>
-    Webp
+    Webp,
+
+    /// <summary>
+    /// Scalable Vector Graphics. Resolution independent, keeps layers as groups and text as text.
+    /// </summary>
+    Svg,
 }

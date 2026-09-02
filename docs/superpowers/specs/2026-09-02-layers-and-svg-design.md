@@ -109,7 +109,7 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 - One `<g>` per layer, in order of first appearance while drawing. Elements are appended to the group of their **effective** layer (section 4.2), so an Insert's sub-entities land in their own layers' groups. Accepted: this changes z-order relative to entity order.
 - Layer group carries the layer's own colour and pixel/unit width as defaults; every element still writes its resolved `stroke`/`stroke-width`/`stroke-dasharray`/`opacity` when they differ from the group default.
 - `id` sanitisation: lower-case, characters outside `[a-z0-9_-]` replaced by `-`, collapsed; prefixed by `SvgOptions.IdPrefix` (default empty). `data-layer` carries the raw name.
-- Entity attributes (`data-handle` hex upper-case, `data-type` = entity `ObjectName`, `data-parent`, `data-block`) are emitted when `SvgOptions.EmitEntityAttributes` is true (default).
+- Entity attributes (`data-handle` hex upper-case, `data-type` = entity `ObjectName`, `data-parent`, `data-block`) are emitted when `SvgOptions.EmitEntityAttributes` is true (default). `data-handle` is omitted when the handle is 0, which is the case for the transient clones `Insert.Explode()` produces for block contents in ACadSharp 3.7.1; such elements still carry `data-parent` (the insert's handle) and `data-block`.
 - Hidden or filtered entities are **omitted**, never written with `display="none"`.
 - Background rect only when `BackgroundColor` alpha is greater than 0.
 - No XML declaration (inline SVG in HTML must not carry one); files are written as UTF-8 without a BOM.

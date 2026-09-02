@@ -9,6 +9,7 @@ public sealed class ImageExportFormatExtensionsTests
     [InlineData("jpeg", ImageExportFormat.Jpeg)]
     [InlineData("gif", ImageExportFormat.Gif)]
     [InlineData("webp", ImageExportFormat.Webp)]
+    [InlineData("svg", ImageExportFormat.Svg)]
     public void TryParseRecognizesSupportedFormats(string value, ImageExportFormat expected)
     {
         bool parsed = ImageExportFormatExtensions.TryParse(value, out ImageExportFormat actual);
@@ -21,11 +22,18 @@ public sealed class ImageExportFormatExtensionsTests
     [InlineData(".png", ImageExportFormat.Png)]
     [InlineData(".jpg", ImageExportFormat.Jpeg)]
     [InlineData(".webp", ImageExportFormat.Webp)]
+    [InlineData(".svg", ImageExportFormat.Svg)]
     public void TryParseFileExtensionRecognizesSupportedExtensions(string extension, ImageExportFormat expected)
     {
         bool parsed = ImageExportFormatExtensions.TryParseFileExtension(extension, out ImageExportFormat actual);
 
         Assert.True(parsed);
         Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void SvgFileExtensionIsDotSvg()
+    {
+        Assert.Equal(".svg", ImageExportFormat.Svg.GetFileExtension());
     }
 }

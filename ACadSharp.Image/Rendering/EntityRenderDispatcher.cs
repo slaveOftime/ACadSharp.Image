@@ -4,6 +4,7 @@ using ACadSharp.Extensions;
 using ACadSharp.Header;
 using ACadSharp.Image.Extensions;
 using ACadSharp.IO;
+using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
 using ImageColor = SixLabors.ImageSharp.Color;
@@ -67,7 +68,8 @@ internal sealed class EntityRenderDispatcher
     }
 
     // textSource is the original block entity a TEXT or MTEXT clone came from, whose geometry is used instead of the
-    // clone's, and placement is the transform of the insert that placed it; both are null outside a block reference.
+    // clone's; placement is the transform of the insert that placed a block TEXT, MTEXT or MLINE; both are null
+    // outside a block reference.
     private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? textSource = null, Transform? placement = null)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
@@ -156,6 +158,9 @@ internal sealed class EntityRenderDispatcher
                     break;
                 case Insert insert:
                     this.DrawBlockContents(context, insert, layer, resolved);
+                    break;
+                case MLine mline:
+                    this.DrawMLine(context, style, resolved, mline, placement);
                     break;
                 default:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
@@ -525,6 +530,107 @@ internal sealed class EntityRenderDispatcher
         return controls;
     }
 
+    /// <summary>
+    /// The geometry stored in an MLINE's vertices is final: element j passes through
+    /// <c>Position + Segments[j].Parameters[0] * Miter</c> at every vertex (DXF group 41), with justification and
+    /// scale already applied by the writer. Vertices without parameters fall back to the style offsets with the
+    /// justification shift, with a warning. Cuts made by MLEDIT (further group-41 values) are ignored with a
+    /// warning; the elements stay continuous. Each element takes the style element's colour and linetype, falling
+    /// back to the entity's own; a fill-on style fills the ring between the two outermost elements first. Square
+    /// caps join the outermost elements at an open end unless the entity suppresses them; round and inner-arc
+    /// caps and joints are not drawn.
+    /// </summary>
+    private void DrawMLine(ImageRenderContext context, ImageStyle style, ResolvedStyle resolved, MLine mline, Transform? placement)
+    {
+        IReadOnlyList<MLine.Vertex> vertices = mline.Vertices;
+        MLineStyle.Element[] elements = mline.Style.Elements.ToArray();
+        if (vertices.Count < 2 || elements.Length == 0)
+        {
+            return;
+        }
+
+        bool closed = mline.Flags.HasFlag(MLineFlags.Closed);
+        double scale = mline.ScaleFactor == 0d ? 1d : mline.ScaleFactor;
+        double maxOffset = elements.Max(e => e.Offset);
+        double minOffset = elements.Min(e => e.Offset);
+        double shift = mline.Justification switch
+        {
+            MLineJustification.Top => -maxOffset * scale,
+            MLineJustification.Bottom => -minOffset * scale,
+            _ => 0d,
+        };
+
+        bool fallback = false;
+        bool cuts = false;
+        SurfacePoint[][] lines = new SurfacePoint[elements.Length][];
+        for (int j = 0; j < elements.Length; j++)
+        {
+            lines[j] = new SurfacePoint[vertices.Count];
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                MLine.Vertex vertex = vertices[i];
+                double along;
+                if (j < vertex.Segments.Count && vertex.Segments[j].Parameters.Count > 0)
+                {
+                    along = vertex.Segments[j].Parameters[0];
+                    cuts |= vertex.Segments[j].Parameters.Count > 2;
+                }
+                else
+                {
+                    along = (elements[j].Offset * scale) + shift;
+                    fallback = true;
+                }
+
+                XYZ world = vertex.Position + (vertex.Miter * along);
+                lines[j][i] = context.ToSurfacePoint(placement == null ? world : placement.ApplyTransform(world));
+            }
+        }
+
+        string handle = mline.Handle.ToString("X", CultureInfo.InvariantCulture);
+        if (fallback)
+        {
+            this._configuration.Notify($"[{mline.SubclassMarker}] Handle {handle}: vertex parameters are missing; element offsets were computed from the style.", NotificationType.Warning);
+        }
+
+        if (cuts)
+        {
+            this._configuration.Notify($"[{mline.SubclassMarker}] Handle {handle}: cut segments are not rendered; elements are drawn continuous.", NotificationType.Warning);
+        }
+
+        ImageColor foreground = context.Configuration.ResolveForegroundColor();
+        int outer = Array.FindIndex(elements, e => e.Offset == maxOffset);
+        int inner = Array.FindIndex(elements, e => e.Offset == minOffset);
+        if (mline.Style.Flags.HasFlag(MLineStyleFlags.FillOn) && outer != inner)
+        {
+            ImageStyle fill = style with { StrokeColor = ElementColor(mline.Style.FillColor), DashPattern = null };
+            context.Surface.FillPolygon(fill, [.. lines[outer], .. Enumerable.Reverse(lines[inner])]);
+        }
+
+        for (int j = 0; j < elements.Length; j++)
+        {
+            float[]? dashes = elements[j].LineType == null
+                ? style.DashPattern
+                : LineTypeDashResolver.Resolve(elements[j].LineType, resolved.Header, resolved.LineTypeScale, context, style.StrokeWidth);
+            ImageStyle elementStyle = style with { StrokeColor = ElementColor(elements[j].Color), DashPattern = dashes };
+            context.Surface.DrawPolyline(elementStyle, lines[j], closed);
+        }
+
+        if (!closed && outer != inner)
+        {
+            if (mline.Style.Flags.HasFlag(MLineStyleFlags.StartSquareCap) && !mline.Flags.HasFlag(MLineFlags.NoStartCaps))
+            {
+                context.Surface.DrawLine(style, lines[outer][0], lines[inner][0]);
+            }
+
+            if (mline.Style.Flags.HasFlag(MLineStyleFlags.EndSquareCap) && !mline.Flags.HasFlag(MLineFlags.NoEndCaps))
+            {
+                context.Surface.DrawLine(style, lines[outer][^1], lines[inner][^1]);
+            }
+        }
+
+        ImageColor ElementColor(ACadSharp.Color color) => color.IsByLayer || color.IsByBlock ? style.StrokeColor : color.ToImageColor(foreground);
+    }
+
     private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
     {
         // The exploded clones carry the block entities' own attributes but no owner or document; ByBlock and
@@ -534,27 +640,55 @@ internal sealed class EntityRenderDispatcher
         // X axes are never transformed and mirrored inserts hand back world points with a flipped normal.
         Transform transform = insert.GetTransform();
         IReadOnlyList<Entity> originals = insert.Block?.Entities.ToList() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
-        int index = 0;
-        foreach (Entity entity in insert.Explode())
-        {
-            Entity? original = index < originals.Count ? originals[index] : null;
-            index++;
-            if (entity is AttributeDefinition definition)
-            {
-                // A non-constant ATTDEF is a template shown through its ATTRIB. A constant one is skipped too when
-                // an ATTRIB with its tag already exists (ACadSharp's Insert(BlockRecord) constructor emits one even
-                // for constant definitions, so the value would otherwise be drawn twice) or when ATTMODE/Hidden
-                // would hide it; DXF attribute tags are case-insensitive, so the tag comparison ignores case.
-                bool hasMatchingAttrib = insert.Attributes.Any(a => string.Equals(a.Tag, definition.Tag, StringComparison.OrdinalIgnoreCase));
-                if (!definition.Flags.HasFlag(AttributeFlags.Constant) || hasMatchingAttrib || !this.IsAttributeVisible(definition, insert, parent))
-                {
-                    continue;
-                }
-            }
 
-            NormalizeExplodedClone(entity);
-            bool placeText = original is TextEntity or MText && original.GetType() == entity.GetType();
-            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent, placeText ? original : null, placeText ? transform : null);
+        // ACadSharp 3.7.1's MLine.Clone() clears the vertex list it shares with its source, so Explode() would
+        // empty every MLINE in the block for the rest of the document's life. The lists are captured first, lent to
+        // the clone (drawn through the insert transform, since the empty list was what ApplyTransform saw) and
+        // restored afterwards.
+        Dictionary<MLine, List<MLine.Vertex>> mlineVertices = originals.OfType<MLine>().ToDictionary(m => m, m => new List<MLine.Vertex>(m.Vertices));
+        int index = 0;
+        try
+        {
+            foreach (Entity entity in insert.Explode())
+            {
+                Entity? original = index < originals.Count ? originals[index] : null;
+                index++;
+                if (entity is AttributeDefinition definition)
+                {
+                    // A non-constant ATTDEF is a template shown through its ATTRIB. A constant one is skipped too when
+                    // an ATTRIB with its tag already exists (ACadSharp's Insert(BlockRecord) constructor emits one even
+                    // for constant definitions, so the value would otherwise be drawn twice) or when ATTMODE/Hidden
+                    // would hide it; DXF attribute tags are case-insensitive, so the tag comparison ignores case.
+                    bool hasMatchingAttrib = insert.Attributes.Any(a => string.Equals(a.Tag, definition.Tag, StringComparison.OrdinalIgnoreCase));
+                    if (!definition.Flags.HasFlag(AttributeFlags.Constant) || hasMatchingAttrib || !this.IsAttributeVisible(definition, insert, parent))
+                    {
+                        continue;
+                    }
+                }
+
+                NormalizeExplodedClone(entity);
+                Entity? source = null;
+                Transform? entityPlacement = null;
+                if (original is TextEntity or MText && original.GetType() == entity.GetType())
+                {
+                    source = original;
+                    entityPlacement = transform;
+                }
+                else if (entity is MLine clone && original is MLine sourceMLine && mlineVertices.TryGetValue(sourceMLine, out List<MLine.Vertex>? vertices))
+                {
+                    clone.Vertices = vertices;
+                    entityPlacement = transform;
+                }
+
+                this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent, source, entityPlacement);
+            }
+        }
+        finally
+        {
+            foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in mlineVertices)
+            {
+                pair.Key.Vertices = pair.Value;
+            }
         }
 
         if (index != originals.Count)

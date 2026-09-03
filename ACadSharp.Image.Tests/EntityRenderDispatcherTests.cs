@@ -1066,4 +1066,111 @@ public sealed class EntityRenderDispatcherTests
         Assert.Single(surface.Polygons);
         Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("_DOT", StringComparison.Ordinal));
     }
+
+    private static MLineStyle TwoElementStyle(double outer, MLineStyleFlags flags = MLineStyleFlags.None)
+    {
+        MLineStyle style = new("PLAN") { Flags = flags, FillColor = new ACadSharp.Color(3) };
+        style.AddElement(new MLineStyle.Element { Offset = outer, Color = new ACadSharp.Color(1) });
+        style.AddElement(new MLineStyle.Element { Offset = -outer, Color = ACadSharp.Color.ByLayer });
+        return style;
+    }
+
+    private static MLine.Vertex VertexAt(double x, double y, params double[][] parameters)
+    {
+        MLine.Vertex vertex = new() { Position = new XYZ(x, y, 0), Direction = new XYZ(1, 0, 0), Miter = new XYZ(0, 1, 0) };
+        foreach (double[] segment in parameters)
+        {
+            MLine.Vertex.Segment element = new();
+            element.Parameters.AddRange(segment);
+            vertex.Segments.Add(element);
+        }
+
+        return vertex;
+    }
+
+    [Fact]
+    public void MLineDrawsOnePolylinePerStyleElementAtTheStoredOffsets()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLine mline = new() { Style = TwoElementStyle(0.5), Vertices = { VertexAt(0, 10, [0.5, 0], [-0.5, 0]), VertexAt(20, 10, [0.5, 0], [-0.5, 0]) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        Assert.Equal(2, surface.Polylines.Count);
+        Assert.Equal([new SurfacePoint(0, 89.5), new SurfacePoint(20, 89.5)], surface.Polylines[0]);
+        Assert.Equal([new SurfacePoint(0, 90.5), new SurfacePoint(20, 90.5)], surface.Polylines[1]);
+        Assert.All(surface.Calls.Where(c => c.StartsWith("DrawPolyline", StringComparison.Ordinal)), c => Assert.EndsWith("closed=False", c));
+        // Element colour 1 (red) is used for the first element; ByLayer falls back to the entity's resolved colour.
+        Assert.Equal(SixLabors.ImageSharp.Color.Red.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgba32>(), surface.Styles[0].StrokeColor.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgba32>());
+    }
+
+    [Fact]
+    public void MLineWithoutVertexParametersFallsBackToStyleOffsetsAndJustification()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        MLine mline = new() { Style = TwoElementStyle(0.5), ScaleFactor = 2, Justification = MLineJustification.Top, Vertices = { VertexAt(0, 10), VertexAt(20, 10) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        // Top justification puts the +0.5 element on the vertex line; the other lies 2 * 1.0 below it.
+        Assert.Equal([new SurfacePoint(0, 90), new SurfacePoint(20, 90)], surface.Polylines[0]);
+        Assert.Equal([new SurfacePoint(0, 92), new SurfacePoint(20, 92)], surface.Polylines[1]);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning);
+    }
+
+    [Fact]
+    public void ClosedMLineClosesEveryElementAndFillsBetweenTheOuterOnes()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(1, MLineStyleFlags.FillOn),
+            Flags = MLineFlags.Closed,
+            Vertices = { VertexAt(0, 0, [1, 0], [-1, 0]), VertexAt(20, 0, [1, 0], [-1, 0]), VertexAt(20, 20, [1, 0], [-1, 0]) },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        Assert.All(surface.Calls.Where(c => c.StartsWith("DrawPolyline", StringComparison.Ordinal)), c => Assert.EndsWith("closed=True", c));
+        IReadOnlyList<SurfacePoint> fill = Assert.Single(surface.Polygons);
+        Assert.Equal(6, fill.Count);
+        Assert.Equal("FillPolygon n=6", surface.Calls.First(c => c.StartsWith("Fill", StringComparison.Ordinal) || c.StartsWith("DrawPolyline", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void MLineCutParametersAreIgnoredWithAWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        MLine mline = new() { Style = TwoElementStyle(0.5), Vertices = { VertexAt(0, 10, [0.5, 0, 4, 6], [-0.5, 0]), VertexAt(20, 10, [0.5, 0], [-0.5, 0]) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        Assert.Equal(2, surface.Polylines.Count);
+        Assert.Single(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("cut", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void MLineInsideABlockIsDrawnThroughTheInsertAndKeepsItsVertices()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLine mline = new() { Style = TwoElementStyle(0.5), Vertices = { VertexAt(0, 0, [0.5, 0], [-0.5, 0]), VertexAt(10, 0, [0.5, 0], [-0.5, 0]) } };
+        BlockRecord block = new("WALL");
+        block.Entities.Add(mline);
+        Insert insert = new(block) { InsertPoint = new XYZ(5, 20, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Equal(2, mline.Vertices.Count);
+        Assert.Equal(2, surface.Polylines.Count);
+        Assert.Equal([new SurfacePoint(5, 79.5), new SurfacePoint(15, 79.5)], surface.Polylines[0]);
+    }
 }

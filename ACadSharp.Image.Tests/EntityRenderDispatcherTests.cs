@@ -1127,19 +1127,24 @@ public sealed class EntityRenderDispatcherTests
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
+        // The third vertex's miter is not the shared (0,1,0) of the other two: a degenerate miter there would make
+        // the wall closing the ring back to the first vertex zero-width, hiding whether the fill actually covers it.
+        MLine.Vertex third = VertexAt(20, 20, [1, 0], [-1, 0]);
+        third.Miter = new XYZ(-1, 0, 0);
         MLine mline = new()
         {
             Style = TwoElementStyle(1, MLineStyleFlags.FillOn),
             Flags = MLineFlags.Closed,
-            Vertices = { VertexAt(0, 0, [1, 0], [-1, 0]), VertexAt(20, 0, [1, 0], [-1, 0]), VertexAt(20, 20, [1, 0], [-1, 0]) },
+            Vertices = { VertexAt(0, 0, [1, 0], [-1, 0]), VertexAt(20, 0, [1, 0], [-1, 0]), third },
         };
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
 
         Assert.All(surface.Calls.Where(c => c.StartsWith("DrawPolyline", StringComparison.Ordinal)), c => Assert.EndsWith("closed=True", c));
         IReadOnlyList<SurfacePoint> fill = Assert.Single(surface.Polygons);
-        Assert.Equal(6, fill.Count);
-        Assert.Equal("FillPolygon n=6", surface.Calls.First(c => c.StartsWith("Fill", StringComparison.Ordinal) || c.StartsWith("DrawPolyline", StringComparison.Ordinal)));
+        // Keyhole fill: outer ring (3), a bridge back to the outer and inner starts (2), inner ring reversed (3).
+        Assert.Equal(8, fill.Count);
+        Assert.Equal("FillPolygon n=8", surface.Calls.First(c => c.StartsWith("Fill", StringComparison.Ordinal) || c.StartsWith("DrawPolyline", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -1172,5 +1177,32 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal(2, mline.Vertices.Count);
         Assert.Equal(2, surface.Polylines.Count);
         Assert.Equal([new SurfacePoint(5, 79.5), new SurfacePoint(15, 79.5)], surface.Polylines[0]);
+    }
+
+    [Fact]
+    public void MLineNestedTwoBlocksDeepIsDrawnThroughTheComposedInsertsAndKeepsItsVertices()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLine mline = new() { Style = TwoElementStyle(0.5), Vertices = { VertexAt(0, 0, [0.5, 0], [-0.5, 0]), VertexAt(10, 0, [0.5, 0], [-0.5, 0]) } };
+        BlockRecord inner = new("INNER");
+        inner.Entities.Add(mline);
+        Insert nestedInsert = new(inner) { InsertPoint = new XYZ(2, 3, 0) };
+        BlockRecord outer = new("OUTER");
+        outer.Entities.Add(nestedInsert);
+        Insert outerInsert = new(outer) { InsertPoint = new XYZ(5, 20, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), outerInsert);
+
+        // ACadSharp 3.7.1's Insert.Clone() deep-clones its block, so exploding outerInsert clones (and empties the
+        // shared vertex list of) an MLINE that is not even a direct child of OUTER's block; without healing every
+        // MLINE reachable through the block tree, the original loses its vertices here too.
+        Assert.Equal(2, mline.Vertices.Count);
+        Assert.Equal(2, surface.Polylines.Count);
+        // Composed translation (5,20) + (2,3) = (7,23), both inserts translation-only. Element 0 (offset +0.5):
+        // world y 0.5 -> composed 23.5 -> surface 100-23.5 = 76.5. Element 1 (offset -0.5): world y -0.5 -> composed
+        // 22.5 -> surface 77.5. X shifts by 7 for both vertices (0 and 10).
+        Assert.Equal([new SurfacePoint(7, 76.5), new SurfacePoint(17, 76.5)], surface.Polylines[0]);
+        Assert.Equal([new SurfacePoint(7, 77.5), new SurfacePoint(17, 77.5)], surface.Polylines[1]);
     }
 }

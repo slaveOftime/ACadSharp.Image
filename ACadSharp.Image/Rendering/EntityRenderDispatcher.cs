@@ -546,6 +546,14 @@ internal sealed class EntityRenderDispatcher
         MLineStyle.Element[] elements = mline.Style.Elements.ToArray();
         if (vertices.Count < 2 || elements.Length == 0)
         {
+            // A genuinely degenerate MLINE returns silently, but a non-null placement means this is a block clone;
+            // if it has no vertices here, snapshot/heal pairing failed to reach it, which would otherwise vanish
+            // with no explanation.
+            if (vertices.Count < 2 && placement != null)
+            {
+                this._configuration.Notify($"[{mline.SubclassMarker}] Handle {mline.Handle.ToString("X", CultureInfo.InvariantCulture)}: multiline has no vertices; skipped.", NotificationType.Warning);
+            }
+
             return;
         }
 
@@ -598,12 +606,23 @@ internal sealed class EntityRenderDispatcher
         }
 
         ImageColor foreground = context.Configuration.ResolveForegroundColor();
+        // A NaN element offset makes Enumerable.Min return NaN (unlike Max, it does not skip NaN), so FindIndex can
+        // come back -1 for inner while outer stays valid; both indices are checked before they are used.
         int outer = Array.FindIndex(elements, e => e.Offset == maxOffset);
         int inner = Array.FindIndex(elements, e => e.Offset == minOffset);
-        if (mline.Style.Flags.HasFlag(MLineStyleFlags.FillOn) && outer != inner)
+        bool hasRing = outer >= 0 && inner >= 0 && outer != inner;
+        if (mline.Style.Flags.HasFlag(MLineStyleFlags.FillOn) && hasRing)
         {
             ImageStyle fill = style with { StrokeColor = ElementColor(mline.Style.FillColor), DashPattern = null };
-            context.Surface.FillPolygon(fill, [.. lines[outer], .. Enumerable.Reverse(lines[inner])]);
+            // An open MLINE's fill is the band between the two outer elements. A closed one needs the full annulus:
+            // the outer and inner rings alone (as for the open case) leave the closing wall between the last and
+            // first vertices outside the path, so a bridge back to the outer ring's start point turns it into a
+            // keyhole that covers that wall too; the inner ring's reversal gives it the opposite winding, so both
+            // nonzero and even-odd fill rules produce the ring, not its complement.
+            SurfacePoint[] fillPoints = closed
+                ? [.. lines[outer], lines[outer][0], lines[inner][0], .. Enumerable.Reverse(lines[inner])]
+                : [.. lines[outer], .. Enumerable.Reverse(lines[inner])];
+            context.Surface.FillPolygon(fill, fillPoints);
         }
 
         for (int j = 0; j < elements.Length; j++)
@@ -615,7 +634,7 @@ internal sealed class EntityRenderDispatcher
             context.Surface.DrawPolyline(elementStyle, lines[j], closed);
         }
 
-        if (!closed && outer != inner)
+        if (!closed && hasRing)
         {
             if (mline.Style.Flags.HasFlag(MLineStyleFlags.StartSquareCap) && !mline.Flags.HasFlag(MLineFlags.NoStartCaps))
             {
@@ -641,15 +660,25 @@ internal sealed class EntityRenderDispatcher
         Transform transform = insert.GetTransform();
         IReadOnlyList<Entity> originals = insert.Block?.Entities.ToList() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
 
-        // ACadSharp 3.7.1's MLine.Clone() clears the vertex list it shares with its source, so Explode() would
-        // empty every MLINE in the block for the rest of the document's life. The lists are captured first, lent to
-        // the clone (drawn through the insert transform, since the empty list was what ApplyTransform saw) and
-        // restored afterwards.
-        Dictionary<MLine, List<MLine.Vertex>> mlineVertices = originals.OfType<MLine>().ToDictionary(m => m, m => new List<MLine.Vertex>(m.Vertices));
+        // ACadSharp 3.7.1's MLine.Clone() empties the vertex list an MLine shares with its source (by
+        // MemberwiseClone), and Insert.Clone() deep-clones its entire block subtree. So exploding this insert
+        // destroys every MLINE reachable through it, including ones nested inside a block placed inside this one,
+        // several levels below anything Explode() itself returns: cloning the nested Insert clones its block along
+        // the way. CollectMLines walks the whole subtree (following nested Insert.Block references, not yet cloned
+        // at this point) to snapshot every one of them before Explode() runs, and Heal repairs them immediately
+        // after and again in `finally`. The repair is always in place (Clear + AddRange into the *existing* list,
+        // never a reassignment): because a clone shares the very same List<Vertex> object as its source at every
+        // depth, one in-place heal fixes the original and every clone below it at once; reassigning would leave an
+        // outer level's shared list emptied. The insert's transform still has to be applied manually to a healed
+        // MLINE's vertices, because Explode()'s own ApplyTransform ran while the list was still empty.
+        Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
+        CollectMLines(insert.Block, mlineVertices);
         int index = 0;
         try
         {
-            foreach (Entity entity in insert.Explode())
+            List<Entity> clones = insert.Explode().ToList();
+            Heal(mlineVertices);
+            foreach (Entity entity in clones)
             {
                 Entity? original = index < originals.Count ? originals[index] : null;
                 index++;
@@ -674,9 +703,8 @@ internal sealed class EntityRenderDispatcher
                     source = original;
                     entityPlacement = transform;
                 }
-                else if (entity is MLine clone && original is MLine sourceMLine && mlineVertices.TryGetValue(sourceMLine, out List<MLine.Vertex>? vertices))
+                else if (entity is MLine && original is MLine)
                 {
-                    clone.Vertices = vertices;
                     entityPlacement = transform;
                 }
 
@@ -685,10 +713,7 @@ internal sealed class EntityRenderDispatcher
         }
         finally
         {
-            foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in mlineVertices)
-            {
-                pair.Key.Vertices = pair.Value;
-            }
+            Heal(mlineVertices);
         }
 
         if (index != originals.Count)
@@ -699,6 +724,44 @@ internal sealed class EntityRenderDispatcher
         }
 
         this.DrawAttributes(context, insert, layer, parent);
+
+        static void Heal(Dictionary<MLine, List<MLine.Vertex>> snapshot)
+        {
+            foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in snapshot)
+            {
+                pair.Key.Vertices.Clear();
+                pair.Key.Vertices.AddRange(pair.Value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Snapshots every MLINE reachable from <paramref name="block"/>, following nested <see cref="Insert.Block"/>
+    /// references. <see cref="Insert.Explode"/> deep-clones its entire block subtree, so an MLINE nested several
+    /// blocks deep is destroyed by an ancestor insert's own explode even though it is never that ancestor's direct
+    /// child; this has to run, and capture the whole subtree, before that explode call.
+    /// </summary>
+    /// <param name="block">The block whose entities (and nested blocks) are searched.</param>
+    /// <param name="snapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
+    private static void CollectMLines(BlockRecord? block, Dictionary<MLine, List<MLine.Vertex>> snapshot)
+    {
+        if (block == null)
+        {
+            return;
+        }
+
+        foreach (Entity entity in block.Entities)
+        {
+            switch (entity)
+            {
+                case MLine mline when !snapshot.ContainsKey(mline):
+                    snapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
+                    break;
+                case Insert nestedInsert:
+                    CollectMLines(nestedInsert.Block, snapshot);
+                    break;
+            }
+        }
     }
 
     /// <summary>

@@ -529,4 +529,34 @@ public sealed class EntityRenderDispatcherTests
         Assert.NotEmpty(surface.Lines);
         Assert.Single(notifications);
     }
+
+    [Fact]
+    public void NonWorldSolidIsBroughtIntoWorld()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        Solid solid = new()
+        {
+            FirstCorner = new XYZ(1, 0, 0),
+            SecondCorner = new XYZ(3, 0, 0),
+            ThirdCorner = new XYZ(1, 2, 0),
+            FourthCorner = new XYZ(3, 2, 0),
+            Normal = new XYZ(0, 0, -1),
+        };
+
+        dispatcher.Draw(CreateContext(surface, configuration), solid);
+
+        // A (0,0,-1) extrusion mirrors X: the solid must land on x in [-3, -1], not [1, 3].
+        IReadOnlyList<SurfacePoint> points = Assert.Single(surface.Polygons);
+        Assert.Equal(4, points.Count);
+        Assert.Equal(-1d, points.Max(p => p.X), 9);
+        Assert.Equal(-3d, points.Min(p => p.X), 9);
+
+        // The default normal leaves the corners untouched.
+        solid.Normal = XYZ.AxisZ;
+        dispatcher.Draw(CreateContext(surface, configuration), solid);
+        Assert.Equal(1d, surface.Polygons[1].Min(p => p.X), 9);
+        Assert.Equal(3d, surface.Polygons[1].Max(p => p.X), 9);
+    }
 }

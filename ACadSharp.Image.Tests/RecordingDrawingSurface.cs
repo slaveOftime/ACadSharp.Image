@@ -28,6 +28,9 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     /// <summary>Rings of every FillPath call, in order.</summary>
     public List<IReadOnlyList<IReadOnlyList<SurfacePoint>>> FillPaths { get; } = new();
 
+    /// <summary>Points of every FillPolygon call, in order.</summary>
+    public List<IReadOnlyList<SurfacePoint>> Polygons { get; } = new();
+
     /// <summary>Every text run handed to DrawText, in order.</summary>
     public List<SurfaceText> Texts { get; } = new();
 
@@ -88,6 +91,7 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     {
         this.Styles.Add(style);
         this.Calls.Add($"FillPolygon n={points.Count}");
+        this.Polygons.Add(points.ToArray());
     }
 
     public void FillPath(ImageStyle style, IReadOnlyList<IReadOnlyList<SurfacePoint>> rings)

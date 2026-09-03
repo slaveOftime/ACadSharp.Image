@@ -221,14 +221,23 @@ internal sealed class EntityRenderDispatcher
         }
     }
 
+    /// <summary>
+    /// Fills a solid's four corners. The corners are OCS coordinates (ACadSharp leaves the normal to the caller), so a
+    /// non-world normal is applied first, with each corner's Z as its elevation.
+    /// </summary>
     private static void DrawSolid(ImageRenderContext context, ImageStyle style, Solid solid)
     {
+        OcsTransform? toWorld = IsWorldPlane(solid.Normal) ? null : OcsTransform.For(solid.Normal);
+        SurfacePoint ToSurface(XYZ corner) => toWorld != null
+            ? context.ToSurfacePoint(toWorld.ToWorldXY(corner.X, corner.Y, corner.Z))
+            : context.ToSurfacePoint(corner);
+
         SurfacePoint[] points =
         [
-            context.ToSurfacePoint(solid.FirstCorner),
-            context.ToSurfacePoint(solid.SecondCorner),
-            context.ToSurfacePoint(solid.ThirdCorner),
-            context.ToSurfacePoint(solid.FourthCorner),
+            ToSurface(solid.FirstCorner),
+            ToSurface(solid.SecondCorner),
+            ToSurface(solid.ThirdCorner),
+            ToSurface(solid.FourthCorner),
         ];
 
         context.Surface.FillPolygon(style, points);

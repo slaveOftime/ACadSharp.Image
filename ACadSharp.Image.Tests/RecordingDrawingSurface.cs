@@ -28,6 +28,9 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     /// <summary>Rings of every FillPath call, in order.</summary>
     public List<IReadOnlyList<IReadOnlyList<SurfacePoint>>> FillPaths { get; } = new();
 
+    /// <summary>Every text run handed to DrawText, in order.</summary>
+    public List<SurfaceText> Texts { get; } = new();
+
     public void BeginEntity(EntityRenderInfo info, LayerRenderInfo layer)
     {
         this.Depth++;
@@ -104,6 +107,7 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     {
         this.Styles.Add(style);
         this.Calls.Add($"DrawText '{text.Text}' anchor={text.Anchor} baseline={text.Baseline}");
+        this.Texts.Add(text);
     }
 
     public ViewportSurface BeginViewport(SurfaceRect bounds)

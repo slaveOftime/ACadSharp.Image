@@ -121,6 +121,9 @@ internal sealed class EntityRenderDispatcher
                 case Dimension dimension:
                     this.DrawDimension(context, dimension, layer, resolved);
                     break;
+                case Leader leader:
+                    this.DrawLeader(context, style, leader);
+                    break;
                 case Solid solid:
                     DrawSolid(context, style, solid);
                     break;
@@ -377,6 +380,7 @@ internal sealed class EntityRenderDispatcher
         Ellipse ellipse => IsFinite(ellipse.Center) && IsFinite(ellipse.MajorAxisEndPoint) && double.IsFinite(ellipse.RadiusRatio) && double.IsFinite(ellipse.StartParameter) && double.IsFinite(ellipse.EndParameter),
         Line line => IsFinite(line.StartPoint) && IsFinite(line.EndPoint),
         Face3D face => IsFinite(face.FirstCorner) && IsFinite(face.SecondCorner) && IsFinite(face.ThirdCorner) && IsFinite(face.FourthCorner),
+        Leader leader => leader.Vertices.All(IsFinite),
         _ => true,
     };
 
@@ -448,6 +452,77 @@ internal sealed class EntityRenderDispatcher
         }
 
         context.Surface.DrawPolyline(style, points, SplineRenderer.ShouldClosePoints(points, close));
+    }
+
+    /// <summary>
+    /// A leader is its stored path (the hookline is already the last vertex; the annotation is a separate entity)
+    /// plus, when enabled, AutoCAD's default closed filled arrowhead at the first vertex: an isosceles triangle
+    /// DIMASZ x DIMSCALE long and a third of that wide. A splined leader runs a Catmull-Rom curve through its
+    /// vertices. Custom arrowhead blocks fall back to the default triangle with a notification.
+    /// </summary>
+    private void DrawLeader(ImageRenderContext context, ImageStyle style, Leader leader)
+    {
+        if (leader.Vertices.Count < 2)
+        {
+            return;
+        }
+
+        SurfacePoint[] points = leader.Vertices.Select(context.ToSurfacePoint).ToArray();
+        if (leader.PathType == LeaderPathType.Spline && points.Length > 2)
+        {
+            context.Surface.DrawCubicBezier(style, CatmullRomToBezier(points), false);
+        }
+        else
+        {
+            context.Surface.DrawPolyline(style, points, false);
+        }
+
+        if (!leader.ArrowHeadEnabled)
+        {
+            return;
+        }
+
+        if (leader.Style.LeaderArrow != null)
+        {
+            this._configuration.Notify($"[{leader.SubclassMarker}] Arrowhead block '{leader.Style.LeaderArrow.Name}' is not rendered; the default closed arrow is drawn instead.", NotificationType.NotImplemented);
+        }
+
+        double size = leader.Style.ArrowSize * (leader.Style.ScaleFactor > 0d ? leader.Style.ScaleFactor : 1d);
+        XY tip = leader.Vertices[0].Convert<XY>();
+        XY direction = tip - leader.Vertices[1].Convert<XY>();
+        double length = direction.GetLength();
+        if (size <= 0d || length <= 0d)
+        {
+            return;
+        }
+
+        direction /= length;
+        XY baseCenter = tip - (direction * size);
+        XY half = new XY(-direction.Y, direction.X) * (size / 6d);
+        context.Surface.FillPolygon(style, [context.ToSurfacePoint(tip), context.ToSurfacePoint(baseCenter + half), context.ToSurfacePoint(baseCenter - half)]);
+    }
+
+    /// <summary>
+    /// Control points (1 + 3n) of the cubic Bézier chain equivalent to a uniform Catmull-Rom spline through
+    /// <paramref name="points"/>, with the end tangents clamped by repeating the end points.
+    /// </summary>
+    internal static SurfacePoint[] CatmullRomToBezier(IReadOnlyList<SurfacePoint> points)
+    {
+        int segments = points.Count - 1;
+        SurfacePoint[] controls = new SurfacePoint[(segments * 3) + 1];
+        controls[0] = points[0];
+        for (int i = 0; i < segments; i++)
+        {
+            SurfacePoint previous = points[Math.Max(i - 1, 0)];
+            SurfacePoint start = points[i];
+            SurfacePoint end = points[i + 1];
+            SurfacePoint next = points[Math.Min(i + 2, points.Count - 1)];
+            controls[(3 * i) + 1] = new SurfacePoint(start.X + ((end.X - previous.X) / 6d), start.Y + ((end.Y - previous.Y) / 6d));
+            controls[(3 * i) + 2] = new SurfacePoint(end.X - ((next.X - start.X) / 6d), end.Y - ((next.Y - start.Y) / 6d));
+            controls[(3 * i) + 3] = end;
+        }
+
+        return controls;
     }
 
     private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)

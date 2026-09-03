@@ -992,4 +992,78 @@ public sealed class EntityRenderDispatcherTests
 
         Assert.Single(surface.Texts, t => t.Text == "ACME5");
     }
+
+    [Fact]
+    public void StraightLeaderIsOneOpenPolylineWithoutArrow()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Leader leader = new() { Vertices = { new XYZ(0, 0, 0), new XYZ(10, 10, 0), new XYZ(20, 10, 0) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.Equal(["DrawPolyline n=3 closed=False"], surface.Calls.Where(c => c.StartsWith("Draw", StringComparison.Ordinal) || c.StartsWith("Fill", StringComparison.Ordinal)));
+        Assert.Equal([new SurfacePoint(0, 100), new SurfacePoint(10, 90), new SurfacePoint(20, 90)], surface.Polylines[0]);
+    }
+
+    [Fact]
+    public void LeaderArrowheadIsAFilledTriangleAtTheFirstVertex()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        // A fresh style: DimensionStyle.Default may be shared, and tests run in parallel.
+        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 0), new XYZ(30, 0, 0) }, Style = new DimensionStyle("ARROW") { ArrowSize = 6, ScaleFactor = 2 } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        IReadOnlyList<SurfacePoint> arrow = Assert.Single(surface.Polygons);
+        Assert.Equal(3, arrow.Count);
+        Assert.Equal(new SurfacePoint(0, 100), arrow[0]);
+        // Length 6 * 2 = 12 along +X (away from the second vertex), half-width 12 / 6 = 2.
+        Assert.Contains(arrow, p => Math.Abs(p.X - 12) < 1e-9 && Math.Abs(p.Y - 98) < 1e-9);
+        Assert.Contains(arrow, p => Math.Abs(p.X - 12) < 1e-9 && Math.Abs(p.Y - 102) < 1e-9);
+    }
+
+    [Fact]
+    public void SplinedLeaderIsACubicBezierChainThroughItsVertices()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Leader leader = new() { PathType = LeaderPathType.Spline, Vertices = { new XYZ(0, 0, 0), new XYZ(10, 10, 0), new XYZ(20, 0, 0), new XYZ(30, 10, 0) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.Equal(["DrawCubicBezier n=10 closed=False"], surface.Calls.Where(c => c.StartsWith("Draw", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void CatmullRomControlPointsInterpolateTheInputPoints()
+    {
+        SurfacePoint[] points = [new(0, 0), new(10, 10), new(20, 0)];
+
+        SurfacePoint[] controls = EntityRenderDispatcher.CatmullRomToBezier(points);
+
+        Assert.Equal(7, controls.Length);
+        Assert.Equal(points[0], controls[0]);
+        Assert.Equal(points[1], controls[3]);
+        Assert.Equal(points[2], controls[6]);
+        // Interior tangent at (10,10) is (P2 - P0) / 6 = (20, 0) / 6.
+        Assert.Equal(new SurfacePoint(10 - 20d / 6d, 10), controls[2]);
+        Assert.Equal(new SurfacePoint(10 + 20d / 6d, 10), controls[4]);
+    }
+
+    [Fact]
+    public void LeaderWithCustomArrowBlockFallsBackToTheDefaultArrowWithANotification()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 0), new XYZ(30, 0, 0) }, Style = new DimensionStyle("DOTTED") { LeaderArrow = new BlockRecord("_DOT") } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.Single(surface.Polygons);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("_DOT", StringComparison.Ordinal));
+    }
 }

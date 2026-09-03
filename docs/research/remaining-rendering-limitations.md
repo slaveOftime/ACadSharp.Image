@@ -284,7 +284,8 @@ Two things surfaced while verifying the above; neither was asked for, both are c
 - `ACadSharp.Image/Rendering/EntityRenderDispatcher.cs` — type routing and the `default:` NotImplemented arm (`:153-155`), `DrawSolid` OCS handling (`:239-255`), `DrawBlockContents` explode pairing (`:393-413`), `case TextEntity` (`:141-143`).
 - `ACadSharp.Image/Rendering/RasterDrawingSurface.cs` — `DrawText` (`:176-232`), `TextOptions.Dpi` (`:205`), `halfLeading` (`:194-201`), `LineSpacing` (`:220`), `CreateFont` (`:279-282`), `FillPolygon` (`:137-147`).
 - `ACadSharp.Image/Rendering/Svg/SvgDrawingSurface.cs` — background `<rect>` gating (`:62-79`), `DrawText` (`:374-436`), `BeginViewport` clip (`:438-453`).
-- `ACadSharp.Image/Rendering/TextMetrics.cs` — `CapHeightToEm`/`EmSize` (moved there by plan 08; `SvgTextLayout.EmSize` forwards), `LineHeight` (`:23-24`), `BlockOffset` (`:30-35`), `Wrap` (`:55-83`), measuring `Dpi = 72f` (`:64`).
+- `ACadSharp.Image/Rendering/TextMetrics.cs` — `CapHeightToEm`/`EmSize` (moved there by plan 08; `SvgTextLayout.EmSize` forwards).
+- `ACadSharp.Image/Rendering/Svg/SvgTextLayout.cs` — `LineHeight` (`:23-24`), `BlockOffset` (`:30-35`), `Wrap` (`:55-83`), measuring `Dpi = 72f` (`:64`).
 - `ACadSharp.Image/Rendering/TextRenderer.cs` — MTEXT/TEXT transform rationale (`:22-26`, `:72-76`), `GetTextOrigin` (`:209-214`), `LineSpacing` pass-through (`:59`).
 - `ACadSharp.Image/Rendering/FontResolver.cs` — the 1-point clamp (`:77-80`).
 - `ACadSharp.Image/Rendering/SplineRenderer.cs` — fit-points fallback (`:64-77`).

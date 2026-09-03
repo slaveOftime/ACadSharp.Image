@@ -1,3 +1,4 @@
+using System.Linq;
 using ACadSharp.Image.Rendering;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -135,5 +136,24 @@ public sealed class RasterDrawingSurfaceTests
         IReadOnlyList<SurfacePoint> points = CurveTessellation.ArcPoints(center, radius, radius, 0, startAngle, sweep, 2);
         Assert.Equal(5, points[1].X, 6);
         Assert.Equal(2.5, points[1].Y, 6);
+    }
+
+    [Fact]
+    public void ViewportFlipOriginIsTheExactHeightNotTheRoundedImageHeight()
+    {
+        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
+
+        // A viewport 9.3 px tall gets a 10-row image; its content must still be placed against 9.3, not 10.
+        ViewportSurface viewport = surface.BeginViewport(new SurfaceRect(0, 0, 10, 9.3));
+
+        Assert.Equal(9.3, viewport.BottomY, 9);
+        Assert.Equal(0d, viewport.OffsetX);
+
+        // A one-pixel line drawn on the viewport's bottom edge (surface y = BottomY) must reach the page.
+        viewport.Surface.DrawLine(new ImageStyle(ImageColor.Red, 1f), new SurfacePoint(0, viewport.BottomY), new SurfacePoint(10, viewport.BottomY));
+        surface.EndViewport(viewport);
+
+        Assert.Contains(Enumerable.Range(0, 10).Select(x => canvas[x, 9]), p => p.R > p.G);
     }
 }

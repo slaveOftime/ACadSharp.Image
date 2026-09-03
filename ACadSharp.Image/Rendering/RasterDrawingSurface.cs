@@ -215,11 +215,14 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
     public ViewportSurface BeginViewport(SurfaceRect bounds)
     {
+        // The child image needs whole pixels, but the content is placed against the viewport's exact height:
+        // rounding the flip origin up used to shift every point down by the fraction and push geometry on the
+        // view's lower edge out of the image.
         int width = Math.Max(1, (int)Math.Ceiling(bounds.Width));
         int height = Math.Max(1, (int)Math.Ceiling(bounds.Height));
         Image<Rgba32> image = new(width, height, ImageColor.Transparent);
         RasterDrawingSurface child = new(image, this._configuration, ownsCanvas: true);
-        ViewportSurface viewport = new(child, 0d, height);
+        ViewportSurface viewport = new(child, 0d, bounds.Height);
         this._viewports[viewport] = (image, bounds);
         return viewport;
     }

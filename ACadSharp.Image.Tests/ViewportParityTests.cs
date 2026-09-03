@@ -56,10 +56,9 @@ public sealed class ViewportParityTests
         //   window scan confirms every pixel in that band is background, i.e. that Hidden stays out of the raster
         //   (the grid line sits at y≈250 and the circle spans y≈159-342, so the window is otherwise clean too).
         // - (171, 200): a point on the left wall (model x=0, Walls layer, red), well clear of its corners.
-        //   The model bottom wall (my=0) exactly coincides with the viewport's clip-rect edge (the view spans
-        //   model x 0..100, y 0..60 exactly) and is fully clipped away in the raster path, so it cannot serve as
-        //   the non-background probe; the left wall sits on the same boundary but along an axis unaffected by
-        //   this edge case and renders reliably.
+        //   The model bottom wall (my=0) coincides with the viewport's lower edge; before the flip-origin fix the
+        //   rounded flip origin shifted content down and pushed it out of the raster image, so it could not serve
+        //   as a probe. With BottomY now the exact height, the bottom wall renders and is probed below.
         Rgba32 white = new(255, 255, 255, 255);
         for (int y = 112; y <= 116; y++)
         {
@@ -70,6 +69,10 @@ public sealed class ViewportParityTests
         }
 
         Assert.NotEqual(white, page.Canvas[171, 200]);
+
+        // The bottom wall lies exactly on the view's lower edge; before the flip-origin fix it fell outside the viewport image.
+        Rgba32 bottomWall = page.Canvas[400, 387];
+        Assert.True(bottomWall.R > 200 && bottomWall.G < 100 && bottomWall.B < 100, $"expected a red pixel on the bottom wall, got {bottomWall}");
     }
 
     [Fact]

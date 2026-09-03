@@ -193,12 +193,9 @@ internal sealed class ImagePageRenderer
     private void DrawViewport(ImageRenderContext pageContext, Viewport viewport)
     {
         BoundingBox viewportBounds = viewport.GetBoundingBox();
-        double viewportWidth = pageContext.SinglePrecision
-            ? Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthX)))
-            : pageContext.ToSurfaceLength(viewportBounds.LengthX);
-        double viewportHeight = pageContext.SinglePrecision
-            ? Math.Max(1, (int)Math.Ceiling(pageContext.ToSurfaceLength(viewportBounds.LengthY)))
-            : pageContext.ToSurfaceLength(viewportBounds.LengthY);
+        // Exact size for both backends; the raster surface rounds its own image up to whole pixels.
+        double viewportWidth = pageContext.ToSurfaceLength(viewportBounds.LengthX);
+        double viewportHeight = pageContext.ToSurfaceLength(viewportBounds.LengthY);
         BoundingBox modelBounds = viewport.GetModelBoundingBox();
 
         SurfacePoint topLeft = pageContext.ToSurfacePoint(new XY(viewportBounds.Min.X, viewportBounds.Max.Y));

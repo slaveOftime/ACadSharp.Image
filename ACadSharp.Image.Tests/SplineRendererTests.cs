@@ -6,6 +6,7 @@ using CSMath;
 
 namespace ACadSharp.Image.Tests;
 
+/// <summary>Drives splines through the dispatcher and checks which surface primitive they reach.</summary>
 public sealed class SplineRendererTests
 {
     private static ImageRenderContext Context(IDrawingSurface surface, ImageConfiguration configuration)

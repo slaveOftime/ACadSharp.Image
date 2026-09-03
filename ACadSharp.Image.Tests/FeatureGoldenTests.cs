@@ -5,6 +5,7 @@ using SixLabors.Fonts;
 
 namespace ACadSharp.Image.Tests;
 
+/// <summary>Renders a block containing every primitive the sample goldens lack and compares it with its baseline and golden.</summary>
 public sealed class FeatureGoldenTests
 {
     private const string FontFamily = "DejaVu Sans";

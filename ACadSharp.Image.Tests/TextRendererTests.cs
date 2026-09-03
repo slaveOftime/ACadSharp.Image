@@ -5,6 +5,7 @@ using CSMath;
 
 namespace ACadSharp.Image.Tests;
 
+/// <summary>Checks how text alignment and attachment map onto surface text runs.</summary>
 public sealed class TextRendererTests
 {
     private static (RecordingDrawingSurface Surface, ImageRenderContext Context, EntityRenderDispatcher Dispatcher) Setup(double scale = 1d)

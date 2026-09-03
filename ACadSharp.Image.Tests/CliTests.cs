@@ -5,6 +5,7 @@ using CSMath;
 
 namespace ACadSharp.Image.Tests;
 
+/// <summary>Tests the CLI's argument parsing, format resolution, layer table and entry point through captured writers.</summary>
 public sealed class CliTests
 {
     [Fact]
@@ -157,33 +158,60 @@ public sealed class CliTests
     }
 
     [Fact]
-    public void WriteLayerTableRendersOnlyTheDefaultLayer()
-    {
-        // Layer.DefaultName ("0") cannot be removed from a CadDocument in ACadSharp 3.7.1: Layers.Remove("0")
-        // returns null and the layer table still holds one entry. So the smallest table reachable is a header
-        // plus the single "0" row, rather than the empty "No layers." message.
-        CadDocument document = new();
-        StringWriter writer = new();
-
-        Program.WriteLayerTable(document, writer);
-        string[] lines = writer.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.TrimEnd('\r')).ToArray();
-
-        Assert.Equal(2, lines.Length);
-        Assert.StartsWith("0", lines[1]);
-    }
-
-    [Fact]
-    public void MainReturnsOneForAMissingInputFile()
+    public void RunReturnsOneAndReportsAMissingInputFileOnTheErrorWriter()
     {
         string missing = Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.dxf");
+        StringWriter output = new();
+        StringWriter error = new();
 
-        Assert.Equal(1, Program.Main([missing]));
+        int exitCode = Program.Run([missing], output, error);
+
+        Assert.Equal(1, exitCode);
+        Assert.Equal(string.Empty, output.ToString());
+        Assert.StartsWith("Error: Input file was not found.", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void MainReturnsZeroForHelp()
+    public void RunWritesHelpToTheOutputWriterAndReturnsZero()
     {
-        Assert.Equal(0, Program.Main([]));
-        Assert.Equal(0, Program.Main(["--help"]));
+        StringWriter output = new();
+        StringWriter error = new();
+
+        Assert.Equal(0, Program.Run([], output, error));
+        Assert.Equal(0, Program.Run(["--help"], output, error));
+
+        Assert.Contains("Usage:", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--list-layers", output.ToString(), StringComparison.Ordinal);
+        Assert.Equal(string.Empty, error.ToString());
+    }
+
+    [Fact]
+    public void RunRejectsAnUnknownFormatBeforeReadingTheDocument()
+    {
+        string repoRoot = SampleParityTests.FindRepoRoot();
+        string sample = Path.Combine(repoRoot, "Samples", "6-57-1119.dxf");
+        StringWriter output = new();
+        StringWriter error = new();
+
+        int exitCode = Program.Run([sample, "-f", "tiff"], output, error);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Unsupported output format 'tiff'", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RunListsLayersOnTheOutputWriterWithoutRendering()
+    {
+        string repoRoot = SampleParityTests.FindRepoRoot();
+        string sample = Path.Combine(repoRoot, "Samples", "6-57-1119.dxf");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"not-written-{Guid.NewGuid():N}.png");
+        StringWriter output = new();
+        StringWriter error = new();
+
+        int exitCode = Program.Run([sample, "--list-layers", "-o", outputPath], output, error);
+
+        Assert.Equal(0, exitCode);
+        Assert.StartsWith("Layer", output.ToString(), StringComparison.Ordinal);
+        Assert.False(File.Exists(outputPath));
     }
 }

@@ -5,13 +5,22 @@ namespace ACadSharp.Image.Cli;
 
 internal static class Program
 {
-    public static int Main(string[] args)
+    public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
+
+    /// <summary>
+    /// Runs the tool with explicit writers so the output can be captured; <see cref="Main"/> passes the console.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
+    /// <param name="output">Receives help, the layer table and the success line.</param>
+    /// <param name="error">Receives reader and renderer notifications and the error line.</param>
+    /// <returns>0 on success, 1 on any handled error.</returns>
+    internal static int Run(string[] args, TextWriter output, TextWriter error)
     {
         try
         {
             if (args.Length == 0 || args.Any(IsHelpArgument))
             {
-                WriteHelp();
+                WriteHelp(output);
                 return 0;
             }
 
@@ -28,10 +37,10 @@ internal static class Program
             // after a long DWG parse.
             ImageExportFormat format = ResolveFormat(options);
 
-            CadDocument document = LoadDocument(inputPath);
+            CadDocument document = LoadDocument(inputPath, error);
             if (options.ListLayers)
             {
-                WriteLayerTable(document, Console.Out);
+                WriteLayerTable(document, output);
                 return 0;
             }
 
@@ -39,7 +48,7 @@ internal static class Program
 
             ImageExporter exporter = new();
             Configure(exporter.Configuration, options);
-            exporter.Configuration.OnNotification += OnExporterNotification;
+            exporter.Configuration.OnNotification += (_, e) => error.WriteLine($"render: {e.Message}");
 
             if (options.ExportPaperLayouts)
             {
@@ -52,15 +61,15 @@ internal static class Program
 
             exporter.Save(outputPath, format);
 
-            Console.WriteLine($"Generated {Path.GetFullPath(outputPath)} in {stopwatch.ElapsedMilliseconds}ms");
+            output.WriteLine($"Generated {Path.GetFullPath(outputPath)} in {stopwatch.ElapsedMilliseconds}ms");
 
             return 0;
         }
         catch (Exception ex) when (!IsFatalException(ex))
         {
-            Console.Error.WriteLine($"Error: {ex.Message}");
+            error.WriteLine($"Error: {ex.Message}");
 #if DEBUG
-            Console.Error.WriteLine(ex.StackTrace);
+            error.WriteLine(ex.StackTrace);
 #endif
             return 1;
         }
@@ -107,12 +116,12 @@ internal static class Program
         }
     }
 
-    private static CadDocument LoadDocument(string inputPath)
+    private static CadDocument LoadDocument(string inputPath, TextWriter error)
     {
         return Path.GetExtension(inputPath).ToLowerInvariant() switch
         {
-            ".dxf" => DxfReader.Read(inputPath, OnReaderNotification),
-            ".dwg" => DwgReader.Read(inputPath, OnReaderNotification),
+            ".dxf" => DxfReader.Read(inputPath, (_, e) => OnReaderNotification(e, error)),
+            ".dwg" => DwgReader.Read(inputPath, (_, e) => OnReaderNotification(e, error)),
             _ => throw new InvalidOperationException("Unsupported input format. Use a .dxf or .dwg file."),
         };
     }
@@ -120,12 +129,8 @@ internal static class Program
     /// <summary>Writes a human-readable layer table for <paramref name="document"/> to <paramref name="writer"/>.</summary>
     internal static void WriteLayerTable(CadDocument document, TextWriter writer)
     {
+        // ACadSharp always keeps layer "0", so the table is never empty.
         List<ACadSharp.Tables.Layer> layers = document.Layers.OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        if (layers.Count == 0)
-        {
-            writer.WriteLine("No layers.");
-            return;
-        }
 
         Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
         foreach (ACadSharp.Entities.Entity entity in document.ModelSpace.Entities)
@@ -385,19 +390,14 @@ internal static class Program
         return args[index];
     }
 
-    private static void OnReaderNotification(object? sender, NotificationEventArgs e)
+    private static void OnReaderNotification(NotificationEventArgs e, TextWriter error)
     {
         if (e.NotificationType is NotificationType.None or NotificationType.Warning or NotificationType.NotImplemented)
         {
             return;
         }
 
-        Console.Error.WriteLine($"reader: {e.Message}");
-    }
-
-    private static void OnExporterNotification(object? sender, NotificationEventArgs e)
-    {
-        Console.Error.WriteLine($"render: {e.Message}");
+        error.WriteLine($"reader: {e.Message}");
     }
 
     private static bool IsHelpArgument(string value) =>
@@ -405,9 +405,9 @@ internal static class Program
         value.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
         value.Equals("-?", StringComparison.OrdinalIgnoreCase);
 
-    private static void WriteHelp()
+    private static void WriteHelp(TextWriter output)
     {
-        Console.WriteLine("""
+        output.WriteLine("""
 Usage:
   cad-to-image <input.dxf|input.dwg> [options]
 

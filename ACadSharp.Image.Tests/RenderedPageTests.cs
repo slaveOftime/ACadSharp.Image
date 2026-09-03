@@ -8,6 +8,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace ACadSharp.Image.Tests;
 
+/// <summary>Covers the rendered page encoders, format helpers, unit conversion and page entity filters.</summary>
 public sealed class RenderedPageTests
 {
     [Theory]

@@ -6,6 +6,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace ACadSharp.Image.Tests;
 
+/// <summary>Renders a code-built sheet with one viewport and compares it with its PNG baseline and SVG golden.</summary>
 public sealed class ViewportParityTests
 {
     private const string FontFamily = "DejaVu Sans";

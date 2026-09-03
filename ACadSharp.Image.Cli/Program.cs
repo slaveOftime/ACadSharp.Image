@@ -5,6 +5,7 @@ namespace ACadSharp.Image.Cli;
 
 internal static class Program
 {
+    /// <summary>Entry point: runs the tool against the console.</summary>
     public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
 
     /// <summary>
@@ -24,7 +25,7 @@ internal static class Program
                 return 0;
             }
 
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             CliOptions options = ParseArgs(args);
             string inputPath = Path.GetFullPath(options.InputPath);

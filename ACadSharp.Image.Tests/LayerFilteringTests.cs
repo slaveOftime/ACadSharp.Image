@@ -149,4 +149,31 @@ public sealed class LayerFilteringTests
 
         Assert.Equal(1, Drawn(surface));
     }
+
+    [Fact]
+    public void FrozenInsertLayerHidesItsContentsAndVisibleInsertShowsLayerZeroContents()
+    {
+        Layer frozen = new("Doors") { Flags = LayerFlags.Frozen };
+        Layer visible = new("Windows");
+        Layer frozenOwn = new("Hardware") { Flags = LayerFlags.Frozen };
+
+        static BlockRecord Symbol(Layer own)
+        {
+            BlockRecord block = new(Guid.NewGuid().ToString("N"));
+            block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)) { Layer = new Layer(Layer.DefaultName) });
+            block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(0, 1, 0)) { Layer = own });
+            return block;
+        }
+
+        (RecordingDrawingSurface surface, EntityRenderDispatcher dispatcher, ImageRenderContext context) = Setup(c => c.LayerVisibility = LayerVisibilityMode.Screen);
+
+        // Insert on a frozen layer: nothing inside is drawn, not even the entity on its own visible layer.
+        dispatcher.Draw(context, new Insert(Symbol(visible)) { Layer = frozen });
+        Assert.Equal(0, Drawn(surface));
+
+        // Insert on a visible layer: the layer-0 line inherits that layer and is drawn; the line on its own frozen layer is not.
+        dispatcher.Draw(context, new Insert(Symbol(frozenOwn)) { Layer = visible });
+        Assert.Equal(1, Drawn(surface));
+        Assert.Equal("Windows", surface.Entities.Last(e => e.EntityType == "LINE").LayerName);
+    }
 }

@@ -215,15 +215,19 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
     public ViewportSurface BeginViewport(SurfaceRect bounds)
     {
-        // The child image needs whole pixels, but the content is placed against the viewport's exact height:
-        // rounding the flip origin up used to shift every point down by the fraction and push geometry on the
-        // view's lower edge out of the image.
-        int width = Math.Max(1, (int)Math.Ceiling(bounds.Width));
-        int height = Math.Max(1, (int)Math.Ceiling(bounds.Height));
+        // The child image can only be pasted at whole pixels. Its position is floored, the fractional remainder moves
+        // into the child's own offsets (so content keeps its exact page position), and the image grows to hold that
+        // remainder. The flip origin is the exact height: rounding it used to shift content and drop boundary geometry.
+        double left = Math.Floor(bounds.X);
+        double top = Math.Floor(bounds.Y);
+        double fractionX = bounds.X - left;
+        double fractionY = bounds.Y - top;
+        int width = Math.Max(1, (int)Math.Ceiling(fractionX + bounds.Width));
+        int height = Math.Max(1, (int)Math.Ceiling(fractionY + bounds.Height));
         Image<Rgba32> image = new(width, height, ImageColor.Transparent);
         RasterDrawingSurface child = new(image, this._configuration, ownsCanvas: true);
-        ViewportSurface viewport = new(child, 0d, bounds.Height);
-        this._viewports[viewport] = (image, bounds);
+        ViewportSurface viewport = new(child, fractionX, fractionY + bounds.Height);
+        this._viewports[viewport] = (image, new SurfaceRect(left, top, width, height));
         return viewport;
     }
 
@@ -234,7 +238,8 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
             throw new InvalidOperationException("EndViewport was called for a viewport this surface did not begin.");
         }
 
-        ImagePoint destination = new((int)MathF.Round((float)entry.Bounds.X), (int)MathF.Round((float)entry.Bounds.Y));
+        // Bounds were floored to whole pixels in BeginViewport.
+        ImagePoint destination = new((int)entry.Bounds.X, (int)entry.Bounds.Y);
         this.Canvas.Mutate(x => x.DrawImage(entry.Image, destination, 1f));
         viewport.Surface.Dispose();
     }

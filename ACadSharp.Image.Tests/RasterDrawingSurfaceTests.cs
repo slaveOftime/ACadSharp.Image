@@ -155,4 +155,25 @@ public sealed class RasterDrawingSurfaceTests
 
         Assert.Contains(Enumerable.Range(0, 10).Select(x => canvas[x, 9]), p => p.R > p.G);
     }
+
+    [Fact]
+    public void ViewportFractionalPositionIsCarriedIntoTheChildOffsets()
+    {
+        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
+
+        // Viewport at (3.6, 2.4): the image is pasted at (3, 2) and the child draws 0.6 / 0.4 px further in.
+        ViewportSurface viewport = surface.BeginViewport(new SurfaceRect(3.6, 2.4, 10, 9.3));
+
+        Assert.Equal(0.6, viewport.OffsetX, 9);
+        Assert.Equal(2.4 - 2 + 9.3, viewport.BottomY, 9);
+
+        // A vertical line on the child's own X offset must land in page column 3 (covering x 3.1..4.1), not column 4 alone.
+        viewport.Surface.DrawLine(new ImageStyle(ImageColor.Red, 1f), new SurfacePoint(viewport.OffsetX, 0), new SurfacePoint(viewport.OffsetX, viewport.BottomY));
+        surface.EndViewport(viewport);
+
+        Assert.True(canvas[3, 6].R > canvas[3, 6].G, $"column 3 should carry most of the line, got {canvas[3, 6]}");
+        Assert.Equal(new Rgba32(255, 255, 255, 255), canvas[2, 6]);
+        Assert.Equal(new Rgba32(255, 255, 255, 255), canvas[6, 6]);
+    }
 }

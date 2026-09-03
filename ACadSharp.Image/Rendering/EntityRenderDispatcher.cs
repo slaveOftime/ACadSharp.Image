@@ -123,11 +123,11 @@ internal sealed class EntityRenderDispatcher
                 case ACadSharp.Entities.Point point:
                     this.DrawPoint(context, style, point);
                     break;
-                case IPolyline polyline when context.Surface.SupportsCurves:
+                case IPolyline polyline when context.Surface.SupportsCurves && IsWorldPlane(polyline.Normal):
                     DrawBulgePolyline(context, style, polyline);
                     break;
                 case IPolyline polyline:
-                    DrawPolyline(context, style, polyline.GetPoints<XYZ>(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), polyline.IsClosed);
+                    DrawPolyline(context, style, this.PolylinePoints(polyline), polyline.IsClosed);
                     break;
                 case Spline spline:
                     this._splineRenderer.Draw(context, style, spline);
@@ -239,11 +239,27 @@ internal sealed class EntityRenderDispatcher
     /// <remarks>
     /// Native curve output uses the raw centre, radii and angles; ACadSharp applies the OCS transform only inside
     /// <c>PolygonalVertexes</c>. Anything but the default normal (a <c>(0,0,-1)</c> extrusion mirrors X, for example)
-    /// therefore has to fall back to the tessellating path.
+    /// therefore has to fall back to the tessellating path. Polylines and hatches are never transformed by ACadSharp
+    /// at all, so their points go through <see cref="OcsTransform"/> instead.
     /// </remarks>
-    private static bool IsWorldPlane(XYZ normal)
+    private static bool IsWorldPlane(XYZ normal) => OcsTransform.IsWorldPlane(normal);
+
+    /// <summary>
+    /// Tessellated polyline points in world XY. A polyline on the world plane keeps ACadSharp's points untouched (the
+    /// raster output depends on that exact sequence); any other normal is brought into world space first, since
+    /// <c>GetPoints</c> returns raw OCS vertices.
+    /// </summary>
+    private IEnumerable<XY> PolylinePoints(IPolyline polyline)
     {
-        return Math.Abs(normal.X) < 1e-9 && Math.Abs(normal.Y) < 1e-9 && Math.Abs(normal.Z - 1d) < 1e-9;
+        IEnumerable<XYZ> points = polyline.GetPoints<XYZ>(this._configuration.ArcPrecision);
+        if (IsWorldPlane(polyline.Normal))
+        {
+            return points.Select(v => v.Convert<XY>());
+        }
+
+        OcsTransform toWorld = OcsTransform.For(polyline.Normal);
+        double elevation = polyline.Elevation;
+        return points.Select(p => toWorld.ToWorldXY(p.X, p.Y, elevation));
     }
 
     /// <summary>
@@ -363,6 +379,12 @@ internal sealed class EntityRenderDispatcher
 
     private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch)
     {
+        // Boundary paths and exploded pattern lines are OCS data; ACadSharp leaves the hatch normal to the caller.
+        OcsTransform? toWorld = IsWorldPlane(hatch.Normal) ? null : OcsTransform.For(hatch.Normal);
+        SurfacePoint ToSurface(XYZ point) => toWorld != null
+            ? context.ToSurfacePoint(toWorld.ToWorldXY(point.X, point.Y, hatch.Elevation))
+            : context.ToSurfacePoint(point);
+
         if (hatch.IsSolid || hatch.PatternType == HatchPatternType.SolidFill)
         {
             List<IReadOnlyList<SurfacePoint>> rings = new();
@@ -371,7 +393,7 @@ internal sealed class EntityRenderDispatcher
                 List<SurfacePoint> ring = new();
                 foreach (XYZ point in path.GetPoints(this._configuration.ArcPrecision))
                 {
-                    ring.Add(context.ToSurfacePoint(point));
+                    ring.Add(ToSurface(point));
                 }
 
                 if (ring.Count >= 3)
@@ -394,6 +416,17 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
+        // ExplodePattern builds every line up front, so the cap has to be applied before calling it: a fine pattern
+        // over a large boundary would otherwise allocate millions of entities before the first one is drawn.
+        double scanLines = EstimateScanLines(hatch);
+        if (scanLines > this._configuration.MaxHatchLines)
+        {
+            this._configuration.Notify(
+                $"[{hatch.SubclassMarker}] Hatch pattern needs about {scanLines.ToString("F0", CultureInfo.InvariantCulture)} scan lines, more than MaxHatchLines ({this._configuration.MaxHatchLines.ToString(CultureInfo.InvariantCulture)}); hatch skipped.",
+                NotificationType.Warning);
+            return;
+        }
+
         ImageStyle lineStyle = style with { DashPattern = null };
         int drawn = 0;
         foreach (Entity segment in hatch.ExplodePattern())
@@ -409,8 +442,73 @@ internal sealed class EntityRenderDispatcher
                 return;
             }
 
-            context.Surface.DrawLine(lineStyle, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
+            context.Surface.DrawLine(lineStyle, ToSurface(line.StartPoint), ToSurface(line.EndPoint));
             drawn++;
         }
+    }
+
+    /// <summary>
+    /// Number of pattern scan lines <c>Hatch.ExplodePattern()</c> would sweep across the hatch's bounding box, using its
+    /// own arithmetic (ACadSharp 3.7.1). Each scan line is clipped against every boundary edge and may emit several
+    /// dashes, so this is the work the expansion costs, not the number of lines it draws.
+    /// </summary>
+    /// <param name="hatch">The pattern hatch.</param>
+    /// <returns>The scan line count, or 0 when the pattern would not expand to anything.</returns>
+    internal static double EstimateScanLines(Hatch hatch)
+    {
+        if (hatch.Pattern == null || hatch.Pattern.Lines.Count == 0 || hatch.Paths.Count == 0)
+        {
+            return 0d;
+        }
+
+        BoundingBox box = hatch.GetBoundingBox();
+        if (!IsFinite(box.Min) || !IsFinite(box.Max))
+        {
+            return 0d;
+        }
+
+        XY[] corners =
+        [
+            new XY(box.Min.X, box.Min.Y),
+            new XY(box.Min.X, box.Max.Y),
+            new XY(box.Max.X, box.Min.Y),
+            new XY(box.Max.X, box.Max.Y),
+        ];
+
+        double total = 0d;
+        foreach (HatchPattern.Line patternLine in hatch.Pattern.Lines)
+        {
+            XY direction = patternLine.Direction;
+            if (direction.IsZero())
+            {
+                continue;
+            }
+
+            XY normal = new(-direction.Y, direction.X);
+            double minProjection = double.PositiveInfinity;
+            double maxProjection = double.NegativeInfinity;
+            foreach (XY corner in corners)
+            {
+                double projection = (corner.X * normal.X) + (corner.Y * normal.Y);
+                minProjection = Math.Min(minProjection, projection);
+                maxProjection = Math.Max(maxProjection, projection);
+            }
+
+            double offset = patternLine.LineOffset;
+            if (Math.Abs(offset) <= MathHelper.Epsilon)
+            {
+                total += 1d;
+                continue;
+            }
+
+            double origin = (patternLine.BasePoint.X * normal.X) + (patternLine.BasePoint.Y * normal.Y);
+            double k1 = (minProjection - origin) / offset;
+            double k2 = (maxProjection - origin) / offset;
+            double first = Math.Floor(Math.Min(k1, k2)) - 1d;
+            double last = Math.Ceiling(Math.Max(k1, k2)) + 1d;
+            total += last - first + 1d;
+        }
+
+        return total;
     }
 }

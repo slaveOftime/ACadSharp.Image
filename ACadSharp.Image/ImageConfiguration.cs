@@ -257,6 +257,11 @@ public sealed class ImageConfiguration
     /// <summary>
     /// Gets or sets the maximum number of pattern lines drawn per hatch; beyond it a warning is raised and the remainder is skipped. Default 20000.
     /// </summary>
+    /// <remarks>
+    /// The same limit is applied before the pattern is expanded: ACadSharp builds every pattern line of a hatch up
+    /// front, so a hatch whose pattern would need more scan lines than this is skipped entirely, with a warning,
+    /// instead of being expanded and then truncated.
+    /// </remarks>
     public int MaxHatchLines
     {
         get => this._maxHatchLines;

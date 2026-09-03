@@ -327,15 +327,138 @@ public sealed class EntityRenderDispatcherTests
     [Fact]
     public void PatternHatchIsCappedWithWarning()
     {
+        // A dashed pattern emits several segments per scan line, so the segment cap trips even though the scan-line
+        // preflight (about a dozen scan lines for this square) lets the expansion run.
+        Hatch hatch = SquareHatch(solid: false);
+        hatch.Pattern!.Lines[0].DashLengths.AddRange([1d, -1d]);
+        int cap = (int)Math.Ceiling(EntityRenderDispatcher.EstimateScanLines(hatch));
+
         RecordingDrawingSurface surface = new();
-        ImageConfiguration configuration = new() { MaxHatchLines = 3 };
+        ImageConfiguration configuration = new() { MaxHatchLines = cap };
         List<NotificationEventArgs> notifications = new();
         configuration.OnNotification += (_, e) => notifications.Add(e);
         EntityRenderDispatcher dispatcher = new(configuration);
 
-        dispatcher.Draw(CreateContext(surface, configuration), SquareHatch(solid: false));
+        dispatcher.Draw(CreateContext(surface, configuration), hatch);
 
-        Assert.Equal(3, surface.Calls.Count(c => c.StartsWith("DrawLine", StringComparison.Ordinal)));
-        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("hatch", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(cap, surface.Calls.Count(c => c.StartsWith("DrawLine", StringComparison.Ordinal)));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("remaining lines were skipped", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ArbitraryAxisFrameMapsOcsPointsIntoWorld()
+    {
+        // The classic case: a (0,0,-1) extrusion mirrors X.
+        OcsTransform flipped = OcsTransform.For(new XYZ(0, 0, -1));
+        XY mirrored = flipped.ToWorldXY(1, 2, 0);
+        Assert.Equal(-1d, mirrored.X, 9);
+        Assert.Equal(2d, mirrored.Y, 9);
+
+        // A vertical plane: OCS Y becomes world Z, so the elevation lands in world Y.
+        OcsTransform vertical = OcsTransform.For(new XYZ(0, 1, 0));
+        XY lifted = vertical.ToWorldXY(1, 2, 3);
+        Assert.Equal(-1d, lifted.X, 9);
+        Assert.Equal(3d, lifted.Y, 9);
+
+        // Whatever the tilt, the frame is orthonormal and its Z axis is the unit normal.
+        OcsTransform tilted = OcsTransform.For(new XYZ(2, 2, 2));
+        double unit = 1d / Math.Sqrt(3);
+        XYZ mappedZ = tilted.ToWorld(0, 0, 1);
+        Assert.Equal(unit, mappedZ.X, 9);
+        Assert.Equal(unit, mappedZ.Y, 9);
+        Assert.Equal(unit, mappedZ.Z, 9);
+        Assert.Equal(1d, Length(tilted.AxisX), 9);
+        Assert.Equal(1d, Length(tilted.AxisY), 9);
+        Assert.Equal(0d, Dot(tilted.AxisX, tilted.AxisY), 9);
+        Assert.Equal(0d, Dot(tilted.AxisX, tilted.Normal), 9);
+        Assert.Equal(0d, Dot(tilted.AxisY, tilted.Normal), 9);
+
+        Assert.True(OcsTransform.IsWorldPlane(XYZ.AxisZ));
+        Assert.False(OcsTransform.IsWorldPlane(tilted.Normal));
+
+        static double Length(XYZ v) => Math.Sqrt(Dot(v, v));
+        static double Dot(XYZ a, XYZ b) => (a.X * b.X) + (a.Y * b.Y) + (a.Z * b.Z);
+    }
+
+    [Fact]
+    public void NonWorldPolylineIsTessellatedAndBroughtIntoWorld()
+    {
+        RecordingDrawingSurface surface = new() { SupportsCurves = true };
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        LwPolyline polyline = new();
+        polyline.Vertices.Add(new LwPolyline.Vertex(new XY(1, 0)) { Bulge = 1 });
+        polyline.Vertices.Add(new LwPolyline.Vertex(new XY(3, 0)));
+        polyline.Normal = new XYZ(0, 0, -1);
+
+        dispatcher.Draw(CreateContext(surface, configuration), polyline);
+
+        // Bulges only describe circular arcs on the world plane; a mirrored polyline is tessellated, then mirrored.
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawBulgePolyline", StringComparison.Ordinal));
+        IReadOnlyList<SurfacePoint> points = Assert.Single(surface.Polylines);
+        Assert.True(points.Count > 2);
+        Assert.Equal(-1d, points[0].X, 3);
+        Assert.Equal(-3d, points[^1].X, 3);
+        Assert.All(points, p => Assert.InRange(p.X, -3.01, -0.99));
+
+        // On the world plane nothing changes: the bulge reaches a curve-capable surface intact.
+        surface.Calls.Clear();
+        polyline.Normal = XYZ.AxisZ;
+        dispatcher.Draw(CreateContext(surface, configuration), polyline);
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawBulgePolyline", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NonWorldHatchIsBroughtIntoWorld()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        Hatch solid = SquareHatch(solid: true);
+        solid.Normal = new XYZ(0, 0, -1);
+        dispatcher.Draw(CreateContext(surface, configuration), solid);
+
+        IReadOnlyList<SurfacePoint> ring = Assert.Single(Assert.Single(surface.FillPaths));
+        Assert.Equal(-10d, ring.Min(p => p.X), 6);
+        Assert.Equal(0d, ring.Max(p => p.X), 6);
+
+        Hatch pattern = SquareHatch(solid: false);
+        pattern.Normal = new XYZ(0, 0, -1);
+        dispatcher.Draw(CreateContext(surface, configuration), pattern);
+
+        Assert.NotEmpty(surface.Lines);
+        Assert.All(surface.Lines, l =>
+        {
+            Assert.InRange(l.Start.X, -10.001, 0.001);
+            Assert.InRange(l.End.X, -10.001, 0.001);
+        });
+    }
+
+    [Fact]
+    public void DensePatternHatchIsSkippedBeforeExpansion()
+    {
+        Hatch hatch = SquareHatch(solid: false);
+        double scanLines = EntityRenderDispatcher.EstimateScanLines(hatch);
+        Assert.InRange(scanLines, 6, 40);
+
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { MaxHatchLines = 5 };
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), hatch);
+
+        Assert.Empty(surface.Lines);
+        NotificationEventArgs notification = Assert.Single(notifications);
+        Assert.Equal(NotificationType.Warning, notification.NotificationType);
+        Assert.Contains("hatch skipped", notification.Message, StringComparison.Ordinal);
+
+        // Above the estimate the pattern is expanded and drawn as before.
+        configuration.MaxHatchLines = 50;
+        dispatcher.Draw(CreateContext(surface, configuration), hatch);
+        Assert.NotEmpty(surface.Lines);
+        Assert.Single(notifications);
     }
 }

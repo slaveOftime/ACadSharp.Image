@@ -19,6 +19,15 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
 
     public bool SupportsCurves { get; init; }
 
+    /// <summary>Start and end of every DrawLine call, in order.</summary>
+    public List<(SurfacePoint Start, SurfacePoint End)> Lines { get; } = new();
+
+    /// <summary>Points of every DrawPolyline and DrawBulgePolyline call, in order.</summary>
+    public List<IReadOnlyList<SurfacePoint>> Polylines { get; } = new();
+
+    /// <summary>Rings of every FillPath call, in order.</summary>
+    public List<IReadOnlyList<IReadOnlyList<SurfacePoint>>> FillPaths { get; } = new();
+
     public void BeginEntity(EntityRenderInfo info, LayerRenderInfo layer)
     {
         this.Depth++;
@@ -37,12 +46,14 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     {
         this.Styles.Add(style);
         this.Calls.Add($"DrawLine {start} {end} w={style.StrokeWidth}");
+        this.Lines.Add((start, end));
     }
 
     public void DrawPolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, bool closed)
     {
         this.Styles.Add(style);
         this.Calls.Add($"DrawPolyline n={points.Count} closed={closed}");
+        this.Polylines.Add(points.ToArray());
     }
 
     public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle)
@@ -67,6 +78,7 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     {
         this.Styles.Add(style);
         this.Calls.Add($"DrawBulgePolyline n={points.Count} closed={closed} bulges={string.Join(",", bulges)}");
+        this.Polylines.Add(points.ToArray());
     }
 
     public void FillPolygon(ImageStyle style, IReadOnlyList<SurfacePoint> points)
@@ -79,6 +91,7 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     {
         this.Styles.Add(style);
         this.Calls.Add($"FillPath rings={rings.Count}");
+        this.FillPaths.Add(rings.Select(r => (IReadOnlyList<SurfacePoint>)r.ToArray()).ToArray());
     }
 
     public void FillCircle(ImageStyle style, SurfacePoint center, double radius)

@@ -223,7 +223,8 @@ internal sealed class EntityRenderDispatcher
 
     /// <summary>
     /// Fills a solid's four corners. The corners are OCS coordinates (ACadSharp leaves the normal to the caller), so a
-    /// non-world normal is applied first, with each corner's Z as its elevation.
+    /// non-world normal is applied first, with each corner's Z as its elevation. DXF SOLID stores corners in a Z
+    /// pattern (first edge 1-2, opposite edge 3-4), so they are filled in order 1-2-4-3, not 1-2-3-4.
     /// </summary>
     private static void DrawSolid(ImageRenderContext context, ImageStyle style, Solid solid)
     {
@@ -236,8 +237,8 @@ internal sealed class EntityRenderDispatcher
         [
             ToSurface(solid.FirstCorner),
             ToSurface(solid.SecondCorner),
-            ToSurface(solid.ThirdCorner),
             ToSurface(solid.FourthCorner),
+            ToSurface(solid.ThirdCorner),
         ];
 
         context.Surface.FillPolygon(style, points);
@@ -249,7 +250,7 @@ internal sealed class EntityRenderDispatcher
     /// <remarks>
     /// Native curve output uses the raw centre, radii and angles; ACadSharp applies the OCS transform only inside
     /// <c>PolygonalVertexes</c>. Anything but the default normal (a <c>(0,0,-1)</c> extrusion mirrors X, for example)
-    /// therefore has to fall back to the tessellating path. Polylines and hatches are never transformed by ACadSharp
+    /// therefore has to fall back to the tessellating path. Polylines, hatches and solids are never transformed by ACadSharp
     /// at all, so their points go through <see cref="OcsTransform"/> instead.
     /// </remarks>
     private static bool IsWorldPlane(XYZ normal) => OcsTransform.IsWorldPlane(normal);

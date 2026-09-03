@@ -1,4 +1,3 @@
-using System.Linq;
 using ACadSharp.Image.Rendering;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;

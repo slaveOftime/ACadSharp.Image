@@ -7,7 +7,7 @@ namespace ACadSharp.Image.Rendering;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Polylines and hatches store their vertices in the plane defined by their extrusion <c>Normal</c> (the OCS) and
+/// Polylines, hatches and solids store their vertices in the plane defined by their extrusion <c>Normal</c> (the OCS) and
 /// ACadSharp 3.7.1 returns them raw: neither <c>IPolyline.GetPoints</c> nor <c>Hatch.BoundaryPath.GetPoints</c> nor
 /// <c>Hatch.ExplodePattern</c> applies the normal. The renderer projects world XY onto the page, so those points must
 /// be brought into world space first.

@@ -559,4 +559,27 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal(1d, surface.Polygons[1].Min(p => p.X), 9);
         Assert.Equal(3d, surface.Polygons[1].Max(p => p.X), 9);
     }
+
+    [Fact]
+    public void SolidCornersAreFilledInDxfOrder()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        // Corners in the DXF Z pattern: bottom-left, bottom-right, top-left, top-right.
+        Solid solid = new()
+        {
+            FirstCorner = new XYZ(0, 0, 0),
+            SecondCorner = new XYZ(10, 0, 0),
+            ThirdCorner = new XYZ(0, 5, 0),
+            FourthCorner = new XYZ(10, 5, 0),
+        };
+
+        dispatcher.Draw(CreateContext(surface, configuration), solid);
+
+        // Filled as 1-2-4-3, the outline is a rectangle; as 1-2-3-4 it would be a bow-tie.
+        IReadOnlyList<SurfacePoint> points = Assert.Single(surface.Polygons);
+        Assert.Equal([0d, 10d, 10d, 0d], points.Select(p => p.X).ToArray());
+        Assert.Equal([100d, 100d, 95d, 95d], points.Select(p => p.Y).ToArray());
+    }
 }

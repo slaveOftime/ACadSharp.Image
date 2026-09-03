@@ -60,6 +60,21 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
             return true;
         }
 
+        // ACadSharp 3.7.1's UpdateFromFitPoints fills the knot vector but no control points, and DXF allows a spline
+        // defined by fit points alone; joining the fit points is a coarse but honest stand-in for the curve.
+        if (spline.ControlPoints.Count == 0 && spline.FitPoints.Count > 1)
+        {
+            SurfacePoint[] points = new SurfacePoint[spline.FitPoints.Count];
+            for (int i = 0; i < points.Length; i++)
+            {
+                points[i] = context.ToSurfacePoint(spline.FitPoints[i]);
+            }
+
+            context.Surface.DrawPolyline(style, points, ShouldClosePoints(points, spline.IsClosed || spline.IsPeriodic));
+            this._configuration.Notify($"[{spline.SubclassMarker}] Spline has fit points but no control points; drawn as a polyline through its fit points.", NotificationType.Warning);
+            return true;
+        }
+
         this._configuration.Notify($"[{spline.SubclassMarker}] Could not approximate spline geometry.", NotificationType.Warning);
         return false;
     }

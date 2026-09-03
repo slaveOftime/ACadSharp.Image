@@ -223,7 +223,7 @@ exporter.Configuration.HideLayer("A-DOOR");                    // then remove on
 exporter.AddModelSpace(document);
 ```
 
-Filtering happens when rendering, so it also applies to block contents, dimension geometry and paper-space viewport contents. Entities on layer `0` inside a block take the layer of the insert that placed them.
+Filtering happens when rendering, so it also applies to block contents, dimension geometry and paper-space viewport contents. Entities on layer `0` inside a block take the layer of the insert that placed them, including its colour, line weight and linetype when theirs are ByLayer; ByBlock attributes resolve to the placing insert's own (colour 7 and defaults at top level). Rendering never modifies the pages, so changing filters between renders is safe.
 
 ### Layer visibility
 
@@ -247,7 +247,7 @@ exporter.Save("plan.svg", ImageExportFormat.Svg);
 
 The SVG has a drawing-unit `viewBox`, no `width`/`height` unless `Svg.EmitSize` is set, an attribute-free `<g class="cad-root">` for your pan/zoom transform, and one `<g data-layer="...">` per layer. Every element carries `data-handle` and `data-type` (plus `data-parent`/`data-block` for block contents); `data-handle` is omitted for exploded block contents, since they are transient clones with no handle of their own. In React, prefer injecting the markup at runtime or configure SVGO to keep ids; `data-*` attributes survive the default SVGR pipeline. Toggle a layer with CSS `display: none` on its group.
 
-SVG and PNG are built from the same geometry and never disagree on it, but they intentionally differ in fidelity: SVG keeps native arcs, Beziers and `<text>`, while raster output tessellates curves and outlines glyphs. Entities with a non-world extrusion normal (an OCS other than the default) are tessellated in SVG too, since their curve parameters no longer describe an ellipse in output space. The available `Svg` options are `NonScalingStroke`, `EmitEntityAttributes`, `EmitSize`, `IdPrefix`, and `Precision`.
+SVG and PNG are built from the same geometry and never disagree on it, but they intentionally differ in fidelity: SVG keeps native arcs, Beziers and `<text>`, while raster output tessellates curves and outlines glyphs. Entities with a non-world extrusion normal (an OCS other than the default) are brought into world coordinates first and, in SVG, tessellated, since their curve parameters no longer describe an ellipse in output space. The available `Svg` options are `NonScalingStroke`, `EmitEntityAttributes`, `EmitSize`, `IdPrefix`, and `Precision`.
 
 ### Custom Line Weights
 

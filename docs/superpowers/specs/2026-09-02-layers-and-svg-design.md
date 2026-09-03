@@ -54,25 +54,27 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 - New include list with the same shape: `IncludeLayer(string)`, `IncludeLayers(IEnumerable<string>)`, `ExcludeLayer(string)` (removes from include list, returns bool), `ClearIncludedLayers()`, `IReadOnlySet<string> IncludedLayers`. Case-insensitive.
 - Composition order, evaluated per drawn entity: include list (if non-empty, the layer must be in it), then hide list, then visibility mode.
 - All checks run in the **render loop**, not at add time. `ImageExporter.Add(...)` no longer filters by layer (it still skips `Viewport` entities in the entity list). Consequences accepted: `ImagePage.Entities` contains entities that may not be drawn; changing the configuration after `Add` takes effect; viewport contents, exploded `Insert` sub-entities and dimension block entities are all filtered.
-- Effective layer of a nested entity: its own layer, except entities on layer `0` (`Layer.DefaultName`) inherit the parent `Insert`'s effective layer.
-- Framing of auto-sized pages (block and model-space pages, whose extents come from their entities) is recomputed at render time from the entities that pass the filters, so hiding a far-away layer still tightens the frame exactly as it did with add-time filtering. Layout pages keep their paper size.
+- Effective layer of a nested entity: its own layer, except entities on layer `0` (`Layer.DefaultName`) inherit the parent `Insert`'s effective layer. The effective layer is also what ByLayer attributes resolve against (section 4.3), so a layer-0 line in a block takes the placing insert's colour, weight and linetype, as in AutoCAD.
+- Framing of auto-sized pages (block and model-space pages, whose extents come from their entities) is recomputed at render time from the entities that pass the filters, so hiding a far-away layer still tightens the frame exactly as it did with add-time filtering. Layout pages keep their paper size. **Amended during review (2026-09-03):** the recomputed frame is a `PageFrame` value handed to the render context; the `ImagePage` itself (`Translation`, `Layout.PaperWidth/Height`) is never modified by rendering, so clearing the filters and rendering again restores the full frame.
 
 ### 4.3 Attributes honoured
 
 | Attribute | Source | Raster | SVG |
 | --- | --- | --- | --- |
-| Colour ByLayer/ByBlock | `Entity.GetActiveColor()` (unchanged) | stroke colour | `stroke`/`fill` |
+| Colour ByLayer/ByBlock | `ImageStyleResolver.ResolveAttributes` (see note) | stroke colour | `stroke`/`fill` |
 | ACI 7 | luminance of `BackgroundColor`, or `ImageConfiguration.ForegroundColor` when set | colour | colour |
-| Line weight ByLayer/ByBlock | `Entity.GetActiveLineWeightType()` (unchanged) | px via `GetLineWeightPixels` | px (non-scaling mode) or drawing units (section 5.5) |
-| Linetype | `Entity.GetActiveLineType()`, `LineType.Segments` | `PatternPen` (pattern is in multiples of stroke width) | `stroke-dasharray` |
+| Line weight ByLayer/ByBlock | `ImageStyleResolver.ResolveAttributes` (see note) | px via `GetLineWeightPixels` | px (non-scaling mode) or drawing units (section 5.5) |
+| Linetype | `ImageStyleResolver.ResolveAttributes` (see note), `LineType.Segments` | `PatternPen` (pattern is in multiples of stroke width) | `stroke-dasharray` |
 | Transparency | `Entity.Transparency` | alpha blended into colour | `opacity` attribute |
 | Off / frozen / plot / viewport-frozen / invisible | section 4.1 | skipped | omitted from file |
+
+**Amended during review (2026-09-03), replacing "`Entity.GetActive*()` (unchanged)":** ACadSharp's `GetActiveColor`/`GetActiveLineWeightType`/`GetActiveLineType` resolve ByLayer against the entity's stored layer and ByBlock against the block record's owner, and the clones `Insert.Explode()` returns have neither owner nor document, so nested ByLayer ignored layer-0 inheritance and nested ByBlock stayed unresolved (drawn black). `ImageStyleResolver.ResolveAttributes(Entity, Layer? effectiveLayer, ResolvedStyle? parent)` resolves them instead: ByLayer reads the effective layer; ByBlock reads the placing insert's (or dimension's) resolved attributes; at top level ByBlock is colour 7, `LineWeightType.Default` and continuous, as AutoCAD draws it. The resolved `ResolvedStyle` record is the parent of the entity's block contents.
 
 **Deviation from the interview (recorded):** ACadSharp 3.7.1's `Layer` has no `Transparency` property, and `Entity.Transparency` defaults to ByLayer (`Value == -1`). Resolution: ByLayer resolves to opaque; ByBlock resolves to the parent `Insert`'s resolved opacity (opaque at top level); explicit values map `Value` 0..90 to `opacity = 1 - Value / 100.0`.
 
 ### 4.4 Linetype scaling rules
 
-- Dash lengths in drawing units: `segment.Length * header.LineTypeScale * entity.LineTypeScale`. `header` is `entity.Document?.Header`; when the entity has no document, `LineTypeScale` is 1.
+- Dash lengths in drawing units: `segment.Length * header.LineTypeScale * entity.LineTypeScale`. `header` is `entity.Document?.Header`; when the entity has no document, `LineTypeScale` is 1. **Amended during review (2026-09-03):** block contents have no document (they are clones), so the header travels down the `ResolvedStyle` chain from the placing insert, and the entity's `LineTypeScale` is multiplied by every enclosing insert's (`ResolvedStyle.LineTypeScale`).
 - Segment mapping: `Length > 0` is a dash, `Length < 0` is a gap of `|Length|`, `Length == 0` is a dot rendered as a dash of one stroke width, `IsShape` or `IsText` segments are gaps of `|Length|`.
 - Paper-space viewports: when the header's `$PSLTSCALE` is 1 (the DXF default), dash lengths inside a viewport are scaled by the **page** scale, not the viewport scale, so dashes look uniform on the sheet. Otherwise they scale with the viewport. Implementation note: ACadSharp 3.7.1's `SpaceLineTypeScaling` enum stores the raw DXF value (`Viewport = 0`, `Normal = 1`) but its member names are swapped relative to AutoCAD semantics, so the code branches on the raw integer value, not the enum name.
 - Raster: when the full pattern length in pixels is below `ImageConfiguration.MinimumDashPixels` (default 2), draw solid. SVG in pixel-width mode applies the same threshold; in drawing-unit mode it does not.
@@ -83,6 +85,8 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 - Solid (`hatch.IsSolid`): fill the boundary loops with the even-odd rule. Loop points come from `path.GetPoints(ArcPrecision)`.
 - Pattern: `hatch.ExplodePattern()` returns `Line` entities already clipped to the boundary and already honouring `PatternScale`, `PatternAngle`, and `DashLengths` (verified empirically against 3.7.1). Draw each as a line with the hatch's style. Cap at `ImageConfiguration.MaxHatchLines` (default 20000): beyond the cap, stop and raise a `Warning` notification.
 - Deviation recorded during implementation: a pattern hatch whose `Pattern` is null raises a `Warning` and draws nothing (ACadSharp's `ExplodePattern()` would silently return an empty sequence; the warning is deliberate so a blank hatch is explained).
+- **Amended during review (2026-09-03):** `ExplodePattern()` builds every line before returning, so the cap alone did not bound work or memory. Before calling it, `EntityRenderDispatcher.EstimateScanLines(hatch)` counts the scan lines the expansion would sweep across the hatch's bounding box (the library's own arithmetic); when the count exceeds `MaxHatchLines` the hatch is skipped with a `Warning`. The per-line cap still applies to what is drawn.
+- **Amended during review (2026-09-03):** boundary points and exploded pattern lines are OCS coordinates. When `hatch.Normal` is not `(0,0,1)` they are transformed to world space with `OcsTransform` (`hatch.Elevation` as OCS Z) before projection.
 
 ## 5. SVG backend
 
@@ -115,12 +119,14 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 - Background rect only when `BackgroundColor` alpha is greater than 0.
 - No XML declaration (inline SVG in HTML must not carry one); files are written as UTF-8 without a BOM.
 - Layer group ids are unique per document: `{prefix}layer-{name}` at page level and `{prefix}clip-{n}-layer-{name}` inside viewport `n`.
+- **Amended during review (2026-09-03):** `IdPrefix` is restricted to `[A-Za-z0-9_-]` (case kept, other runs collapsed to `-`) so `url(#id)` references stay valid. Strings taken from the drawing (text, `data-layer`, `data-block`, font family) have XML-1.0-forbidden characters removed (`SvgXmlText.Clean`, `XmlConvert.IsXmlChar`) instead of letting the serialiser throw. A translucent `BackgroundColor` keeps its alpha as `fill-opacity` on the background rect.
 
 ### 5.3 Primitives
 
 - Line: `<line x1 y1 x2 y2/>`. Polyline: `<polyline points="..."/>` or `<polygon>` when closed. Filled polygon: `<polygon fill=... stroke="none"/>`. Even-odd multi-loop fill: `<path fill-rule="evenodd" d="M...Z M...Z"/>`.
 - Arc: `<path d="M x0 y0 A rx ry rot large-arc sweep x1 y1"/>`. Because the context flips Y, a counter-clockwise CAD arc (positive sweep) has `sweep-flag="0"` in SVG space; `large-arc-flag = |sweep| > PI ? 1 : 0`.
 - Full circle: `<circle cx cy r/>`; full ellipse: `<ellipse cx cy rx ry transform="rotate(deg cx cy)"/>`; partial ellipse: one `A` command with `rx = MajorAxis / 2`, `ry = MinorAxis / 2` (ACadSharp 3.7.1's `Ellipse.MajorAxis`/`MinorAxis` are full axis lengths, verified empirically: `MajorAxisEndPoint (4,0,0)` with `RadiusRatio 0.5` gives `MajorAxis 8`, `MinorAxis 4`) and `rot` from `Rotation`.
+- Polylines and hatches store OCS coordinates that ACadSharp does not transform (`GetPoints`, `BoundaryPath.GetPoints` and `ExplodePattern` all return raw values). **Amended during review (2026-09-03):** when the entity's `Normal` is not `(0,0,1)`, points go through `OcsTransform` (arbitrary axis algorithm, `Elevation` as OCS Z) before projection, on both backends. Bulges are emitted natively only on the world plane; any other normal tessellates first.
 - Polyline bulges: each bulged segment becomes an `A` command. With bulge `b`, chord length `c`, included angle `theta = 4 * atan(|b|)`, radius `r = c / (2 * sin(theta / 2))`, `large-arc = theta > PI`, `sweep-flag = b > 0 ? 0 : 1` after the Y flip.
 - Splines: Bezier-form clamped cubic splines (already detected by the existing `SplineRenderer.TryGetBezierSegments`) emit `C` segments directly. Other clamped, non-rational degree-3 splines are converted to Bezier segments by knot insertion (Boehm) until every interior knot has multiplicity 3, then emitted as `C` segments. Everything else uses the existing tessellation and emits a polyline.
 - Text: `<text x y font-size font-family text-anchor dominant-baseline [transform="rotate(-deg x y)"] [textLength lengthAdjust="spacingAndGlyphs"]>`. Multi-line MText uses one `<tspan x="{x}" dy="{lineHeight}">` per line. `dominant-baseline` is limited to `alphabetic`, `central`, `hanging`. `text-anchor` from CAD justification. `textLength` only for `TextEntity` with `Fit` or `Aligned` alignment (distance between insert and alignment points). Font stack: `FontFamilyName` followed by `Arial, Helvetica, sans-serif` (duplicates removed).
@@ -130,7 +136,7 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 
 - `SvgOptions.Precision` (int?, default null = adaptive). Adaptive: `decimals = clamp(4 - floor(log10(max(W, H))), 0, 8)`, giving a resolution of one ten-thousandth of the larger viewBox side.
 - All numbers written with `InvariantCulture`, trailing zeros trimmed.
-- The adaptive precision applies to coordinates, radii, sizes and the viewBox only. Style scalars (`stroke-width`, `stroke-dasharray` values, `opacity`) always use a fixed 3 decimals, so a 0.25 line weight on a 20 m drawing is not rounded to 0.
+- The adaptive precision applies to coordinates, radii, sizes and the viewBox only. Style scalars (`stroke-width`, `stroke-dasharray` values, `opacity`) use their own precision: 3 decimals in pixel mode and for millimetre-scale drawing units, growing with the unit in drawing-unit mode as `clamp(3 - floor(log10(unitsPerMillimetre)), 3, 8)`, so a 0.25 mm line weight on a drawing in metres (0.00025 units) is not rounded to 0. **Amended during implementation (plan 02, task 7), replacing "always use a fixed 3 decimals".** Angles (`rotate(...)`) use 4 decimals.
 
 ### 5.5 Stroke widths
 
@@ -156,7 +162,7 @@ Exposed as `ImageConfiguration.Svg { get; }` (never null).
 ## 6. Public API changes
 
 - `ImageExportFormat.Svg` added; extension `.svg`; `TryParse` accepts `svg`.
-- `public abstract class RenderedPage : IDisposable { string Name; ImageExportFormat Format; abstract void Save(string path); abstract void Save(Stream stream); }`
+- `public abstract class RenderedPage : IDisposable { string Name; ImageExportFormat Format; void Save(string path); abstract void Save(Stream stream); }`. **Amended during review (2026-09-03):** `Save(string)` is concrete: it creates the target directory and opens the file, then calls the abstract `Save(Stream)`, so both page types share that behaviour.
 - `RenderedImagePage : RenderedPage` keeps `Image<Rgba32> Canvas`; `Save` encodes with the page's `Format` and the quality captured at render time.
 - `public sealed class RenderedSvgPage : RenderedPage { string Content; }`.
 - `ImageExporter.Render()` becomes `Render(ImageExportFormat format = ImageExportFormat.Png)` returning `IReadOnlyList<RenderedPage>`. `Save(path, format)` calls `Render(format)` and then `page.Save(path)`.
@@ -301,3 +307,5 @@ internal sealed class ImageRenderContext
 Public additions (namespace `ACadSharp.Image`): `LayerVisibilityMode`, `SvgOptions`, `RenderedPage`, `RenderedSvgPage`, `ImageExportFormat.Svg`, and the `ImageConfiguration` members listed in section 6.
 
 Internal additions: `RasterDrawingSurface` (ImageSharp), `SvgDrawingSurface`, `EntityVisibilityFilter`, `LineTypeDashResolver`, `SplineBezierConverter`, `SvgNumberFormatter`, `SvgIdSanitizer`.
+
+Added during implementation and review (2026-09-02/03): `ImageRenderContext.SinglePrecision`, `StrokeUnitsPerMillimeter`, `PixelsPerSurfaceUnit`, `ToSurfacePixels`; `ImageStyle.EffectiveColor`; `SvgDrawingSurface(ImageConfiguration, SurfaceRect viewBox, double? sizeWidth, double? sizeHeight, double? strokeUnitsPerMillimeter = null)`; `ImageStyleResolver.ResolveAttributes(Entity, Layer?, ResolvedStyle?)`, `ToImageStyle(ResolvedStyle, ImageRenderContext, SixLabors.ImageSharp.Color foreground)` and `Resolve(Entity, ImageRenderContext, SixLabors.ImageSharp.Color foreground)`; `LineTypeDashResolver.Resolve(LineType?, CadHeader?, double lineTypeScale, ImageRenderContext, float strokeWidth)`; records `ResolvedStyle` and `PageFrame`; `OcsTransform`; `SvgXmlText`; `ImagePage.ComputeFrame(Func<Entity, bool>?)`. `ImageRenderContext.SurfaceWidth` and `Parent` are kept as listed although no current code reads them.

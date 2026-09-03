@@ -117,6 +117,13 @@ public sealed class ImageExporterTests
 
         Assert.NotNull(page.Canvas);
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Spline", StringComparison.OrdinalIgnoreCase));
+
+        // Silence is not enough: the spline must actually reach the surface. ACadSharp 3.7.1's UpdateFromFitPoints
+        // produces no control points, so this one is drawn through its fit points, with a warning saying so.
+        RecordingDrawingSurface surface = new();
+        new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawPolyline n=3", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("fit points", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -200,20 +207,27 @@ public sealed class ImageExporterTests
     [Fact]
     public void RenderHandlesEntitiesWithNaNBoundingBox()
     {
-        // Create a block with normal lines
+        // Two ordinary lines plus an arc whose bounding box is non-finite (Samples/6-57-1119.dxf has one like it).
         BlockRecord block = new("nan-bbox-block");
         block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
         block.Entities.Add(new Line(new XYZ(100, 50, 0), new XYZ(200, 0, 0)));
+        block.Entities.Add(new Arc { Center = new XYZ(10, 10, 0), Radius = double.PositiveInfinity, StartAngle = double.NaN, EndAngle = double.NaN });
 
         ImageExporter exporter = new();
         exporter.Add(block);
+        ImagePage framed = Assert.Single(exporter.Pages);
 
-        // Should render successfully without NaN propagation issues
+        // The non-finite entity must not poison the auto-sized frame...
+        Assert.Equal(200d, framed.Layout!.PaperWidth);
+        Assert.Equal(50d, framed.Layout.PaperHeight);
+
+        // ...nor the render.
         using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Assert.NotNull(page.Canvas);
         Assert.Equal(ImageConfiguration.DefaultWidth, page.Canvas.Width);
         Assert.Equal(ImageConfiguration.DefaultHeight, page.Canvas.Height);
+        Assert.Contains(Enumerable.Range(0, page.Canvas.Width).SelectMany(x => Enumerable.Range(0, page.Canvas.Height).Select(y => page.Canvas[x, y])), p => p != new Rgba32(255, 255, 255, 255));
     }
 
     [Fact]

@@ -389,6 +389,8 @@ internal sealed class EntityRenderDispatcher
         // ACadSharp 3.7.1's Explode() yields one clone per block entity, in order. Text geometry comes from the
         // original entity placed through the insert's transform, because the clones' alignment points and MTEXT
         // X axes are never transformed and mirrored inserts hand back world points with a flipped normal.
+        // The pairing relies on ACadSharp 3.7.1 yielding one clone per block entity in order; re-check it when the
+        // package is upgraded.
         Transform transform = insert.GetTransform();
         IReadOnlyList<Entity> originals = insert.Block?.Entities.ToList() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
         int index = 0;

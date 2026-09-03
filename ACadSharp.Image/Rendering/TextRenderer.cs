@@ -1,4 +1,5 @@
 using ACadSharp.Entities;
+using ACadSharp.IO;
 using CSMath;
 
 namespace ACadSharp.Image.Rendering;
@@ -9,15 +10,7 @@ namespace ACadSharp.Image.Rendering;
 internal sealed class TextRenderer
 {
     /// <summary>
-    /// Draws a multiline text entity.
-    /// </summary>
-    /// <param name="context">The context that maps drawing units onto the surface.</param>
-    /// <param name="style">The resolved style for the entity.</param>
-    /// <param name="mtext">The entity to draw.</param>
-    public void Draw(ImageRenderContext context, ImageStyle style, MText mtext) => this.Draw(context, style, mtext, null);
-
-    /// <summary>
-    /// Draws a multiline text entity placed by a block reference.
+    /// Draws a multiline text entity, optionally placed by a block reference.
     /// </summary>
     /// <param name="context">The context that maps drawing units onto the surface.</param>
     /// <param name="style">The resolved style for the entity.</param>
@@ -47,6 +40,7 @@ internal sealed class TextRenderer
         Placement? placed = Place(placement, mtext.InsertPoint, xAxis, yAxis);
         if (placed is not Placement p)
         {
+            context.Configuration.Notify($"[{mtext.SubclassMarker}] Text plane is seen edge-on; text skipped.", NotificationType.Warning);
             return;
         }
 
@@ -66,15 +60,7 @@ internal sealed class TextRenderer
     }
 
     /// <summary>
-    /// Draws a single-line text entity.
-    /// </summary>
-    /// <param name="context">The context that maps drawing units onto the surface.</param>
-    /// <param name="style">The resolved style for the entity.</param>
-    /// <param name="textEntity">The entity to draw.</param>
-    public void Draw(ImageRenderContext context, ImageStyle style, TextEntity textEntity) => this.Draw(context, style, textEntity, null);
-
-    /// <summary>
-    /// Draws a single-line text entity placed by a block reference.
+    /// Draws a single-line text entity, optionally placed by a block reference.
     /// </summary>
     /// <param name="context">The context that maps drawing units onto the surface.</param>
     /// <param name="style">The resolved style for the entity.</param>
@@ -101,6 +87,7 @@ internal sealed class TextRenderer
         Placement? placed = Place(placement, origin, xAxis, yAxis);
         if (placed is not Placement p)
         {
+            context.Configuration.Notify($"[{textEntity.SubclassMarker}] Text plane is seen edge-on; text skipped.", NotificationType.Warning);
             return;
         }
 

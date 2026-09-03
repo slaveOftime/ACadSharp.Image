@@ -1,5 +1,6 @@
 using ACadSharp.Entities;
 using ACadSharp.Image.Rendering;
+using ACadSharp.IO;
 using ACadSharp.Objects;
 using CSMath;
 
@@ -138,7 +139,7 @@ public sealed class TextRendererTests
         Assert.Equal(-10d, run.Origin.X, 9);
         Assert.Equal(100d - 20d, run.Origin.Y, 9);
         Assert.Equal(SurfaceTextAnchor.End, run.Anchor);
-        Assert.Equal(1d, Math.Cos(run.Rotation), 9);   // upright, MIRRTEXT = 0 semantics
+        Assert.Equal(1d, Math.Cos(run.Rotation), 9);   // upright: readable glyphs on the mirrored extent
         Assert.Equal(0d, Math.Sin(run.Rotation), 9);
     }
 
@@ -204,5 +205,21 @@ public sealed class TextRendererTests
 
         Assert.True(mirrored!.Value.Mirrored);
         Assert.Null(TextRenderer.Place(null, new XYZ(0, 0, 0), new XYZ(0, 0, 1), new XYZ(0, 1, 0)));
+    }
+
+    [Fact]
+    public void EdgeOnPlaneTextIsSkippedWithWarning()
+    {
+        (RecordingDrawingSurface surface, ImageRenderContext context, EntityRenderDispatcher dispatcher) = Setup();
+        List<NotificationEventArgs> notifications = new();
+        context.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        TextEntity text = new() { Value = "T", InsertPoint = new XYZ(0, 0, 0), Height = 2, Normal = new XYZ(0, 1, 0), Rotation = 0 };
+
+        dispatcher.Draw(context, text);
+
+        Assert.Empty(surface.Texts);
+        NotificationEventArgs notification = Assert.Single(notifications);
+        Assert.Equal(NotificationType.Warning, notification.NotificationType);
+        Assert.Contains("edge-on", notification.Message, StringComparison.Ordinal);
     }
 }

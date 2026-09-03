@@ -361,6 +361,8 @@ Changes on the way to the next major release:
 - `ImagePage.Entities` now keeps every added entity; `ImageConfiguration.HiddenLayers` and `LayerVisibility` are applied at render time instead of at `Add`, so changing them afterwards takes effect, and the framing of auto-sized pages follows the currently visible entities.
 - New public members: `ImageConfiguration.GetLineWeightMillimeters` and `ImagePage.Document`.
 - `RenderedImagePage.Save` throws `NotSupportedException` when its format is `ImageExportFormat.Svg`; use a `RenderedSvgPage` for SVG output instead.
+- `ImagePage.Entities` is now ordered by the drawing's draw order (handle order, overridden by DRAWORDER) instead of file order, so later entities paint over earlier ones; block contents keep their stored order.
+- `ImageConfiguration.Dpi` no longer scales text; it affects only line weights. Raster text is laid out at a fixed 72 dpi from the same em size the SVG backend uses, so PNG text at the default 96 dpi is unchanged.
 - Release this work under a major version tag (for example `v2.0.0`); the version is derived from the tag by the release workflow.
 
 ---

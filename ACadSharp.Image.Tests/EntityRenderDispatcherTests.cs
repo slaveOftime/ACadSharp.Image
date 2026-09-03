@@ -1067,6 +1067,29 @@ public sealed class EntityRenderDispatcherTests
         Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("_DOT", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void LeaderWithANonFiniteArrowSizeDrawsNoArrowheadAndSaysNothingAboutIt()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        Leader leader = new()
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(30, 0, 0) },
+            Style = new DimensionStyle("NAN") { ArrowSize = double.NaN, LeaderArrow = new BlockRecord("_DOT") },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        // Every comparison with NaN is false, so an unguarded size <= 0 test lets a triangle with NaN corners through.
+        // The leader line itself is still drawn, and the fallback notification must not claim an arrow nobody drew.
+        Assert.Single(surface.Polylines);
+        Assert.Empty(surface.Polygons);
+        Assert.Empty(notifications);
+    }
+
     private static MLineStyle TwoElementStyle(double outer, MLineStyleFlags flags = MLineStyleFlags.None)
     {
         MLineStyle style = new("PLAN") { Flags = flags, FillColor = new ACadSharp.Color(3) };
@@ -1143,7 +1166,14 @@ public sealed class EntityRenderDispatcherTests
         Assert.All(surface.Calls.Where(c => c.StartsWith("DrawPolyline", StringComparison.Ordinal)), c => Assert.EndsWith("closed=True", c));
         IReadOnlyList<SurfacePoint> fill = Assert.Single(surface.Polygons);
         // Keyhole fill: outer ring (3), a bridge back to the outer and inner starts (2), inner ring reversed (3).
-        Assert.Equal(8, fill.Count);
+        // The third vertex's (-1,0,0) miter puts its outer point at x 19 and its inner point at x 21.
+        Assert.Equal(
+            [
+                new SurfacePoint(0, 99), new SurfacePoint(20, 99), new SurfacePoint(19, 80),
+                new SurfacePoint(0, 99), new SurfacePoint(0, 101),
+                new SurfacePoint(21, 80), new SurfacePoint(20, 101), new SurfacePoint(0, 101),
+            ],
+            fill);
         Assert.Equal("FillPolygon n=8", surface.Calls.First(c => c.StartsWith("Fill", StringComparison.Ordinal) || c.StartsWith("DrawPolyline", StringComparison.Ordinal)));
     }
 
@@ -1309,5 +1339,103 @@ public sealed class EntityRenderDispatcherTests
 
         Assert.Empty(surface.Polygons);
         Assert.Single(notifications, n => n.NotificationType == NotificationType.NotImplemented);
+    }
+
+    [Fact]
+    public void MLineWithANonFiniteStyleOffsetStrokesWithoutFilling()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLineStyle style = new("BROKEN") { Flags = MLineStyleFlags.FillOn, FillColor = new ACadSharp.Color(3) };
+        style.AddElement(new MLineStyle.Element { Offset = 0.5, Color = ACadSharp.Color.ByLayer });
+        style.AddElement(new MLineStyle.Element { Offset = double.NaN, Color = ACadSharp.Color.ByLayer });
+        // The vertices carry no parameters, so the style offsets (and the NaN with them) reach the geometry.
+        MLine mline = new() { Style = style, Vertices = { VertexAt(0, 10), VertexAt(20, 10) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        // Enumerable.Min returns NaN where Max skips it, so the inner element is never found and the ring is dropped:
+        // both elements are still stroked, and no fill is attempted.
+        Assert.Equal(2, surface.Polylines.Count);
+        Assert.Empty(surface.Polygons);
+    }
+
+    [Fact]
+    public void MLineWithOneVertexInsideABlockWarnsThatItHasNoVertices()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        MLine mline = new() { Style = TwoElementStyle(0.5), Vertices = { VertexAt(0, 0, [0.5, 0], [-0.5, 0]) } };
+        BlockRecord block = new("STUB");
+        block.Entities.Add(mline);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), new Insert(block));
+
+        Assert.Empty(surface.Polylines);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("no vertices", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void WipeoutOnATranslucentBackgroundIsSkippedWithAWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.FromRgba(255, 255, 255, 128) };
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), UnitWipeout());
+
+        // A partly transparent fill blends on the raster backend and masks fully in SVG (Hex drops alpha), so a
+        // wipeout that cannot mask is skipped rather than drawn differently by the two backends.
+        Assert.Empty(surface.Polygons);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("an opaque background", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Renders <paramref name="entity"/> to PNG through the public exporter alongside one ordinary line, and returns
+    /// the warnings raised. Non-finite geometry must cost its own entity and nothing more.
+    /// </summary>
+    /// <param name="entity">The entity whose geometry carries NaN.</param>
+    /// <returns>The warnings raised during the export.</returns>
+    private static List<NotificationEventArgs> RenderWithNonFiniteEntity(Entity entity)
+    {
+        BlockRecord block = new("non-finite");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
+        block.Entities.Add(entity);
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(block);
+
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
+
+        Assert.NotNull(page.Canvas);
+        return notifications.Where(n => n.NotificationType == NotificationType.Warning).ToList();
+    }
+
+    [Fact]
+    public void FilledMLineWithANonFiniteVertexIsSkippedWithoutKillingTheExport()
+    {
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5, MLineStyleFlags.FillOn),
+            Vertices = { VertexAt(0, 0, [0.5, 0], [-0.5, 0]), VertexAt(20, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        mline.Vertices[1].Position = new XYZ(double.NaN, 0, 0);
+
+        // ImageSharp's fill throws ArithmeticException on a NaN vertex, which is neither an ArgumentException nor an
+        // InvalidOperationException: unguarded, one malformed multiline takes the whole page down.
+        Assert.Contains("non-finite", Assert.Single(RenderWithNonFiniteEntity(mline)).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WipeoutWithANonFiniteVectorIsSkippedWithoutKillingTheExport()
+    {
+        Wipeout wipeout = UnitWipeout();
+        wipeout.UVector = new XYZ(double.NaN, 0, 0);
+
+        Assert.Contains("non-finite", Assert.Single(RenderWithNonFiniteEntity(wipeout)).Message, StringComparison.Ordinal);
     }
 }

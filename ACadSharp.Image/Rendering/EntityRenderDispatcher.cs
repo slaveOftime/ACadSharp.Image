@@ -7,8 +7,8 @@ using ACadSharp.IO;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
-using SixLabors.ImageSharp.PixelFormats;
 using ImageColor = SixLabors.ImageSharp.Color;
+using Rgba32 = SixLabors.ImageSharp.PixelFormats.Rgba32;
 
 namespace ACadSharp.Image.Rendering;
 
@@ -171,9 +171,10 @@ internal sealed class EntityRenderDispatcher
                     break;
             }
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or ArithmeticException)
         {
             // A malformed entity (ACadSharp throws for a bulge between coincident vertices, for example) must not take the page down with it.
+            // ArithmeticException is ImageSharp's: its scan-line fill rejects a non-finite vertex that slipped past HasFiniteGeometry.
             this._configuration.Notify(
                 $"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: geometry could not be computed ({ex.Message}); entity skipped.",
                 NotificationType.Warning,
@@ -390,6 +391,13 @@ internal sealed class EntityRenderDispatcher
         Line line => IsFinite(line.StartPoint) && IsFinite(line.EndPoint),
         Face3D face => IsFinite(face.FirstCorner) && IsFinite(face.SecondCorner) && IsFinite(face.ThirdCorner) && IsFinite(face.FourthCorner),
         Leader leader => leader.Vertices.All(IsFinite),
+        // Every value that reaches a fill point has to be covered, not just the positions: Parameters[0] is the
+        // element offset along the miter, and the clip vertices are mapped through WipeoutPixelToWorld.
+        MLine mline => mline.Vertices.All(v => IsFinite(v.Position) && IsFinite(v.Miter)
+            && v.Segments.All(s => s.Parameters.Count == 0 || double.IsFinite(s.Parameters[0]))),
+        Wipeout wipeout => IsFinite(wipeout.InsertPoint) && IsFinite(wipeout.UVector) && IsFinite(wipeout.VVector)
+            && double.IsFinite(wipeout.Size.X) && double.IsFinite(wipeout.Size.Y)
+            && wipeout.ClipBoundaryVertices.All(p => double.IsFinite(p.X) && double.IsFinite(p.Y)),
         _ => true,
     };
 
@@ -491,18 +499,21 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        if (leader.Style.LeaderArrow != null)
-        {
-            this._configuration.Notify($"[{leader.SubclassMarker}] Arrowhead block '{leader.Style.LeaderArrow.Name}' is not rendered; the default closed arrow is drawn instead.", NotificationType.NotImplemented);
-        }
-
         double size = leader.Style.ArrowSize * (leader.Style.ScaleFactor > 0d ? leader.Style.ScaleFactor : 1d);
         XY tip = leader.Vertices[0].Convert<XY>();
         XY direction = tip - leader.Vertices[1].Convert<XY>();
         double length = direction.GetLength();
-        if (size <= 0d || length <= 0d)
+
+        // Every comparison with NaN is false, so the size has to be tested for finiteness explicitly. The degenerate
+        // cases return before the custom-arrow notification, which would otherwise claim a substitute nobody drew.
+        if (!double.IsFinite(size) || size <= 0d || length <= 0d)
         {
             return;
+        }
+
+        if (leader.Style.LeaderArrow != null)
+        {
+            this._configuration.Notify($"[{leader.SubclassMarker}] Arrowhead block '{leader.Style.LeaderArrow.Name}' is not rendered; the default closed arrow is drawn instead.", NotificationType.NotImplemented);
         }
 
         direction /= length;
@@ -657,8 +668,8 @@ internal sealed class EntityRenderDispatcher
     /// <summary>
     /// A wipeout masks whatever was drawn before it: its clip boundary (or the whole image frame when clipping is
     /// off) is filled with the page background at full opacity, so the page must be drawn in the drawing's order.
-    /// The frame is never stroked. An inverted clip (everything outside the boundary masked) and a transparent
-    /// background cannot be honoured and are skipped with a notification.
+    /// The frame is never stroked. An inverted clip (everything outside the boundary masked) and a background that is
+    /// anything short of opaque cannot be honoured and are skipped with a notification.
     /// </summary>
     private void DrawWipeout(ImageRenderContext context, ImageStyle style, Wipeout wipeout)
     {
@@ -675,9 +686,11 @@ internal sealed class EntityRenderDispatcher
         }
 
         ImageColor background = this._configuration.BackgroundColor;
-        if (background.ToPixel<Rgba32>().A == 0)
+        if (background.ToPixel<Rgba32>().A < 255)
         {
-            this._configuration.Notify($"[{wipeout.SubclassMarker}] Handle {handle}: a wipeout cannot mask on a transparent background; skipped.", NotificationType.Warning);
+            // A translucent fill blends over what is underneath on the raster backend, while the SVG backend's Hex
+            // drops the alpha and masks fully, so anything short of opaque is skipped rather than drawn two ways.
+            this._configuration.Notify($"[{wipeout.SubclassMarker}] Handle {handle}: a wipeout needs an opaque background to mask; skipped.", NotificationType.Warning);
             return;
         }
 
@@ -734,12 +747,18 @@ internal sealed class EntityRenderDispatcher
         // outer level's shared list emptied. The insert's transform still has to be applied manually to a healed
         // MLINE's vertices, because Explode()'s own ApplyTransform ran while the list was still empty.
         Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
-        CollectMLines(insert.Block, mlineVertices);
+        CollectMLines(insert.Block, mlineVertices, new HashSet<BlockRecord>());
         int index = 0;
         try
         {
-            List<Entity> clones = insert.Explode().ToList();
-            Heal(mlineVertices);
+            // Explode() is a lazy iterator and the heal must not be interleaved with the MLine.Clone() calls it
+            // makes, so the clones are materialised (and held alive at once) only when there is something to heal.
+            IEnumerable<Entity> clones = mlineVertices.Count == 0 ? insert.Explode() : insert.Explode().ToList();
+            if (mlineVertices.Count > 0)
+            {
+                Heal(mlineVertices);
+            }
+
             foreach (Entity entity in clones)
             {
                 Entity? original = index < originals.Count ? originals[index] : null;
@@ -765,7 +784,7 @@ internal sealed class EntityRenderDispatcher
                     source = original;
                     entityPlacement = transform;
                 }
-                else if (entity is MLine && original is MLine)
+                else if (entity is MLine)
                 {
                     entityPlacement = transform;
                 }
@@ -805,9 +824,10 @@ internal sealed class EntityRenderDispatcher
     /// </summary>
     /// <param name="block">The block whose entities (and nested blocks) are searched.</param>
     /// <param name="snapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
-    private static void CollectMLines(BlockRecord? block, Dictionary<MLine, List<MLine.Vertex>> snapshot)
+    /// <param name="visited">Blocks already walked, so a circular or diamond hierarchy is walked once.</param>
+    private static void CollectMLines(BlockRecord? block, Dictionary<MLine, List<MLine.Vertex>> snapshot, HashSet<BlockRecord> visited)
     {
-        if (block == null)
+        if (block == null || !visited.Add(block))
         {
             return;
         }
@@ -820,7 +840,7 @@ internal sealed class EntityRenderDispatcher
                     snapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
                     break;
                 case Insert nestedInsert:
-                    CollectMLines(nestedInsert.Block, snapshot);
+                    CollectMLines(nestedInsert.Block, snapshot, visited);
                     break;
             }
         }

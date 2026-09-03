@@ -6,16 +6,10 @@ namespace ACadSharp.Image.Rendering.Svg;
 /// Text metrics for the SVG backend, chosen to match the raster backend and the CAD intent.
 /// </summary>
 /// <remarks>
-/// <c>SurfaceText.Height</c> is the CAD text height, which is the cap height. The raster backend creates a font of that
-/// size in points and renders at 96 dpi, so its em size is 4/3 of the cap height, and common sans faces have a cap
-/// height of about 0.72 em; the SVG uses the same factor so both outputs agree. Line spacing follows AutoCAD: 5/3 of
-/// the text height per line at spacing factor 1.
+/// The em size and the reason for the 4/3 factor live in <see cref="TextMetrics"/>, shared with the raster backend.
 /// </remarks>
 internal static class SvgTextLayout
 {
-    /// <summary>Em size per unit of cap height.</summary>
-    public const double CapHeightToEm = TextMetrics.CapHeightToEm;
-
     /// <summary>Font size (em) for a CAD text height.</summary>
     public static double EmSize(double capHeight) => TextMetrics.EmSize(capHeight);
 

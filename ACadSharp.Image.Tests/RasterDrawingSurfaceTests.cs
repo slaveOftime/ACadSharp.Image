@@ -296,10 +296,31 @@ public sealed class RasterDrawingSurfaceTests
     }
 
     [Fact]
+    public void FillsDropNonFiniteGeometryInsteadOfThrowing()
+    {
+        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
+        ImageStyle style = new(ImageColor.Black, 1f);
+        SurfacePoint[] ring = [new(2, 2), new(18, 2), new(double.PositiveInfinity, 18)];
+
+        // ImageSharp's scan-line fill throws ArithmeticException on a non-finite vertex, which the dispatcher's
+        // catch filter would not have caught: the surface drops those points the way the SVG backend does.
+        surface.FillPolygon(style, [new(2, 2), new(double.NaN, 2), new(18, 18), new(2, 18)]);
+        surface.FillPath(style, [ring]);
+        surface.FillCircle(style, new SurfacePoint(10, double.NaN), 5);
+
+        // The polygon keeps its three finite corners and is still filled; the two-point ring and the circle vanish.
+        Assert.Equal(Black, canvas[5, 15]);
+        Assert.Equal(White, canvas[10, 3]);
+    }
+
+    [Fact]
     public void TextSizeDoesNotDependOnTheConfiguredDpi()
     {
-        int[] at96 = InkColumnBounds(DrawnText("Hg", SurfaceTextBaseline.Alphabetic, 1d, 0d, dpi: 96f));
-        int[] at300 = InkColumnBounds(DrawnText("Hg", SurfaceTextBaseline.Alphabetic, 1d, 0d, dpi: 300f));
+        using Image<Rgba32> rendered96 = DrawnText("Hg", SurfaceTextBaseline.Alphabetic, 1d, 0d, dpi: 96f);
+        using Image<Rgba32> rendered300 = DrawnText("Hg", SurfaceTextBaseline.Alphabetic, 1d, 0d, dpi: 300f);
+        int[] at96 = InkColumnBounds(rendered96);
+        int[] at300 = InkColumnBounds(rendered300);
 
         Assert.True(Math.Abs(at96[0] - at300[0]) <= 1 && Math.Abs(at96[1] - at300[1]) <= 1, $"ink columns {at96[0]}..{at96[1]} at 96 dpi but {at300[0]}..{at300[1]} at 300 dpi.");
     }

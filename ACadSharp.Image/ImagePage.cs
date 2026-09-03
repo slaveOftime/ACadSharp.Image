@@ -88,7 +88,8 @@ public sealed class ImagePage
     /// <param name="resizeLayout">Whether to automatically calculate layout bounds. Defaults to true.</param>
     /// <remarks>
     /// Entities are added in the drawing's draw order (handle order, overridden by the block's DRAWORDER table),
-    /// so later entities paint over earlier ones on both backends.
+    /// so later entities paint over earlier ones (in SVG, within each layer group; layer grouping comes first).
+    /// The order is the page's own: the contents of a block reference are drawn in the block's stored order.
     /// </remarks>
     public void Add(BlockRecord block, Func<Entity, bool>? entityFilter, bool resizeLayout = true)
     {

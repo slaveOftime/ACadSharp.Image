@@ -1,4 +1,5 @@
 using System.Numerics;
+using ACadSharp.IO;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
@@ -136,12 +137,12 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
     public void FillPolygon(ImageStyle style, IReadOnlyList<SurfacePoint> points)
     {
-        if (points.Count < 3)
+        if (this.FinitePoints(points, 3) is not List<SurfacePoint> finite)
         {
             return;
         }
 
-        PointF[] pixels = points.Select(ToPointF).ToArray();
+        PointF[] pixels = finite.Select(ToPointF).ToArray();
         ImageColor color = style.EffectiveColor;
         this.Canvas.Mutate(x => x.FillPolygon(color, pixels));
     }
@@ -149,8 +150,9 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
     public void FillPath(ImageStyle style, IReadOnlyList<IReadOnlyList<SurfacePoint>> rings)
     {
         IPath[] polygons = rings
-            .Where(ring => ring.Count >= 3)
-            .Select(ring => (IPath)new Polygon(new LinearLineSegment(ring.Select(ToPointF).ToArray())))
+            .Select(ring => this.FinitePoints(ring, 3))
+            .Where(ring => ring != null)
+            .Select(ring => (IPath)new Polygon(new LinearLineSegment(ring!.Select(ToPointF).ToArray())))
             .ToArray();
         if (polygons.Length == 0)
         {
@@ -168,6 +170,12 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
     public void FillCircle(ImageStyle style, SurfacePoint center, double radius)
     {
+        if (!IsFinite(center) || !double.IsFinite(radius))
+        {
+            this.NotifyNonFinite();
+            return;
+        }
+
         PointF pixel = ToPointF(center);
         ImageColor color = style.EffectiveColor;
         this.Canvas.Mutate(x => x.Fill(color, new EllipsePolygon(pixel.X, pixel.Y, (float)radius)));
@@ -308,4 +316,35 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
     {
         return new PointF((float)point.X, (float)point.Y);
     }
+
+    private static bool IsFinite(SurfacePoint p) => double.IsFinite(p.X) && double.IsFinite(p.Y);
+
+    /// <summary>
+    /// Copies the points that carry no NaN or infinity, notifying when any is dropped. ImageSharp's scan-line fill
+    /// throws <see cref="ArithmeticException"/> on a non-finite vertex, which would abort the whole export; the
+    /// dispatcher filters the entities it knows about, and this is the backstop, matching the SVG backend.
+    /// </summary>
+    /// <param name="points">Points to filter.</param>
+    /// <param name="minimum">Number of points the shape needs.</param>
+    /// <returns>The surviving points, or null when fewer than <paramref name="minimum"/> remain.</returns>
+    private List<SurfacePoint>? FinitePoints(IReadOnlyList<SurfacePoint> points, int minimum)
+    {
+        List<SurfacePoint> finite = new(points.Count);
+        for (int i = 0; i < points.Count; i++)
+        {
+            if (IsFinite(points[i]))
+            {
+                finite.Add(points[i]);
+            }
+        }
+
+        if (finite.Count != points.Count)
+        {
+            this.NotifyNonFinite();
+        }
+
+        return finite.Count >= minimum ? finite : null;
+    }
+
+    private void NotifyNonFinite() => this._configuration.Notify("Raster: non-finite geometry skipped.", NotificationType.Warning);
 }

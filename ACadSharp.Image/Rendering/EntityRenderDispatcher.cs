@@ -155,6 +155,14 @@ internal sealed class EntityRenderDispatcher
                     break;
             }
         }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            // A malformed entity (ACadSharp throws for a bulge between coincident vertices, for example) must not take the page down with it.
+            this._configuration.Notify(
+                $"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: geometry could not be computed ({ex.Message}); entity skipped.",
+                NotificationType.Warning,
+                ex);
+        }
         finally
         {
             context.Surface.EndEntity();

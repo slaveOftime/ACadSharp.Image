@@ -430,4 +430,33 @@ public sealed class ImageExporterTests
         Assert.All(unfiltered, l => Assert.InRange(l.End.X, 0, 200));
         Assert.Equal(200d / 1010d * 10d, unfiltered[0].End.X - unfiltered[0].Start.X, 3);
     }
+
+    [Fact]
+    public void MalformedPolylineDoesNotAbortTheExport()
+    {
+        // Two coincident vertices joined by a bulge make ACadSharp throw from GetBoundingBox and GetPoints.
+        LwPolyline malformed = new();
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)) { Bulge = 1 });
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)));
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(8, 5)));
+        BlockRecord block = new("malformed");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
+        block.Entities.Add(malformed);
+
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(block);
+
+        // The frame comes from the entities whose bounds can be computed.
+        ImagePage page = Assert.Single(exporter.Pages);
+        Assert.Equal(100d, page.Layout!.PaperWidth);
+        Assert.Equal(50d, page.Layout.PaperHeight);
+
+        using RenderedImagePage png = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
+        RenderedSvgPage svg = Assert.IsType<RenderedSvgPage>(Assert.Single(exporter.Render(ImageExportFormat.Svg)));
+
+        Assert.Contains("<line", svg.Content, StringComparison.Ordinal);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("entity skipped", StringComparison.Ordinal));
+    }
 }

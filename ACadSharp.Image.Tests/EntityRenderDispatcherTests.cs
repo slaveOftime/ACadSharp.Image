@@ -693,4 +693,32 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal([0d, 10d, 10d, 0d], points.Select(p => p.X).ToArray());
         Assert.Equal([100d, 100d, 95d, 95d], points.Select(p => p.Y).ToArray());
     }
+
+    [Fact]
+    public void MalformedPolylineIsSkippedWithWarningAndSubsequentEntitiesStillDraw()
+    {
+        // Two coincident vertices joined by a bulge make ACadSharp's tessellating GetPoints throw.
+        RecordingDrawingSurface surface = new() { SupportsCurves = false };
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        LwPolyline malformed = new();
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)) { Bulge = 1 });
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)));
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(8, 5)));
+
+        dispatcher.Draw(CreateContext(surface, configuration), WithHandle(malformed, 0x2A));
+
+        Assert.Equal(0, surface.Depth);
+        NotificationEventArgs notification = Assert.Single(notifications);
+        Assert.Equal(NotificationType.Warning, notification.NotificationType);
+        Assert.Contains("entity skipped", notification.Message, StringComparison.Ordinal);
+
+        Line line = WithHandle(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)), 0x2B);
+        dispatcher.Draw(CreateContext(surface, configuration), line);
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+    }
 }

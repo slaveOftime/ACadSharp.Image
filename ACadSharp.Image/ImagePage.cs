@@ -179,7 +179,17 @@ public sealed class ImagePage
                 continue;
             }
 
-            BoundingBox boundingBox = entity.GetBoundingBox();
+            BoundingBox boundingBox;
+            try
+            {
+                boundingBox = entity.GetBoundingBox();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                // ACadSharp throws for some malformed geometry (e.g. a bulge between coincident vertices); such an entity cannot contribute to the frame.
+                continue;
+            }
+
             // NaN and infinity both occur in the wild (Samples/6-57-1119.dxf has an ARC with an infinite radius)
             // and either would poison the page size.
             if (!double.IsFinite(boundingBox.Min.X) || !double.IsFinite(boundingBox.Min.Y) || !double.IsFinite(boundingBox.Min.Z) ||

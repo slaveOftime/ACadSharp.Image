@@ -386,8 +386,27 @@ internal sealed class EntityRenderDispatcher
         // layer-0 inheritance, and the header's LTSCALE, come from the insert's resolved style and effective layer.
         foreach (Entity entity in insert.Explode())
         {
+            NormalizeExplodedText(entity);
             this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent);
         }
+    }
+
+    /// <summary>
+    /// ACadSharp 3.7.1's <c>Insert.Explode()</c> writes a TEXT clone's insertion and alignment points in world
+    /// coordinates while still giving it the transformed (for a mirrored insert, <c>(0,0,-1)</c>) normal; polyline
+    /// clones, by contrast, come back as true OCS. The renderer treats TEXT points as OCS, so the clone's points are
+    /// mapped back into its OCS here. The clones are transient, so mutating them is safe.
+    /// </summary>
+    private static void NormalizeExplodedText(Entity entity)
+    {
+        if (entity is not TextEntity text || OcsTransform.IsWorldPlane(text.Normal))
+        {
+            return;
+        }
+
+        OcsTransform frame = OcsTransform.For(text.Normal);
+        text.InsertPoint = frame.ToOcs(text.InsertPoint);
+        text.AlignmentPoint = frame.ToOcs(text.AlignmentPoint);
     }
 
     private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch)

@@ -67,7 +67,7 @@ internal sealed class TextRenderer
             GetBaseline(textEntity.VerticalAlignment),
             WrappingWidth: -1d,
             LineSpacingFactor: 1d,
-            GetFixedLength(context, textEntity));
+            GetFixedLength(context, textEntity, toWorld));
 
         context.Surface.DrawText(style, run);
     }
@@ -81,10 +81,12 @@ internal sealed class TextRenderer
     /// <returns>The rotation to draw with (radians, drawing convention) and the anchor to use.</returns>
     /// <remarks>
     /// The OCS X direction rotated by <paramref name="rotation"/> is projected onto world XY. A plane seen from the
-    /// front keeps that direction. A plane seen from behind (normal Z below zero, what MIRROR produces) would show the
-    /// glyphs mirrored; AutoCAD with <c>MIRRTEXT = 0</c>, its default, keeps them readable and lets the run occupy the
-    /// mirrored extent instead, which is the same baseline read from the other end: half a turn added to the projected
-    /// direction, and <see cref="SurfaceTextAnchor.Start"/> and <see cref="SurfaceTextAnchor.End"/> swapped.
+    /// front keeps that direction. A plane seen from behind (normal Z below zero, what MIRROR writes) would show
+    /// mirrored glyphs; the renderer keeps them readable and lets the run occupy the mirrored extent instead, which is
+    /// the same baseline read from the other end: half a turn added to the projected direction, and
+    /// <see cref="SurfaceTextAnchor.Start"/> and <see cref="SurfaceTextAnchor.End"/> swapped. A plane seen edge-on
+    /// (normal in the XY plane) projects the direction to a zero vector, in which case <c>Atan2</c> returns 0 and the
+    /// run is drawn horizontal; no behaviour change.
     /// </remarks>
     internal static (double Rotation, SurfaceTextAnchor Anchor) ResolvePlacement(double rotation, SurfaceTextAnchor anchor, OcsTransform? toWorld)
     {
@@ -106,18 +108,36 @@ internal sealed class TextRenderer
             SurfaceTextAnchor.End => SurfaceTextAnchor.Start,
             _ => anchor,
         };
-        return (projected + Math.PI, flipped);
+        double turned = projected + Math.PI;
+        return (Math.Atan2(Math.Sin(turned), Math.Cos(turned)), flipped);
     }
 
-    private static double GetFixedLength(ImageRenderContext context, TextEntity textEntity)
+    /// <summary>
+    /// Measures the Fit/Aligned advance between a TEXT entity's insertion and alignment points.
+    /// </summary>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="textEntity">The entity to measure.</param>
+    /// <param name="toWorld">The OCS frame, or null for the world plane; when present, the two points are mapped
+    /// into world space before the distance is measured (the -Z frame is an isometry, so this matches the on-page
+    /// extent even for a mirrored insert).</param>
+    /// <returns>The fixed advance in surface units, or -1 when the alignment does not apply.</returns>
+    private static double GetFixedLength(ImageRenderContext context, TextEntity textEntity, OcsTransform? toWorld)
     {
         if (textEntity.HorizontalAlignment is not (TextHorizontalAlignment.Aligned or TextHorizontalAlignment.Fit))
         {
             return -1d;
         }
 
-        double dx = textEntity.AlignmentPoint.X - textEntity.InsertPoint.X;
-        double dy = textEntity.AlignmentPoint.Y - textEntity.InsertPoint.Y;
+        XYZ insert = textEntity.InsertPoint;
+        XYZ alignment = textEntity.AlignmentPoint;
+        if (toWorld != null)
+        {
+            insert = toWorld.ToWorld(insert.X, insert.Y, insert.Z);
+            alignment = toWorld.ToWorld(alignment.X, alignment.Y, alignment.Z);
+        }
+
+        double dx = alignment.X - insert.X;
+        double dy = alignment.Y - insert.Y;
         double length = Math.Sqrt((dx * dx) + (dy * dy));
         return length > 0 ? context.ToSurfaceLength(length) : -1d;
     }

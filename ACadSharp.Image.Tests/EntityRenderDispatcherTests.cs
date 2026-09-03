@@ -449,6 +449,41 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
+    public void ToOcsInvertsToWorld()
+    {
+        OcsTransform frame = OcsTransform.For(new XYZ(2, 2, 2));
+        XYZ world = frame.ToWorld(1.5, -2, 0.25);
+        XYZ back = frame.ToOcs(world);
+
+        Assert.Equal(1.5, back.X, 9);
+        Assert.Equal(-2d, back.Y, 9);
+        Assert.Equal(0.25, back.Z, 9);
+    }
+
+    [Fact]
+    public void TextInsideAMirroredInsertStaysWithItsGeometry()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        BlockRecord block = new("LABEL");
+        block.Entities.Add(new Line(new XYZ(1, 2, 0), new XYZ(3, 2, 0)));
+        block.Entities.Add(new TextEntity { Value = "T", InsertPoint = new XYZ(1, 2, 0), Height = 1 });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0), XScale = -1 };
+
+        dispatcher.Draw(CreateContext(surface, configuration), insert);
+
+        // The line starts at world x = 9; the text shares that point, and its glyphs read the mirrored extent from its end.
+        (SurfacePoint start, _) = Assert.Single(surface.Lines);
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal(9d, start.X, 6);
+        Assert.Equal(start.X, run.Origin.X, 6);
+        Assert.Equal(start.Y, run.Origin.Y, 6);
+        Assert.Equal(SurfaceTextAnchor.End, run.Anchor);
+        Assert.Equal(1d, Math.Cos(run.Rotation), 6);
+    }
+
+    [Fact]
     public void NonWorldPolylineIsTessellatedAndBroughtIntoWorld()
     {
         RecordingDrawingSurface surface = new() { SupportsCurves = true };

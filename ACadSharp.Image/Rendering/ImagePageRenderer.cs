@@ -75,38 +75,41 @@ internal sealed class ImagePageRenderer
     }
 
     /// <summary>
-    /// Re-frames an auto-sized page on its visible entities, then renders it onto the raster page context
-    /// (see <see cref="ImageRenderContext.CreatePageContext"/>).
+    /// Renders the page onto the raster page context of its visible frame (see <see cref="ResolveFrame"/> and
+    /// <see cref="ImageRenderContext.CreatePageContext(IDrawingSurface, PageFrame, ImageConfiguration)"/>).
     /// </summary>
     /// <param name="surface">The surface receiving the page content.</param>
     /// <param name="page">The page to render.</param>
     internal void RenderTo(IDrawingSurface surface, ImagePage page)
     {
-        this.RefitAutoSizedPage(page);
-        this.RenderTo(ImageRenderContext.CreatePageContext(surface, page, this._configuration), page);
+        this.RenderTo(ImageRenderContext.CreatePageContext(surface, this.ResolveFrame(page), this._configuration), page);
     }
 
     /// <summary>
-    /// Re-frames a page whose size was derived from its content, so that hidden entities do not stretch the frame.
+    /// The frame to render a page in: for a page whose size was derived from its content and a configuration that can
+    /// hide entities, the frame fitted to the visible entities, so hidden ones do not stretch it; otherwise the page's
+    /// own frame.
     /// </summary>
     /// <param name="page">The page about to be rendered.</param>
+    /// <returns>The frame to map onto the surface.</returns>
     /// <remarks>
-    /// Only top-level page entities take part; entities shown through a viewport are framed by the viewport itself,
-    /// and pages that carry a layout's paper size are left alone. Without an active layer filter every entity is
-    /// visible, so the frame would not move: the page is then left exactly as the caller built it.
+    /// The page itself is never modified, so a later render with different filters starts from the frame the caller
+    /// built. Only top-level page entities take part; entities shown through a viewport are framed by the viewport
+    /// itself, and pages that carry a layout's paper size keep it. When every visible entity has non-finite bounds
+    /// the page's own frame is used.
     /// </remarks>
-    private void RefitAutoSizedPage(ImagePage page)
+    private PageFrame ResolveFrame(ImagePage page)
     {
         if (!page.AutoSized || !this.HasActiveFilters())
         {
-            return;
+            return PageFrame.Of(page);
         }
 
-        page.UpdateLayoutSize(entity =>
+        return page.ComputeFrame(entity =>
         {
             Layer? layer = EntityRenderDispatcher.GetEffectiveLayer(entity, null);
             return this._visibilityFilter.IsVisible(entity, layer, layer?.Name ?? Layer.DefaultName, null);
-        });
+        }) ?? PageFrame.Of(page);
     }
 
     /// <summary>
@@ -143,8 +146,8 @@ internal sealed class ImagePageRenderer
     /// <returns>The rendered SVG page.</returns>
     private RenderedSvgPage RenderSvg(ImagePage page)
     {
-        this.RefitAutoSizedPage(page);
-        SurfaceRect viewBox = ImageRenderContext.ComputeSvgViewBox(page, this._configuration);
+        PageFrame frame = this.ResolveFrame(page);
+        SurfaceRect viewBox = ImageRenderContext.ComputeSvgViewBox(frame, this._configuration);
         SvgOptions options = this._configuration.Svg;
         double? strokeUnits = options.NonScalingStroke
             ? null
@@ -157,7 +160,7 @@ internal sealed class ImagePageRenderer
             options.EmitSize ? this._configuration.Height : null,
             strokeUnits);
 
-        ImageRenderContext context = ImageRenderContext.CreateSvgPageContext(surface, page, this._configuration, strokeUnits);
+        ImageRenderContext context = ImageRenderContext.CreateSvgPageContext(surface, frame, this._configuration, strokeUnits);
 
         this.RenderTo(context, page);
 

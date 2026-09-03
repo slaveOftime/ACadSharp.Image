@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using ACadSharp.Entities;
+using ACadSharp.Image.Rendering;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
@@ -136,23 +137,31 @@ public sealed class ImagePage
     /// <summary>
     /// Updates the layout size based on the bounding box of all entities on this page.
     /// </summary>
+    /// <remarks>
+    /// When no entity has finite bounds, <see cref="Translation"/> and the layout size are left unchanged.
+    /// </remarks>
     public void UpdateLayoutSize()
     {
-        this.UpdateLayoutSize(null);
+        if (this.ComputeFrame(null) is PageFrame frame)
+        {
+            this.Translation = frame.Translation;
+            this.Layout ??= frame.Layout;
+            this.Layout.PaperWidth = frame.PaperWidth;
+            this.Layout.PaperHeight = frame.PaperHeight;
+            this.AutoSized = true;
+        }
     }
 
     /// <summary>
-    /// Updates the layout size based on the bounding box of the entities the predicate accepts.
+    /// Computes the frame that fits the entities the predicate accepts, without changing the page.
     /// </summary>
     /// <param name="include">Predicate selecting the entities to frame, or null to frame every entity.</param>
-    /// <remarks>
-    /// When no selected entity has finite bounds, <see cref="Translation"/> and the layout size are left unchanged.
-    /// </remarks>
-    internal void UpdateLayoutSize(Func<Entity, bool>? include)
+    /// <returns>The fitted frame, or null when no selected entity has finite bounds.</returns>
+    internal PageFrame? ComputeFrame(Func<Entity, bool>? include)
     {
         if (this._entities.Count == 0)
         {
-            return;
+            return null;
         }
 
         bool hasValidBounds = false;
@@ -201,16 +210,17 @@ public sealed class ImagePage
 
         if (!hasValidBounds)
         {
-            return;
+            return null;
         }
 
         BoundingBox limits = new(minX, minY, minZ, maxX, maxY, maxZ);
-        this.Translation = -(XY)limits.Min;
+        XY translation = -(XY)limits.Min;
         limits = limits.Move(-limits.Min);
 
-        this.Layout ??= new Layout("default_page");
-        this.Layout.PaperWidth = Math.Max(1d, limits.Max.X);
-        this.Layout.PaperHeight = Math.Max(1d, limits.Max.Y);
-        this.AutoSized = true;
+        return new PageFrame(
+            this.Layout ?? new Layout("default_page"),
+            translation,
+            Math.Max(1d, limits.Max.X),
+            Math.Max(1d, limits.Max.Y));
     }
 }

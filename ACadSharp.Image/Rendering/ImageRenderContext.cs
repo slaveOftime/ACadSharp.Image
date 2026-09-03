@@ -123,6 +123,18 @@ internal sealed class ImageRenderContext
     /// <returns>A context centred on the drawable area left by the configured padding.</returns>
     public static ImageRenderContext CreatePageContext(IDrawingSurface surface, ImagePage page, ImageConfiguration configuration)
     {
+        return CreatePageContext(surface, PageFrame.Of(page), configuration);
+    }
+
+    /// <summary>
+    /// Creates the page-level context that maps a page frame onto the full surface.
+    /// </summary>
+    /// <param name="surface">Surface receiving the page content.</param>
+    /// <param name="frame">Frame being rendered; the page's own, or one fitted to its visible entities.</param>
+    /// <param name="configuration">Configuration driving the export.</param>
+    /// <returns>A context centred on the drawable area left by the configured padding.</returns>
+    public static ImageRenderContext CreatePageContext(IDrawingSurface surface, PageFrame frame, ImageConfiguration configuration)
+    {
         int drawableWidth = configuration.Width - configuration.PaddingLeft - configuration.PaddingRight;
         int drawableHeight = configuration.Height - configuration.PaddingTop - configuration.PaddingBottom;
         if (drawableWidth <= 0 || drawableHeight <= 0)
@@ -130,9 +142,9 @@ internal sealed class ImageRenderContext
             throw new InvalidOperationException("Padding must leave at least one drawable pixel in both dimensions.");
         }
 
-        Layout layout = page.Layout ?? new Layout("default_page");
-        double pageWidth = Math.Max(1d, layout.PaperWidth);
-        double pageHeight = Math.Max(1d, layout.PaperHeight);
+        Layout layout = frame.Layout;
+        double pageWidth = Math.Max(1d, frame.PaperWidth);
+        double pageHeight = Math.Max(1d, frame.PaperHeight);
         float pixelsPerUnit = Math.Min(
             drawableWidth / (float)pageWidth,
             drawableHeight / (float)pageHeight);
@@ -142,8 +154,8 @@ internal sealed class ImageRenderContext
         float offsetX = configuration.PaddingLeft + ((drawableWidth - scaledWidth) / 2f);
         float offsetY = configuration.PaddingBottom + ((drawableHeight - scaledHeight) / 2f);
 
-        double originX = -page.Translation.X - layout.UnprintableMargin.Left;
-        double originY = -page.Translation.Y - layout.UnprintableMargin.Bottom;
+        double originX = -frame.Translation.X - layout.UnprintableMargin.Left;
+        double originY = -frame.Translation.Y - layout.UnprintableMargin.Bottom;
 
         return new ImageRenderContext(
             surface,
@@ -202,6 +214,17 @@ internal sealed class ImageRenderContext
     /// <returns>The viewBox rectangle in drawing units.</returns>
     public static SurfaceRect ComputeSvgViewBox(ImagePage page, ImageConfiguration configuration)
     {
+        return ComputeSvgViewBox(PageFrame.Of(page), configuration);
+    }
+
+    /// <summary>
+    /// Computes the SVG viewBox for a page frame (see <see cref="ComputeSvgViewBox(ImagePage, ImageConfiguration)"/>).
+    /// </summary>
+    /// <param name="frame">Frame being rendered.</param>
+    /// <param name="configuration">Configuration driving the export.</param>
+    /// <returns>The viewBox rectangle in drawing units.</returns>
+    public static SurfaceRect ComputeSvgViewBox(PageFrame frame, ImageConfiguration configuration)
+    {
         int drawableWidth = configuration.Width - configuration.PaddingLeft - configuration.PaddingRight;
         int drawableHeight = configuration.Height - configuration.PaddingTop - configuration.PaddingBottom;
         if (drawableWidth <= 0 || drawableHeight <= 0)
@@ -209,9 +232,8 @@ internal sealed class ImageRenderContext
             throw new InvalidOperationException("Padding must leave at least one drawable pixel in both dimensions.");
         }
 
-        Layout layout = page.Layout ?? new Layout("default_page");
-        double pageWidth = Math.Max(1d, layout.PaperWidth);
-        double pageHeight = Math.Max(1d, layout.PaperHeight);
+        double pageWidth = Math.Max(1d, frame.PaperWidth);
+        double pageHeight = Math.Max(1d, frame.PaperHeight);
         double fit = Math.Min(drawableWidth / pageWidth, drawableHeight / pageHeight);
 
         double left = configuration.PaddingLeft / fit;
@@ -230,10 +252,20 @@ internal sealed class ImageRenderContext
     /// <returns>The fit scale in pixels per drawing unit.</returns>
     public static double ComputeSvgFitScale(ImagePage page, ImageConfiguration configuration)
     {
+        return ComputeSvgFitScale(PageFrame.Of(page), configuration);
+    }
+
+    /// <summary>
+    /// Pixels per drawing unit the raster fit would use for a page frame (see <see cref="ComputeSvgFitScale(ImagePage, ImageConfiguration)"/>).
+    /// </summary>
+    /// <param name="frame">Frame being rendered.</param>
+    /// <param name="configuration">Configuration driving the export.</param>
+    /// <returns>The fit scale in pixels per drawing unit.</returns>
+    public static double ComputeSvgFitScale(PageFrame frame, ImageConfiguration configuration)
+    {
         int drawableWidth = configuration.Width - configuration.PaddingLeft - configuration.PaddingRight;
         int drawableHeight = configuration.Height - configuration.PaddingTop - configuration.PaddingBottom;
-        Layout layout = page.Layout ?? new Layout("default_page");
-        return Math.Min(drawableWidth / Math.Max(1d, layout.PaperWidth), drawableHeight / Math.Max(1d, layout.PaperHeight));
+        return Math.Min(drawableWidth / Math.Max(1d, frame.PaperWidth), drawableHeight / Math.Max(1d, frame.PaperHeight));
     }
 
     /// <summary>
@@ -247,15 +279,29 @@ internal sealed class ImageRenderContext
     /// <returns>A double-precision context whose surface units are drawing units.</returns>
     public static ImageRenderContext CreateSvgPageContext(IDrawingSurface surface, ImagePage page, ImageConfiguration configuration, double? strokeUnitsPerMillimeter)
     {
-        Layout layout = page.Layout ?? new Layout("default_page");
-        double pageWidth = Math.Max(1d, layout.PaperWidth);
-        double pageHeight = Math.Max(1d, layout.PaperHeight);
-        double originX = -page.Translation.X - layout.UnprintableMargin.Left;
-        double originY = -page.Translation.Y - layout.UnprintableMargin.Bottom;
+        return CreateSvgPageContext(surface, PageFrame.Of(page), configuration, strokeUnitsPerMillimeter);
+    }
+
+    /// <summary>
+    /// Creates the page-level context for the SVG backend from a page frame
+    /// (see <see cref="CreateSvgPageContext(IDrawingSurface, ImagePage, ImageConfiguration, double?)"/>).
+    /// </summary>
+    /// <param name="surface">Surface receiving the page content.</param>
+    /// <param name="frame">Frame being rendered; the page's own, or one fitted to its visible entities.</param>
+    /// <param name="configuration">Configuration driving the export.</param>
+    /// <param name="strokeUnitsPerMillimeter">Drawing units per millimetre for stroke widths, or null to keep pixel widths.</param>
+    /// <returns>A double-precision context whose surface units are drawing units.</returns>
+    public static ImageRenderContext CreateSvgPageContext(IDrawingSurface surface, PageFrame frame, ImageConfiguration configuration, double? strokeUnitsPerMillimeter)
+    {
+        Layout layout = frame.Layout;
+        double pageWidth = Math.Max(1d, frame.PaperWidth);
+        double pageHeight = Math.Max(1d, frame.PaperHeight);
+        double originX = -frame.Translation.X - layout.UnprintableMargin.Left;
+        double originY = -frame.Translation.Y - layout.UnprintableMargin.Bottom;
 
         // With vector-effect="non-scaling-stroke" the browser computes the dash pattern in pixel space like the width,
         // so dash lengths must be pixels too. In drawing-unit mode they are drawing units (scale 1).
-        double lineTypeScale = strokeUnitsPerMillimeter == null ? ComputeSvgFitScale(page, configuration) : 1d;
+        double lineTypeScale = strokeUnitsPerMillimeter == null ? ComputeSvgFitScale(frame, configuration) : 1d;
 
         return new ImageRenderContext(
             surface,
@@ -271,7 +317,7 @@ internal sealed class ImageRenderContext
             singlePrecision: false,
             lineTypeScale: lineTypeScale,
             strokeUnitsPerMillimeter: strokeUnitsPerMillimeter,
-            pixelsPerSurfaceUnit: ComputeSvgFitScale(page, configuration));
+            pixelsPerSurfaceUnit: ComputeSvgFitScale(frame, configuration));
     }
 
     /// <summary>

@@ -378,4 +378,42 @@ public sealed class ImageExporterTests
 
         Assert.Equal(FirstLineCall(Build(withFarHiddenLine: false)), FirstLineCall(Build(withFarHiddenLine: true)));
     }
+
+    [Fact]
+    public void FilteredRenderingLeavesThePageFrameUntouchedAndClearingFiltersRestoresTheFullFrame()
+    {
+        BlockRecord block = new("framing-roundtrip");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)) { Layer = new Layer("Near") });
+        block.Entities.Add(new Line(new XYZ(1000, 1000, 0), new XYZ(1010, 1010, 0)) { Layer = new Layer("Far") });
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 200;
+        exporter.Configuration.Height = 200;
+        exporter.Add(block);
+        ImagePage page = Assert.Single(exporter.Pages);
+        double fullWidth = page.Layout!.PaperWidth;
+        XY fullTranslation = page.Translation;
+        Assert.Equal(1010d, fullWidth);
+
+        static (SurfacePoint Start, SurfacePoint End)[] Render(ImageExporter exporter)
+        {
+            RecordingDrawingSurface surface = new();
+            new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
+            return surface.Lines.ToArray();
+        }
+
+        // Hidden far line: the near line fills the frame, and the page is not written to.
+        exporter.Configuration.HideLayer("Far");
+        (SurfacePoint Start, SurfacePoint End)[] filtered = Render(exporter);
+        Assert.Single(filtered);
+        Assert.Equal(200d, filtered[0].End.X - filtered[0].Start.X, 3);
+        Assert.Equal(fullWidth, page.Layout.PaperWidth);
+        Assert.Equal(fullTranslation, page.Translation);
+
+        // Filters cleared: both lines are drawn in the full frame the caller built, not the 10-unit one.
+        exporter.Configuration.ClearHiddenLayers();
+        (SurfacePoint Start, SurfacePoint End)[] unfiltered = Render(exporter);
+        Assert.Equal(2, unfiltered.Length);
+        Assert.All(unfiltered, l => Assert.InRange(l.End.X, 0, 200));
+        Assert.Equal(200d / 1010d * 10d, unfiltered[0].End.X - unfiltered[0].Start.X, 3);
+    }
 }

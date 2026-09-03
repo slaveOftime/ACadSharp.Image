@@ -31,7 +31,7 @@ internal static class Program
             CadDocument document = LoadDocument(inputPath);
             if (options.ListLayers)
             {
-                WriteLayerTable(document);
+                WriteLayerTable(document, Console.Out);
                 return 0;
             }
 
@@ -117,12 +117,13 @@ internal static class Program
         };
     }
 
-    private static void WriteLayerTable(CadDocument document)
+    /// <summary>Writes a human-readable layer table for <paramref name="document"/> to <paramref name="writer"/>.</summary>
+    internal static void WriteLayerTable(CadDocument document, TextWriter writer)
     {
         List<ACadSharp.Tables.Layer> layers = document.Layers.OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase).ToList();
         if (layers.Count == 0)
         {
-            Console.WriteLine("No layers.");
+            writer.WriteLine("No layers.");
             return;
         }
 
@@ -137,14 +138,14 @@ internal static class Program
         int lineTypeWidth = Math.Max(8, layers.Max(l => (l.LineType?.Name ?? "-").Length));
         int weightWidth = Math.Max(6, layers.Max(l => l.LineWeight.ToString().Length));
 
-        Console.WriteLine($"{"Layer".PadRight(nameWidth)}  On   Frozen  Plot  Color        {"Weight".PadRight(weightWidth)}  {"Linetype".PadRight(lineTypeWidth)}  Entities");
+        writer.WriteLine($"{"Layer".PadRight(nameWidth)}  On   Frozen  Plot  Color        {"Weight".PadRight(weightWidth)}  {"Linetype".PadRight(lineTypeWidth)}  Entities");
         foreach (ACadSharp.Tables.Layer layer in layers)
         {
             string color = layer.Color.IsTrueColor
                 ? $"#{layer.Color.R:x2}{layer.Color.G:x2}{layer.Color.B:x2}"
                 : layer.Color.Index.ToString(CultureInfo.InvariantCulture);
             counts.TryGetValue(layer.Name, out int count);
-            Console.WriteLine(
+            writer.WriteLine(
                 $"{layer.Name.PadRight(nameWidth)}  {(layer.IsOn ? "yes" : "no ")}  {(layer.Flags.HasFlag(ACadSharp.Tables.LayerFlags.Frozen) ? "yes   " : "no    ")}  {(layer.PlotFlag ? "yes " : "no  ")}  {color.PadRight(11)}  {layer.LineWeight.ToString().PadRight(weightWidth)}  {(layer.LineType?.Name ?? "-").PadRight(lineTypeWidth)}  {count}");
         }
     }
@@ -161,7 +162,8 @@ internal static class Program
         }
     }
 
-    private static ImageExportFormat ResolveFormat(CliOptions options)
+    /// <summary>Resolves the export format from an explicit <c>--format</c>, else the output path's extension, else <see cref="ImageExportFormat.Png"/>.</summary>
+    internal static ImageExportFormat ResolveFormat(CliOptions options)
     {
         if (!string.IsNullOrWhiteSpace(options.Format))
         {
@@ -181,7 +183,8 @@ internal static class Program
         return ImageExportFormat.Png;
     }
 
-    private static string ResolveOutputPath(CliOptions options, string inputPath, ImageExportFormat format)
+    /// <summary>Resolves the output path from an explicit <c>--output</c>, else the input path with the format's extension.</summary>
+    internal static string ResolveOutputPath(CliOptions options, string inputPath, ImageExportFormat format)
     {
         if (!string.IsNullOrWhiteSpace(options.OutputPath))
         {
@@ -191,7 +194,8 @@ internal static class Program
         return Path.ChangeExtension(inputPath, format.GetFileExtension());
     }
 
-    private static CliOptions ParseArgs(IReadOnlyList<string> args)
+    /// <summary>Parses command-line arguments into <see cref="CliOptions"/>; throws <see cref="InvalidOperationException"/> for unknown or invalid arguments.</summary>
+    internal static CliOptions ParseArgs(IReadOnlyList<string> args)
     {
         string? inputPath = null;
         string? outputPath = null;

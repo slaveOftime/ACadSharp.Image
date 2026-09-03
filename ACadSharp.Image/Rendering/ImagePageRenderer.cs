@@ -92,11 +92,12 @@ internal sealed class ImagePageRenderer
     /// <param name="page">The page about to be rendered.</param>
     /// <remarks>
     /// Only top-level page entities take part; entities shown through a viewport are framed by the viewport itself,
-    /// and pages that carry a layout's paper size are left alone.
+    /// and pages that carry a layout's paper size are left alone. Without an active layer filter every entity is
+    /// visible, so the frame would not move: the page is then left exactly as the caller built it.
     /// </remarks>
     private void RefitAutoSizedPage(ImagePage page)
     {
-        if (!page.AutoSized)
+        if (!page.AutoSized || !this.HasActiveFilters())
         {
             return;
         }
@@ -107,6 +108,15 @@ internal sealed class ImagePageRenderer
             return this._visibilityFilter.IsVisible(entity, layer, layer?.Name ?? Layer.DefaultName, null);
         });
     }
+
+    /// <summary>
+    /// True when the configuration can hide an entity, so the visible extents may differ from the page extents.
+    /// </summary>
+    /// <returns>True when an include list, a hide list or a visibility mode other than <see cref="LayerVisibilityMode.All"/> is set.</returns>
+    private bool HasActiveFilters() =>
+        this._configuration.IncludedLayers.Count > 0
+        || this._configuration.HiddenLayers.Count > 0
+        || this._configuration.LayerVisibility != LayerVisibilityMode.All;
 
     /// <summary>
     /// Renders the page's viewports and then its page-level entities through the given page context.
@@ -159,7 +169,7 @@ internal sealed class ImagePageRenderer
     /// </summary>
     /// <param name="header">Header of the document being rendered, or null when there is none.</param>
     /// <param name="pageLineTypeScale">Surface units per linetype unit on the page around the viewport.</param>
-    /// <param name="viewportScaleFactor">Model units per paper unit shown by the viewport.</param>
+    /// <param name="viewportScaleFactor">Paper units per model unit shown by the viewport.</param>
     /// <returns>
     /// <paramref name="pageLineTypeScale"/> when linetypes are scaled to paper space, so dashes are the same length
     /// everywhere on the sheet; otherwise it times <paramref name="viewportScaleFactor"/>, so dashes keep their model-space

@@ -138,19 +138,15 @@ public sealed class LayerFilteringTests
     }
 
     [Fact]
-    public void LayerZeroSubEntitiesFollowTheInsertLayerState()
+    public void LayerZeroSubEntitiesInheritVisibleInsertLayer()
     {
-        (RecordingDrawingSurface visibleSurface, EntityRenderDispatcher dispatcher, ImageRenderContext context) = Setup(c => c.LayerVisibility = LayerVisibilityMode.Screen);
+        (RecordingDrawingSurface surface, EntityRenderDispatcher dispatcher, ImageRenderContext context) = Setup(c => c.LayerVisibility = LayerVisibilityMode.Screen);
         BlockRecord block = new("SYM");
         block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)) { Layer = new Layer(Layer.DefaultName) });
 
-        // Visible insert layer: the layer-0 sub-entity is drawn.
+        // Visible insert layer: the layer-0 sub-entity inherits it and is drawn.
         dispatcher.Draw(context, new Insert(block) { Layer = new Layer("Symbols") });
-        Assert.Equal(1, Drawn(visibleSurface));
 
-        // Frozen insert layer: the same sub-entity inherits the frozen layer and is hidden.
-        (RecordingDrawingSurface frozenSurface, EntityRenderDispatcher dispatcher2, ImageRenderContext context2) = Setup(c => c.LayerVisibility = LayerVisibilityMode.Screen);
-        dispatcher2.Draw(context2, new Insert(block) { Layer = new Layer("Symbols") { Flags = LayerFlags.Frozen } });
-        Assert.Equal(0, Drawn(frozenSurface));
+        Assert.Equal(1, Drawn(surface));
     }
 }

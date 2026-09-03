@@ -29,12 +29,4 @@ internal static class ColorExtensions
 
         return ImageColor.FromRgb(color.R, color.G, color.B);
     }
-
-    /// <summary>
-    /// Converts an AutoCAD <see cref="CadColor"/> to an ImageSharp <see cref="ImageColor"/>, resolving color
-    /// index 7 ("ByBackground") to black.
-    /// </summary>
-    /// <param name="color">The AutoCAD color to convert.</param>
-    /// <returns>The corresponding ImageSharp color.</returns>
-    public static ImageColor ToImageColor(this CadColor color) => color.ToImageColor(ImageColor.Black);
 }

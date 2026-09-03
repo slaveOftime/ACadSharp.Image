@@ -82,6 +82,7 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 
 - Solid (`hatch.IsSolid`): fill the boundary loops with the even-odd rule. Loop points come from `path.GetPoints(ArcPrecision)`.
 - Pattern: `hatch.ExplodePattern()` returns `Line` entities already clipped to the boundary and already honouring `PatternScale`, `PatternAngle`, and `DashLengths` (verified empirically against 3.7.1). Draw each as a line with the hatch's style. Cap at `ImageConfiguration.MaxHatchLines` (default 20000): beyond the cap, stop and raise a `Warning` notification.
+- Deviation recorded during implementation: a pattern hatch whose `Pattern` is null raises a `Warning` and draws nothing (ACadSharp's `ExplodePattern()` would silently return an empty sequence; the warning is deliberate so a blank hatch is explained).
 
 ## 5. SVG backend
 

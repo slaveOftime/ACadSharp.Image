@@ -243,7 +243,26 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
 
     public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed)
     {
-        if (this.FinitePoints(points, 2) is not List<SurfacePoint> vertices)
+        // The bulges are indexed by vertex, so dropping a non-finite point has to drop its bulge with it.
+        List<SurfacePoint> vertices = new(points.Count);
+        List<double> vertexBulges = new(points.Count);
+        for (int i = 0; i < points.Count; i++)
+        {
+            if (!IsFinite(points[i]))
+            {
+                continue;
+            }
+
+            vertices.Add(points[i]);
+            vertexBulges.Add(i < bulges.Count ? bulges[i] : 0d);
+        }
+
+        if (vertices.Count != points.Count)
+        {
+            this.NotifyNonFinite();
+        }
+
+        if (vertices.Count < 2)
         {
             return;
         }
@@ -255,7 +274,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
         {
             SurfacePoint start = vertices[i];
             SurfacePoint end = vertices[(i + 1) % vertices.Count];
-            double bulge = i < bulges.Count ? bulges[i] : 0d;
+            double bulge = vertexBulges[i];
             if (!IsFinite(bulge) || Math.Abs(bulge) < 1e-12 || start == end)
             {
                 d.Append('L').Append(this.N(end.X)).Append(' ').Append(this.N(end.Y));

@@ -275,6 +275,24 @@ public sealed class SvgDrawingSurfaceTests
     }
 
     [Fact]
+    public void BulgePolylineDropsTheBulgeOfADroppedVertex()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+
+        // The non-finite vertex goes and its bulge with it, so the arc stays on the (10,0) vertex that owns it.
+        surface.DrawBulgePolyline(
+            new ImageStyle(Color.Black, 1f),
+            [new(0, 0), new(double.NaN, double.NaN), new(10, 0), new(20, 0)],
+            [0d, 0d, 1d, 0d],
+            closed: false);
+
+        XElement path = Assert.Single(surface.ToDocument().Descendants(Ns + "path"));
+        string d = (string?)path.Attribute("d") ?? string.Empty;
+        Assert.Equal(1, d.Count(c => c == 'A'));
+        Assert.DoesNotContain("NaN", d, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CubicBezierWritesCCommands()
     {
         using SvgDrawingSurface surface = CreateSurface();

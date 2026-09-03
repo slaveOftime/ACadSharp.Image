@@ -35,6 +35,12 @@ internal static class LineTypeDashResolver
             return null;
         }
 
+        // A huge LTSCALE or CELTSCALE overflows the pattern to infinity, which no surface can dash with.
+        if (pattern.Any(v => !float.IsFinite(v)))
+        {
+            return null;
+        }
+
         if (EnforcesMinimumDash(context) && pattern.Sum() < context.Configuration.MinimumDashPixels)
         {
             return null;

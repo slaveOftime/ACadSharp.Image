@@ -101,6 +101,20 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
+    public void LayerColourIndexSevenFollowsTheBackground()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.FromRgb(20, 20, 40) };
+        EntityRenderDispatcher dispatcher = new(configuration);
+        Line line = new(new XYZ(0, 0, 0), new XYZ(10, 0, 0)) { Layer = new Layer("Ink") { Color = new ACadSharp.Color(7) } };
+
+        dispatcher.Draw(CreateContext(surface, configuration), line);
+
+        // Colour index 7 is "ByBackground": on a dark sheet the layer group is white, not black.
+        Assert.Equal(SixLabors.ImageSharp.Color.White, Assert.Single(surface.Layers).Color);
+    }
+
+    [Fact]
     public void CurveCapableSurfaceReceivesNativeArcsCirclesAndBulges()
     {
         RecordingDrawingSurface surface = new() { SupportsCurves = true };

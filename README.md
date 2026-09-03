@@ -219,7 +219,7 @@ The library follows a clean architecture pattern:
 ```csharp
 var exporter = new ImageExporter();
 exporter.Configuration.IncludeLayers(["A-WALL", "A-DOOR"]);   // render only these (optional)
-exporter.Configuration.HideLayer("DEFPOINTS");                 // then remove these
+exporter.Configuration.HideLayer("A-DOOR");                    // then remove one of them
 exporter.AddModelSpace(document);
 ```
 
@@ -235,7 +235,7 @@ exporter.Configuration.LayerVisibility = LayerVisibilityMode.Plot; // All (defau
 
 ### Linetypes, transparency and colour 7
 
-Dashed linetypes are rendered using `LTSCALE`, the entity linetype scale and `PSLTSCALE` (honoured from the raw `$PSLTSCALE` header value) in paper space; patterns shorter than `MinimumDashPixels` are drawn solid, and embedded shapes and text in a linetype render as gaps. Entity transparency becomes opacity (ByLayer is treated as opaque because the ACadSharp layer table carries no transparency). Colour index 7 resolves to black or white from the background luminance, or to `ForegroundColor` when set.
+Dashed linetypes are rendered using `LTSCALE`, the entity linetype scale and `PSLTSCALE` (honoured from the raw `$PSLTSCALE` header value) in paper space; patterns shorter than `MinimumDashPixels` are drawn solid (pixel-width modes only; not applied in SVG drawing-unit mode), and embedded shapes and text in a linetype render as gaps. Entity transparency becomes opacity (ByLayer is treated as opaque because the ACadSharp layer table carries no transparency). Colour index 7 resolves to black or white from the background luminance, or to `ForegroundColor` when set.
 
 ### SVG output
 
@@ -355,9 +355,9 @@ Changes on the way to the next major release:
 - The library targets net8.0 and net10.0; net6.0 is no longer supported.
 - ACadSharp 3.7.1 is required.
 - `ImagePage.Entities` now keeps every added entity; `ImageConfiguration.HiddenLayers` and `LayerVisibility` are applied at render time instead of at `Add`, so changing them afterwards takes effect, and the framing of auto-sized pages follows the currently visible entities.
-- New public members: `ImageConfiguration.GetLineWeightMillimeters`, `ImagePage.Document`, and `ImagePage.UpdateLayoutSize(Func<Entity, bool>?)`.
+- New public members: `ImageConfiguration.GetLineWeightMillimeters` and `ImagePage.Document`.
 - `RenderedImagePage.Save` throws `NotSupportedException` when its format is `ImageExportFormat.Svg`; use a `RenderedSvgPage` for SVG output instead.
-- This release ships with a major version tag (`v2.0.0`).
+- Release this work under a major version tag (for example `v2.0.0`); the version is derived from the tag by the release workflow.
 
 ---
 

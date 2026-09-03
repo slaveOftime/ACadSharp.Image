@@ -93,6 +93,15 @@ public sealed class LineTypeDashResolverTests
     }
 
     [Fact]
+    public void NonFinitePatternsAreSolid()
+    {
+        // A huge CELTSCALE overflows the pattern lengths to infinity, which no surface can dash with.
+        Line line = new() { LineType = Dashed(1, -1), LineTypeScale = double.MaxValue };
+
+        Assert.Null(LineTypeDashResolver.Resolve(line, Context(1d), 1f));
+    }
+
+    [Fact]
     public void EntityLineTypeScaleMultiplies()
     {
         Line line = new() { LineType = Dashed(1, -1), LineTypeScale = 3 };

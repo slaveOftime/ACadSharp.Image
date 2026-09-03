@@ -1,5 +1,6 @@
 using ACadSharp.Entities;
 using ACadSharp.Image.Extensions;
+using ImageColor = SixLabors.ImageSharp.Color;
 
 namespace ACadSharp.Image.Rendering;
 
@@ -7,8 +8,8 @@ namespace ACadSharp.Image.Rendering;
 /// Resolves <see cref="ImageStyle"/> values from CAD entity properties.
 /// </summary>
 /// <remarks>
-/// This class reads color, line weight and linetype information from an <see cref="Entity"/>
-/// and converts it into surface-unit rendering values using the
+/// This class reads color, line weight, linetype and transparency information from an <see cref="Entity"/>
+/// and converts it into surface-unit rendering values, plus an opacity, using the
 /// <see cref="ImageRenderContext"/> the entity is drawn in.
 /// </remarks>
 internal sealed class ImageStyleResolver
@@ -19,15 +20,16 @@ internal sealed class ImageStyleResolver
     /// <param name="entity">The entity whose style should be resolved.</param>
     /// <param name="context">The context that maps drawing units onto the surface.</param>
     /// <param name="parentOpacity">The opacity to inherit when the entity's transparency is ByBlock.</param>
+    /// <param name="foreground">The colour to use for AutoCAD colour index 7 ("ByBackground").</param>
     /// <returns>
     /// An <see cref="ImageStyle"/> containing the stroke color (in RGBA),
     /// stroke width and dash pattern (in surface units), and opacity for the entity.
     /// </returns>
-    public ImageStyle Resolve(Entity entity, ImageRenderContext context, float parentOpacity)
+    public ImageStyle Resolve(Entity entity, ImageRenderContext context, float parentOpacity, ImageColor foreground)
     {
         float width = context.ToStrokeWidth(entity.GetActiveLineWeightType());
         return new ImageStyle(
-            entity.GetActiveColor().ToImageColor(context.Configuration.ResolveForegroundColor()),
+            entity.GetActiveColor().ToImageColor(foreground),
             width,
             LineTypeDashResolver.Resolve(entity, context, width),
             ResolveOpacity(entity, parentOpacity));

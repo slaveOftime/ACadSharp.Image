@@ -24,6 +24,10 @@ internal static class Program
                 throw new FileNotFoundException("Input file was not found.", inputPath);
             }
 
+            // The format is resolved before the document is read, so a bad --format fails fast instead of
+            // after a long DWG parse.
+            ImageExportFormat format = ResolveFormat(options);
+
             CadDocument document = LoadDocument(inputPath);
             if (options.ListLayers)
             {
@@ -31,7 +35,6 @@ internal static class Program
                 return 0;
             }
 
-            ImageExportFormat format = ResolveFormat(options);
             string outputPath = ResolveOutputPath(options, inputPath, format);
 
             ImageExporter exporter = new();

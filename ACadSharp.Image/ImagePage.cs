@@ -148,7 +148,7 @@ public sealed class ImagePage
     /// <remarks>
     /// When no selected entity has finite bounds, <see cref="Translation"/> and the layout size are left unchanged.
     /// </remarks>
-    public void UpdateLayoutSize(Func<Entity, bool>? include)
+    internal void UpdateLayoutSize(Func<Entity, bool>? include)
     {
         if (this._entities.Count == 0)
         {

@@ -5,6 +5,7 @@ using ACadSharp.Image.Extensions;
 using ACadSharp.IO;
 using ACadSharp.Tables;
 using CSMath;
+using ImageColor = SixLabors.ImageSharp.Color;
 
 namespace ACadSharp.Image.Rendering;
 
@@ -47,8 +48,12 @@ internal sealed class EntityRenderDispatcher
     /// <param name="entity">The entity to draw.</param>
     /// <remarks>
     /// <para>
-    /// The entity's color and line weight are resolved automatically from the entity
-    /// properties (ByLayer, ByBlock, or explicit values) using <see cref="ImageStyleResolver"/>.
+    /// The entity's colour, line weight, linetype dashes and opacity are resolved automatically from the
+    /// entity properties (ByLayer, ByBlock, or explicit values) using <see cref="ImageStyleResolver"/>.
+    /// </para>
+    /// <para>
+    /// The entity may not be drawn at all: it is skipped without output when the visibility filter hides its
+    /// layer, and skipped with a warning when its defining geometry carries NaN or infinity.
     /// </para>
     /// <para>
     /// If the entity type is not supported, a warning notification is raised but no
@@ -62,6 +67,14 @@ internal sealed class EntityRenderDispatcher
 
     private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, float parentOpacity)
     {
+        // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
+        Layer? layer = GetEffectiveLayer(entity, parentLayer);
+        string layerName = layer?.Name ?? Layer.DefaultName;
+        if (!this._visibilityFilter.IsVisible(entity, layer, layerName, context.Viewport))
+        {
+            return;
+        }
+
         if (!HasFiniteGeometry(entity))
         {
             this._configuration.Notify(
@@ -70,16 +83,10 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        Layer? layer = GetEffectiveLayer(entity, parentLayer);
-        string layerName = layer?.Name ?? Layer.DefaultName;
-        if (!this._visibilityFilter.IsVisible(entity, layer, layerName, context.Viewport))
-        {
-            return;
-        }
-
-        ImageStyle style = this._styleResolver.Resolve(entity, context, parentOpacity);
+        ImageColor foreground = context.Configuration.ResolveForegroundColor();
+        ImageStyle style = this._styleResolver.Resolve(entity, context, parentOpacity, foreground);
         EntityRenderInfo info = new(layerName, entity.ObjectName, entity.Handle, parentHandle, blockName);
-        LayerRenderInfo layerInfo = CreateLayerInfo(layer, layerName, context);
+        LayerRenderInfo layerInfo = CreateLayerInfo(layer, layerName, context, foreground);
 
         context.Surface.BeginEntity(info, layerInfo);
         try
@@ -170,14 +177,14 @@ internal sealed class EntityRenderDispatcher
         return own;
     }
 
-    private static LayerRenderInfo CreateLayerInfo(Layer? layer, string layerName, ImageRenderContext context)
+    private static LayerRenderInfo CreateLayerInfo(Layer? layer, string layerName, ImageRenderContext context, ImageColor foreground)
     {
         if (layer == null)
         {
-            return new LayerRenderInfo(layerName, context.Configuration.ResolveForegroundColor(), context.ToStrokeWidth(LineWeightType.Default));
+            return new LayerRenderInfo(layerName, foreground, context.ToStrokeWidth(LineWeightType.Default));
         }
 
-        return new LayerRenderInfo(layerName, layer.Color.ToImageColor(context.Configuration.ResolveForegroundColor()), context.ToStrokeWidth(layer.LineWeight));
+        return new LayerRenderInfo(layerName, layer.Color.ToImageColor(foreground), context.ToStrokeWidth(layer.LineWeight));
     }
 
     private void DrawPoint(ImageRenderContext context, ImageStyle style, ACadSharp.Entities.Point point)

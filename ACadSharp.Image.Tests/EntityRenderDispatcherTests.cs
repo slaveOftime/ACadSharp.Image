@@ -935,4 +935,61 @@ public sealed class EntityRenderDispatcherTests
 
         Assert.DoesNotContain(surface.Texts, t => t.Text == "INNER");
     }
+
+    [Fact]
+    public void ConstantAttributeDefinitionFollowsAttmodeWhenDrawnFromTheExplodePath()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { LayerVisibility = LayerVisibilityMode.Screen };
+        BlockRecord block = new("CONST3");
+        block.Entities.Add(new AttributeDefinition { Tag = "MAKER", Value = "ACME3", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+        insert.Attributes.Clear();
+
+        CadDocument document = new();
+        document.Header.AttributeVisibility = AttributeVisibilityMode.None;
+        document.BlockRecords.Add(block);
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.DoesNotContain(surface.Texts, t => t.Text == "ACME3");
+    }
+
+    [Fact]
+    public void HiddenConstantAttributeDefinitionIsNotDrawnUnderNormalAttmode()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { LayerVisibility = LayerVisibilityMode.Screen };
+        BlockRecord block = new("CONST4");
+        block.Entities.Add(new AttributeDefinition { Tag = "MAKER", Value = "ACME4", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant | AttributeFlags.Hidden });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+        insert.Attributes.Clear();
+
+        CadDocument document = new();
+        document.Header.AttributeVisibility = AttributeVisibilityMode.Normal;
+        document.BlockRecords.Add(block);
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.DoesNotContain(surface.Texts, t => t.Text == "ACME4");
+    }
+
+    [Fact]
+    public void ConstantAttributeTagMatchIsCaseInsensitive()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("CONST5");
+        block.Entities.Add(new AttributeDefinition { Tag = "Maker", Value = "ACME5", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+        AttributeEntity attribute = Assert.Single(insert.Attributes);
+        // DXF attribute tags are case-insensitive identifiers; the ATTDEF's own tag casing differs from the ATTRIB's.
+        attribute.Tag = "MAKER";
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Single(surface.Texts, t => t.Text == "ACME5");
+    }
 }

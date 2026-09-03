@@ -464,13 +464,17 @@ internal sealed class EntityRenderDispatcher
         {
             Entity? original = index < originals.Count ? originals[index] : null;
             index++;
-            if (entity is AttributeDefinition definition
-                && (!definition.Flags.HasFlag(AttributeFlags.Constant) || insert.Attributes.Any(a => string.Equals(a.Tag, definition.Tag, StringComparison.Ordinal))))
+            if (entity is AttributeDefinition definition)
             {
-                // A non-constant ATTDEF is a template shown through its ATTRIB; a constant one is skipped too when
+                // A non-constant ATTDEF is a template shown through its ATTRIB. A constant one is skipped too when
                 // an ATTRIB with its tag already exists (ACadSharp's Insert(BlockRecord) constructor emits one even
-                // for constant definitions), so the value is not drawn twice.
-                continue;
+                // for constant definitions, so the value would otherwise be drawn twice) or when ATTMODE/Hidden
+                // would hide it; DXF attribute tags are case-insensitive, so the tag comparison ignores case.
+                bool hasMatchingAttrib = insert.Attributes.Any(a => string.Equals(a.Tag, definition.Tag, StringComparison.OrdinalIgnoreCase));
+                if (!definition.Flags.HasFlag(AttributeFlags.Constant) || hasMatchingAttrib || !this.IsAttributeVisible(definition, insert, parent))
+                {
+                    continue;
+                }
             }
 
             NormalizeExplodedClone(entity);
@@ -509,7 +513,7 @@ internal sealed class EntityRenderDispatcher
     /// <see cref="LayerVisibilityMode.All"/> like entity invisibility; otherwise None hides every attribute,
     /// Normal hides the ones flagged Hidden and All shows them all.
     /// </summary>
-    private bool IsAttributeVisible(AttributeEntity attribute, Insert insert, ResolvedStyle parent)
+    private bool IsAttributeVisible(AttributeBase attribute, Insert insert, ResolvedStyle parent)
     {
         if (this._configuration.LayerVisibility == LayerVisibilityMode.All)
         {

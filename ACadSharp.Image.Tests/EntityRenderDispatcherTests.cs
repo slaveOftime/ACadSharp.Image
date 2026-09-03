@@ -256,4 +256,72 @@ public sealed class EntityRenderDispatcherTests
         Assert.Empty(document.Descendants(SvgDrawingSurface.Ns + "circle"));
         Assert.Empty(document.Descendants(SvgDrawingSurface.Ns + "path"));
     }
+
+    private static Hatch SquareHatch(bool solid)
+    {
+        Hatch hatch = new();
+        Hatch.BoundaryPath path = new();
+        Hatch.BoundaryPath.Polyline polyline = new() { IsClosed = true };
+        polyline.Vertices.AddRange([new XYZ(0, 0, 0), new XYZ(10, 0, 0), new XYZ(10, 10, 0), new XYZ(0, 10, 0)]);
+        path.Edges.Add(polyline);
+        hatch.Paths.Add(path);
+        if (solid)
+        {
+            hatch.IsSolid = true;
+            hatch.PatternType = HatchPatternType.SolidFill;
+            hatch.Pattern = HatchPattern.Solid;
+        }
+        else
+        {
+            hatch.IsSolid = false;
+            hatch.PatternType = HatchPatternType.PatternFill;
+            hatch.Pattern = new HatchPattern("ANSI31");
+            hatch.Pattern.Lines.Add(new HatchPattern.Line { Angle = Math.PI / 4, BasePoint = XY.Zero, Offset = new XY(0, 3.175) });
+            hatch.PatternScale = 1;
+        }
+
+        return hatch;
+    }
+
+    [Fact]
+    public void SolidHatchFillsBoundaryRings()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), SquareHatch(solid: true));
+
+        Assert.Contains("FillPath rings=1", surface.Calls);
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PatternHatchDrawsClippedLines()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), SquareHatch(solid: false));
+
+        int lines = surface.Calls.Count(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        Assert.InRange(lines, 5, 9); // 45-degree lines 3.175 apart across a 10x10 square
+        Assert.All(surface.Styles, s => Assert.Null(s.DashPattern));
+    }
+
+    [Fact]
+    public void PatternHatchIsCappedWithWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { MaxHatchLines = 3 };
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), SquareHatch(solid: false));
+
+        Assert.Equal(3, surface.Calls.Count(c => c.StartsWith("DrawLine", StringComparison.Ordinal)));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("hatch", StringComparison.OrdinalIgnoreCase));
+    }
 }

@@ -134,6 +134,9 @@ internal sealed class EntityRenderDispatcher
                 case IText text:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
                     break;
+                case Hatch hatch:
+                    this.DrawHatch(context, style, hatch);
+                    break;
                 case Insert insert:
                     this.DrawBlockContents(context, insert, layer, style.Opacity);
                     break;
@@ -348,6 +351,59 @@ internal sealed class EntityRenderDispatcher
         foreach (Entity entity in insert.Explode())
         {
             this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parentOpacity);
+        }
+    }
+
+    private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch)
+    {
+        if (hatch.IsSolid || hatch.PatternType == HatchPatternType.SolidFill)
+        {
+            List<IReadOnlyList<SurfacePoint>> rings = new();
+            foreach (Hatch.BoundaryPath path in hatch.Paths)
+            {
+                List<SurfacePoint> ring = new();
+                foreach (XYZ point in path.GetPoints(this._configuration.ArcPrecision))
+                {
+                    ring.Add(context.ToSurfacePoint(point));
+                }
+
+                if (ring.Count >= 3)
+                {
+                    rings.Add(ring);
+                }
+            }
+
+            if (rings.Count > 0)
+            {
+                context.Surface.FillPath(style, rings);
+            }
+
+            return;
+        }
+
+        if (hatch.Pattern == null)
+        {
+            this._configuration.Notify($"[{hatch.SubclassMarker}] Hatch pattern is not available.", NotificationType.Warning);
+            return;
+        }
+
+        ImageStyle lineStyle = style with { DashPattern = null };
+        int drawn = 0;
+        foreach (Entity segment in hatch.ExplodePattern())
+        {
+            if (segment is not Line line)
+            {
+                continue;
+            }
+
+            if (drawn >= this._configuration.MaxHatchLines)
+            {
+                this._configuration.Notify($"[{hatch.SubclassMarker}] Hatch pattern exceeds {this._configuration.MaxHatchLines} lines; remaining lines were skipped.", NotificationType.Warning);
+                return;
+            }
+
+            context.Surface.DrawLine(lineStyle, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
+            drawn++;
         }
     }
 }

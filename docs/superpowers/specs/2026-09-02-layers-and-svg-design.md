@@ -74,7 +74,7 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 
 - Dash lengths in drawing units: `segment.Length * header.LineTypeScale * entity.LineTypeScale`. `header` is `entity.Document?.Header`; when the entity has no document, `LineTypeScale` is 1.
 - Segment mapping: `Length > 0` is a dash, `Length < 0` is a gap of `|Length|`, `Length == 0` is a dot rendered as a dash of one stroke width, `IsShape` or `IsText` segments are gaps of `|Length|`.
-- Paper-space viewports: when `header.PaperSpaceLineTypeScaling == SpaceLineTypeScaling.Viewport` (the DXF default, PSLTSCALE=1), dash lengths inside a viewport are scaled by the **page** scale, not the viewport scale, so dashes look uniform on the sheet. Otherwise they scale with the viewport.
+- Paper-space viewports: when the header's `$PSLTSCALE` is 1 (the DXF default), dash lengths inside a viewport are scaled by the **page** scale, not the viewport scale, so dashes look uniform on the sheet. Otherwise they scale with the viewport. Implementation note: ACadSharp 3.7.1's `SpaceLineTypeScaling` enum stores the raw DXF value (`Viewport = 0`, `Normal = 1`) but its member names are swapped relative to AutoCAD semantics, so the code branches on the raw integer value, not the enum name.
 - Raster: when the full pattern length in pixels is below `ImageConfiguration.MinimumDashPixels` (default 2), draw solid. SVG in pixel-width mode applies the same threshold; in drawing-unit mode it does not.
 - `LineType.Continuous` (no segments) and null linetypes are solid.
 

@@ -231,11 +231,11 @@ Filtering happens when rendering, so it also applies to block contents, dimensio
 exporter.Configuration.LayerVisibility = LayerVisibilityMode.Plot; // All (default), Screen, Plot
 ```
 
-`Screen` hides off and frozen layers, invisible entities and layers frozen per viewport. `Plot` also hides non-plottable layers such as `DEFPOINTS`.
+`Screen` hides off and frozen layers, invisible entities and layers frozen per viewport. `Plot` also hides non-plottable layers such as `DEFPOINTS`. Hidden block attributes and the drawing's ATTMODE are honoured in the same two modes.
 
 ### Supported entities
 
-Lines, arcs, circles, ellipses, polylines (2D, 3D, lightweight, with bulges), splines, points, solids, 3D faces (edges, honouring invisible-edge flags), hatches (solid and pattern), TEXT, MTEXT, dimensions, block references and paper-space viewports. Entities are drawn in the drawing's draw order (handle order overridden by DRAWORDER), so later entities paint over earlier ones.
+Lines, arcs, circles, ellipses, polylines (2D, 3D, lightweight, with bulges), splines, points, solids, 3D faces (edges, honouring invisible-edge flags), hatches (solid and pattern), TEXT, MTEXT, dimensions, block references, block attributes (ATTRIB; hidden ones follow ATTMODE under `Screen`/`Plot`) and paper-space viewports. Entities are drawn in the drawing's draw order (handle order overridden by DRAWORDER), so later entities paint over earlier ones.
 
 ### Linetypes, transparency and colour 7
 

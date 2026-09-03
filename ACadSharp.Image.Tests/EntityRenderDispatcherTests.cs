@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Xml.Linq;
 using ACadSharp.Entities;
+using ACadSharp.Header;
 using ACadSharp.Image.Rendering;
 using ACadSharp.Image.Rendering.Svg;
 using ACadSharp.IO;
@@ -803,5 +804,85 @@ public sealed class EntityRenderDispatcherTests
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), face);
 
         Assert.Equal(["DrawPolyline n=3 closed=True"], surface.Calls.Where(c => c.StartsWith("Draw", StringComparison.Ordinal)));
+    }
+
+    private static Insert InsertWithAttribute(string value, AttributeFlags flags, out BlockRecord block)
+    {
+        block = new BlockRecord("TAGGED");
+        block.Entities.Add(new AttributeDefinition { Tag = "ROOM", Value = "DEFAULT", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = flags });
+        // Insert(BlockRecord) creates one AttributeEntity per ATTDEF at the identity transform; place it explicitly.
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+        AttributeEntity attribute = Assert.Single(insert.Attributes);
+        attribute.Value = value;
+        attribute.InsertPoint = new XYZ(15, 5, 0);
+        attribute.Flags = flags;
+        return insert;
+    }
+
+    [Fact]
+    public void InsertDrawsItsAttributesAndNotTheDefinitionDefaults()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Insert insert = WithHandle(InsertWithAttribute("A-101", AttributeFlags.None, out _), 0xAB);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        SurfaceText text = Assert.Single(surface.Texts);
+        Assert.Equal("A-101", text.Text);
+        Assert.Equal(new SurfacePoint(15, 95), text.Origin);
+        Assert.DoesNotContain(surface.Texts, t => t.Text == "DEFAULT");
+        EntityRenderInfo info = surface.Entities.Single(e => e.EntityType == insert.Attributes.First().ObjectName);
+        Assert.Equal(0xABUL, info.ParentHandle);
+        Assert.Equal("TAGGED", info.BlockName);
+    }
+
+    [Fact]
+    public void ConstantAttributeDefinitionsAreStillDrawn()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("CONST");
+        block.Entities.Add(new AttributeDefinition { Tag = "MAKER", Value = "ACME", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(surface.Texts, t => t.Text == "ACME");
+    }
+
+    [Theory]
+    [InlineData(LayerVisibilityMode.All, AttributeVisibilityMode.Normal, true)]
+    [InlineData(LayerVisibilityMode.Screen, AttributeVisibilityMode.Normal, false)]
+    [InlineData(LayerVisibilityMode.Screen, AttributeVisibilityMode.All, true)]
+    [InlineData(LayerVisibilityMode.Screen, AttributeVisibilityMode.None, false)]
+    public void HiddenAttributesFollowAttmodeUnlessEverythingIsShown(LayerVisibilityMode layerMode, AttributeVisibilityMode attmode, bool drawn)
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { LayerVisibility = layerMode };
+        Insert insert = InsertWithAttribute("SECRET", AttributeFlags.Hidden, out BlockRecord block);
+        CadDocument document = new();
+        document.Header.AttributeVisibility = attmode;
+        document.BlockRecords.Add(block);
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Equal(drawn, surface.Texts.Any(t => t.Text == "SECRET"));
+    }
+
+    [Fact]
+    public void VisibleAttributeIsDrawnUnderNormalAttmode()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { LayerVisibility = LayerVisibilityMode.Screen };
+        Insert insert = InsertWithAttribute("SHOWN", AttributeFlags.None, out BlockRecord block);
+        CadDocument document = new();
+        document.BlockRecords.Add(block);
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(surface.Texts, t => t.Text == "SHOWN");
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using ACadSharp.Entities;
 using ACadSharp.Extensions;
+using ACadSharp.Header;
 using ACadSharp.Image.Extensions;
 using ACadSharp.IO;
 using ACadSharp.Tables;
@@ -456,8 +457,6 @@ internal sealed class EntityRenderDispatcher
         // ACadSharp 3.7.1's Explode() yields one clone per block entity, in order. Text geometry comes from the
         // original entity placed through the insert's transform, because the clones' alignment points and MTEXT
         // X axes are never transformed and mirrored inserts hand back world points with a flipped normal.
-        // The pairing relies on ACadSharp 3.7.1 yielding one clone per block entity in order; re-check it when the
-        // package is upgraded.
         Transform transform = insert.GetTransform();
         IReadOnlyList<Entity> originals = insert.Block?.Entities.ToList() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
         int index = 0;
@@ -465,10 +464,62 @@ internal sealed class EntityRenderDispatcher
         {
             Entity? original = index < originals.Count ? originals[index] : null;
             index++;
+            if (entity is AttributeDefinition definition && !definition.Flags.HasFlag(AttributeFlags.Constant))
+            {
+                // A non-constant ATTDEF is a template: the insert's ATTRIB carries the value that is actually shown.
+                continue;
+            }
+
             NormalizeExplodedClone(entity);
             bool placeText = original is TextEntity or MText && original.GetType() == entity.GetType();
             this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent, placeText ? original : null, placeText ? transform : null);
         }
+
+        if (index != originals.Count)
+        {
+            this._configuration.Notify(
+                $"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block '{insert.Block?.Name}' exploded into {index} entities but holds {originals.Count}; text inside it may be misplaced.",
+                NotificationType.Warning);
+        }
+
+        this.DrawAttributes(context, insert, layer, parent);
+    }
+
+    /// <summary>
+    /// ATTRIB entities store absolute coordinates in their own OCS (the insert's transform is already applied by
+    /// the writer), so they go through the TEXT pipeline with no placement. Multi-line attributes are drawn from
+    /// their single-line value.
+    /// </summary>
+    private void DrawAttributes(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
+    {
+        foreach (AttributeEntity attribute in insert.Attributes)
+        {
+            if (this.IsAttributeVisible(attribute, insert))
+            {
+                this.Draw(context, attribute, layer, insert.Handle, insert.Block?.Name, parent);
+            }
+        }
+    }
+
+    /// <summary>
+    /// ATTMODE and the attribute's Hidden flag are drawing-visibility state, ignored under
+    /// <see cref="LayerVisibilityMode.All"/> like entity invisibility; otherwise None hides every attribute,
+    /// Normal hides the ones flagged Hidden and All shows them all.
+    /// </summary>
+    private bool IsAttributeVisible(AttributeEntity attribute, Insert insert)
+    {
+        if (this._configuration.LayerVisibility == LayerVisibilityMode.All)
+        {
+            return true;
+        }
+
+        AttributeVisibilityMode mode = insert.Document?.Header.AttributeVisibility ?? AttributeVisibilityMode.Normal;
+        return mode switch
+        {
+            AttributeVisibilityMode.None => false,
+            AttributeVisibilityMode.All => true,
+            _ => !attribute.Flags.HasFlag(AttributeFlags.Hidden),
+        };
     }
 
     /// <summary>

@@ -261,7 +261,7 @@ internal sealed class TextRenderer
     {
         string value = mtext.Value ?? string.Empty;
         string decoded = UnicodeEscape.Replace(value, m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
-        return ReferenceEquals(decoded, value) || decoded == value ? mtext.PlainText : new MText { Value = decoded }.PlainText;
+        return decoded == value ? mtext.PlainText : new MText { Value = decoded }.PlainText;
     }
 
     /// <summary>

@@ -20,7 +20,7 @@ public sealed class FontResolverTests
     {
         FontFamily family = FontResolver.Resolve("No Such Family 4711");
 
-        string[] chain = FontResolver.Fallbacks;
+        IReadOnlyList<string> chain = FontResolver.Fallbacks;
         string? firstInstalled = chain.FirstOrDefault(name => SystemFonts.TryGet(name, out _));
         if (firstInstalled != null)
         {
@@ -30,6 +30,18 @@ public sealed class FontResolverTests
         {
             Assert.Equal(SystemFonts.Families.First().Name, family.Name);
         }
+    }
+
+    [Fact]
+    public void TryResolveAgreesWithResolveWhileFontsAreInstalled()
+    {
+        // The false branch needs a machine without a single installed family, which SystemFonts cannot be made to
+        // report here, so only the resolving side is covered.
+        Assert.True(FontResolver.TryResolve("DejaVu Sans", out FontFamily configured));
+        Assert.Equal("DejaVu Sans", configured.Name);
+
+        Assert.True(FontResolver.TryResolve("No Such Family 4711", out FontFamily fallback));
+        Assert.Equal(FontResolver.Resolve("No Such Family 4711").Name, fallback.Name);
     }
 
     [Fact]

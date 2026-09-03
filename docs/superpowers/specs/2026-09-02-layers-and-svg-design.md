@@ -92,6 +92,7 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 ### 4.6 Additional entities (2026-09-03)
 
 - Draw order: pages enumerate `BlockRecord.GetSortedEntities()` (handle order, then the DRAWORDER `SortEntitiesTable`), not file order, on both backends.
+- 3DFACE (`Face3D`): visible edges stroked as polylines (one closed polygon when no edge is hidden; a triangle repeats its third corner and drops the degenerate edge). Never filled. Corners are WCS.
 
 ## 5. SVG backend
 

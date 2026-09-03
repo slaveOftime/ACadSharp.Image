@@ -123,6 +123,9 @@ internal sealed class EntityRenderDispatcher
                 case Solid solid:
                     DrawSolid(context, style, solid);
                     break;
+                case Face3D face:
+                    DrawFace3D(context, style, face);
+                    break;
                 case ACadSharp.Entities.Point point:
                     this.DrawPoint(context, style, point);
                     break;
@@ -255,6 +258,61 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
+    /// A 3DFACE is stroked edge by edge in plan view: edge n joins corner n to corner n+1 and edge 4 closes the ring;
+    /// a triangle repeats its third corner, which makes edge 3 degenerate. Hidden edges (the invisible-edge flags)
+    /// split the ring into open runs. Corners are world coordinates, so there is no OCS step.
+    /// </summary>
+    private static void DrawFace3D(ImageRenderContext context, ImageStyle style, Face3D face)
+    {
+        bool triangle = face.FourthCorner.Equals(face.ThirdCorner);
+        XYZ[] corners = triangle
+            ? [face.FirstCorner, face.SecondCorner, face.ThirdCorner]
+            : [face.FirstCorner, face.SecondCorner, face.ThirdCorner, face.FourthCorner];
+        bool[] hidden = triangle
+            ? [face.Flags.HasFlag(InvisibleEdgeFlags.First), face.Flags.HasFlag(InvisibleEdgeFlags.Second), face.Flags.HasFlag(InvisibleEdgeFlags.Fourth)]
+            : [face.Flags.HasFlag(InvisibleEdgeFlags.First), face.Flags.HasFlag(InvisibleEdgeFlags.Second), face.Flags.HasFlag(InvisibleEdgeFlags.Third), face.Flags.HasFlag(InvisibleEdgeFlags.Fourth)];
+
+        int count = corners.Length;
+        int firstHidden = Array.IndexOf(hidden, true);
+        if (firstHidden < 0)
+        {
+            context.Surface.DrawPolyline(style, corners.Select(context.ToSurfacePoint).ToArray(), true);
+            return;
+        }
+
+        // Start just after a hidden edge so no visible run wraps around the ring.
+        List<SurfacePoint> run = new(count + 1);
+        for (int step = 1; step <= count; step++)
+        {
+            int edge = (firstHidden + step) % count;
+            if (hidden[edge])
+            {
+                Flush();
+                continue;
+            }
+
+            if (run.Count == 0)
+            {
+                run.Add(context.ToSurfacePoint(corners[edge]));
+            }
+
+            run.Add(context.ToSurfacePoint(corners[(edge + 1) % count]));
+        }
+
+        Flush();
+
+        void Flush()
+        {
+            if (run.Count >= 2)
+            {
+                context.Surface.DrawPolyline(style, run.ToArray(), false);
+            }
+
+            run.Clear();
+        }
+    }
+
+    /// <summary>
     /// True when an entity's extrusion is the world Z axis, so its OCS coordinates are already world coordinates.
     /// </summary>
     /// <remarks>
@@ -317,6 +375,7 @@ internal sealed class EntityRenderDispatcher
         Circle circle => IsFinite(circle.Center) && IsFinitePositive(circle.Radius),
         Ellipse ellipse => IsFinite(ellipse.Center) && IsFinite(ellipse.MajorAxisEndPoint) && double.IsFinite(ellipse.RadiusRatio) && double.IsFinite(ellipse.StartParameter) && double.IsFinite(ellipse.EndParameter),
         Line line => IsFinite(line.StartPoint) && IsFinite(line.EndPoint),
+        Face3D face => IsFinite(face.FirstCorner) && IsFinite(face.SecondCorner) && IsFinite(face.ThirdCorner) && IsFinite(face.FourthCorner),
         _ => true,
     };
 

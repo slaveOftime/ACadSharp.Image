@@ -721,4 +721,87 @@ public sealed class EntityRenderDispatcherTests
 
         Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Face3DWithAllEdgesVisibleIsOneClosedPolyline()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Face3D face = new()
+        {
+            FirstCorner = new XYZ(0, 0, 0),
+            SecondCorner = new XYZ(10, 0, 0),
+            ThirdCorner = new XYZ(10, 10, 0),
+            FourthCorner = new XYZ(0, 10, 0),
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), face);
+
+        Assert.Equal(["DrawPolyline n=4 closed=True"], surface.Calls.Where(c => c.StartsWith("Draw", StringComparison.Ordinal)));
+        Assert.Equal(new SurfacePoint(0, 100), surface.Polylines[0][0]);
+        Assert.Equal(new SurfacePoint(0, 90), surface.Polylines[0][3]);
+        Assert.Empty(surface.Polygons);
+    }
+
+    [Fact]
+    public void Face3DSkipsInvisibleEdgesAndKeepsTheVisibleRunsJoined()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        // Edges 2 (10,0)->(10,10) and 4 (0,10)->(0,0) hidden: two separate open edges remain.
+        Face3D face = new()
+        {
+            FirstCorner = new XYZ(0, 0, 0),
+            SecondCorner = new XYZ(10, 0, 0),
+            ThirdCorner = new XYZ(10, 10, 0),
+            FourthCorner = new XYZ(0, 10, 0),
+            Flags = InvisibleEdgeFlags.Second | InvisibleEdgeFlags.Fourth,
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), face);
+
+        Assert.Equal(2, surface.Polylines.Count);
+        Assert.All(surface.Calls.Where(c => c.StartsWith("DrawPolyline", StringComparison.Ordinal)), c => Assert.EndsWith("closed=False", c));
+        Assert.Contains(surface.Polylines, p => p.SequenceEqual([new SurfacePoint(10, 90), new SurfacePoint(0, 90)]));
+        Assert.Contains(surface.Polylines, p => p.SequenceEqual([new SurfacePoint(0, 100), new SurfacePoint(10, 100)]));
+    }
+
+    [Fact]
+    public void Face3DWithOneHiddenEdgeIsOneOpenRunOfThreeEdges()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Face3D face = new()
+        {
+            FirstCorner = new XYZ(0, 0, 0),
+            SecondCorner = new XYZ(10, 0, 0),
+            ThirdCorner = new XYZ(10, 10, 0),
+            FourthCorner = new XYZ(0, 10, 0),
+            Flags = InvisibleEdgeFlags.Third,
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), face);
+
+        IReadOnlyList<SurfacePoint> run = Assert.Single(surface.Polylines);
+        // Starts after the hidden edge: 4 -> 1 -> 2 -> 3.
+        Assert.Equal([new SurfacePoint(0, 90), new SurfacePoint(0, 100), new SurfacePoint(10, 100), new SurfacePoint(10, 90)], run);
+    }
+
+    [Fact]
+    public void TriangularFace3DDropsTheDegenerateEdge()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Face3D face = new()
+        {
+            FirstCorner = new XYZ(0, 0, 0),
+            SecondCorner = new XYZ(10, 0, 0),
+            ThirdCorner = new XYZ(10, 10, 0),
+            FourthCorner = new XYZ(10, 10, 0),
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), face);
+
+        Assert.Equal(["DrawPolyline n=3 closed=True"], surface.Calls.Where(c => c.StartsWith("Draw", StringComparison.Ordinal)));
+    }
 }

@@ -176,4 +176,122 @@ public sealed class RasterDrawingSurfaceTests
         Assert.Equal(new Rgba32(255, 255, 255, 255), canvas[2, 6]);
         Assert.Equal(new Rgba32(255, 255, 255, 255), canvas[6, 6]);
     }
+
+    [Fact]
+    public void TextLinesAreSpacedAtFiveThirdsOfTheTextHeight()
+    {
+        // Capitals only, so each line inks exactly one band and the band starts track the baselines.
+        using Image<Rgba32> singleLine = DrawnText("H", SurfaceTextBaseline.Hanging, 1d, 0d);
+        using Image<Rgba32> twoLines = DrawnText("H\nH", SurfaceTextBaseline.Hanging, 1d, 0d);
+        int[] one = InkBandStarts(singleLine);
+        int[] two = InkBandStarts(twoLines);
+
+        int first = Assert.Single(one);
+        Assert.Equal(2, two.Length);
+
+        // The added leading must go between the lines, not above the first one: line 1 stays exactly where a
+        // single-line run puts it.
+        Assert.Equal(first, two[0]);
+
+        double distance = two[1] - two[0];
+        Assert.True(Math.Abs(distance - 50d / 3d) <= 1d, $"expected the lines about {50d / 3d:F1} px apart (5/3 of the text height), got {distance}.");
+    }
+
+    [Fact]
+    public void AlphabeticTextAnchorsItsLastLine()
+    {
+        // Alphabetic stands the block on the anchor, so the closing line must not move when a line is added above it.
+        using Image<Rgba32> singleLine = DrawnText("H", SurfaceTextBaseline.Alphabetic, 1d, 0d);
+        using Image<Rgba32> twoLines = DrawnText("H\nH", SurfaceTextBaseline.Alphabetic, 1d, 0d);
+
+        int[] one = InkBandStarts(singleLine);
+        int[] two = InkBandStarts(twoLines);
+
+        Assert.Single(one);
+        Assert.Equal(2, two.Length);
+        Assert.Equal(one[0], two[^1]);
+
+        double distance = two[1] - two[0];
+        Assert.True(Math.Abs(distance - 50d / 3d) <= 1d, $"expected the lines about {50d / 3d:F1} px apart, got {distance}.");
+    }
+
+    [Fact]
+    public void RotatedTextAnchorsItsFirstLineAlongItsOwnUpAxis()
+    {
+        // A quarter turn puts the text's up axis along the page's x axis: the spacing correction must travel with it,
+        // so the first line of a rotated block still starts where a rotated single line does.
+        using Image<Rgba32> singleLine = DrawnText("H", SurfaceTextBaseline.Hanging, 1d, Math.PI / 2d);
+        using Image<Rgba32> twoLines = DrawnText("H\nH", SurfaceTextBaseline.Hanging, 1d, Math.PI / 2d);
+
+        int[] one = InkColumnStarts(singleLine);
+        int[] two = InkColumnStarts(twoLines);
+
+        Assert.Single(one);
+        Assert.Equal(2, two.Length);
+
+        // The transform rotates by -90 degrees, which sends the text's downward line advance towards +x, so the block
+        // grows rightwards and its first line is the leftmost band.
+        Assert.Equal(one[0], two[0]);
+        double distance = two[1] - two[0];
+        Assert.True(Math.Abs(distance - 50d / 3d) <= 1d, $"expected the rotated lines about {50d / 3d:F1} px apart, got {distance}.");
+    }
+
+    /// <summary>Draws one text run of height 10 at the canvas centre and returns the canvas.</summary>
+    private static Image<Rgba32> DrawnText(string value, SurfaceTextBaseline baseline, double lineSpacingFactor, double rotation)
+    {
+        Image<Rgba32> canvas = new(200, 200, ImageColor.White);
+        using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
+        surface.DrawText(
+            new ImageStyle(ImageColor.Black, 1f),
+            new SurfaceText(value, new SurfacePoint(100, 100), 10, rotation, SurfaceTextAnchor.Start, baseline, 0, lineSpacingFactor, 0));
+        return canvas;
+    }
+
+    /// <summary>The first row of every run of inked rows, a row counting as inked when it holds a pixel darker than mid grey.</summary>
+    private static int[] InkBandStarts(Image<Rgba32> canvas)
+    {
+        List<int> starts = new();
+        bool previousInked = false;
+        for (int y = 0; y < canvas.Height; y++)
+        {
+            bool inked = false;
+            for (int x = 0; x < canvas.Width && !inked; x++)
+            {
+                inked = canvas[x, y].R < 128;
+            }
+
+            if (inked && !previousInked)
+            {
+                starts.Add(y);
+            }
+
+            previousInked = inked;
+        }
+
+        return starts.ToArray();
+    }
+
+    /// <summary>The first column of every run of inked columns, the transpose of <see cref="InkBandStarts"/>.</summary>
+    private static int[] InkColumnStarts(Image<Rgba32> canvas)
+    {
+        List<int> starts = new();
+        bool previousInked = false;
+        for (int x = 0; x < canvas.Width; x++)
+        {
+            bool inked = false;
+            for (int y = 0; y < canvas.Height && !inked; y++)
+            {
+                inked = canvas[x, y].R < 128;
+            }
+
+            if (inked && !previousInked)
+            {
+                starts.Add(x);
+            }
+
+            previousInked = inked;
+        }
+
+        return starts.ToArray();
+    }
 }

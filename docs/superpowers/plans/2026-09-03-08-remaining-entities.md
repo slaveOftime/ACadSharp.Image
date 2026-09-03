@@ -572,9 +572,8 @@ Append to `EntityRenderDispatcherTests`:
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
-        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 0), new XYZ(30, 0, 0) } };
-        leader.Style.ArrowSize = 6;
-        leader.Style.ScaleFactor = 2;
+        // A fresh style: DimensionStyle.Default may be shared, and tests run in parallel.
+        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 0), new XYZ(30, 0, 0) }, Style = new DimensionStyle("ARROW") { ArrowSize = 6, ScaleFactor = 2 } };
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
 
@@ -621,8 +620,7 @@ Append to `EntityRenderDispatcherTests`:
         ImageConfiguration configuration = new();
         List<NotificationEventArgs> notifications = new();
         configuration.OnNotification += (_, e) => notifications.Add(e);
-        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 0), new XYZ(30, 0, 0) } };
-        leader.Style.LeaderArrow = new BlockRecord("_DOT");
+        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 0), new XYZ(30, 0, 0) }, Style = new DimensionStyle("DOTTED") { LeaderArrow = new BlockRecord("_DOT") } };
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
 
@@ -1019,7 +1017,7 @@ Then in `DrawBlockContents` (from Task 3), wrap the explode loop:
         }
 ```
 
-Update the comment on the private `Draw` so `placement` reads: "placement is the transform of the insert that placed a block TEXT, MTEXT or MLINE; null outside a block reference." If `XYZ` lacks `+`/`*` operators, use `XYZ.Add`/`Multiply` equivalents and report it.
+The explode-count warning and the `this.DrawAttributes(...)` call from Task 3 stay in the method, after the `finally` block. Update the comment on the private `Draw` so `placement` reads: "placement is the transform of the insert that placed a block TEXT, MTEXT or MLINE; null outside a block reference." If `XYZ` lacks `+`/`*` operators, use `XYZ.Add`/`Multiply` equivalents and report it.
 
 - [ ] **Step 4: Run the tests and the suite**
 
@@ -1050,7 +1048,7 @@ git commit -m "Draw multilines and shield block MLINEs from the destructive clon
 - Consumes: `Wipeout : CadWipeoutBase` (`List<XY> ClipBoundaryVertices`, `ClipType ClipType` (`Rectangular=1, Polygonal=2`), `bool ClippingState`, `ClipMode ClipMode` (`Outside=0, Inside=1`), `XYZ InsertPoint`, `XYZ UVector`, `XYZ VVector`, `XY Size`, `ImageDisplayFlags Flags` with `ShowImage=1`), `ImageConfiguration.BackgroundColor`.
 - Produces: `private void DrawWipeout(ImageRenderContext context, ImageStyle style, Wipeout wipeout)`, `internal static XYZ WipeoutPixelToWorld(CadWipeoutBase image, XY pixel)`.
 
-Background: the boundary is in pixel space with its origin at the top-left corner of the image and Y pointing down; U runs along the visual bottom, V along the visual left side, both one pixel long. The mapping (as implemented by ezdxf's `boundary_path_wcs`, which also writes wipeouts this way) is `world = InsertPoint + (p.X + 0.5) * U + (Size.Y - p.Y - 0.5) * V`. Ruling against the research note, which had no Y flip: the flip is what makes the documented default boundary `(-0.5,-0.5) .. (Size.X-0.5, Size.Y-0.5)` cover exactly the image extent with the top-left pixel at the top. A wipeout paints the background colour at full opacity over everything drawn before it (Task 1 makes that order the drawing's). A transparent background cannot occlude, so the wipeout is skipped with a Warning; `ClipMode.Inside` (everything outside the boundary is masked) is skipped with a NotImplemented notification. The frame is never drawn (AutoCAD's WIPEOUTFRAME=0 plot behaviour; 3.7.1 exposes no header variable for it).
+Background: the boundary is in pixel space with its origin at the top-left corner of the image and Y pointing down; U runs along the visual bottom, V along the visual left side, both one pixel long. The mapping (as implemented by ezdxf's `boundary_path_wcs`, which also writes wipeouts this way) is `world = InsertPoint + (p.X + 0.5) * U + (Size.Y - p.Y - 0.5) * V`. Ruling against the research note, which had no Y flip: the flip is what makes the documented default boundary `(-0.5,-0.5) .. (Size.X-0.5, Size.Y-0.5)` cover exactly the image extent with the top-left pixel at the top. On the raster backend a wipeout paints the background colour at full opacity over everything drawn before it (Task 1 makes that order the drawing's). In SVG every entity sits inside its layer's `<g>`, so a wipeout masks only content in its own layer group and in groups written earlier; layer grouping takes precedence over draw order by design (the same holds for hatches and solids) and is not to be changed. A transparent background cannot occlude, so the wipeout is skipped with a Warning; `ClipMode.Inside` (everything outside the boundary is masked) is skipped with a NotImplemented notification. The frame is never drawn (AutoCAD's WIPEOUTFRAME=0 plot behaviour; 3.7.1 exposes no header variable for it).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1241,7 +1239,7 @@ Run: `dotnet test ACadSharp.Image.sln --configuration Release -warnaserror` → 
 
 - [ ] **Step 5: Docs**
 
-Spec 4.6 bullet: "WIPEOUT (`Wipeout`): the clip boundary (rectangular pair expanded to four corners; polygonal as listed; the full frame when `ClippingState` is off) is mapped from pixel space with `InsertPoint + (x+0.5)U + (Size.Y-y-0.5)V` and filled with `BackgroundColor` at opacity 1; no frame; `ClipMode.Inside` is NotImplemented; a transparent background skips the wipeout with a Warning." README: add "wipeouts (masked with the background colour; needs an opaque `BackgroundColor`)".
+Spec 4.6 bullet: "WIPEOUT (`Wipeout`): the clip boundary (rectangular pair expanded to four corners; polygonal as listed; the full frame when `ClippingState` is off) is mapped from pixel space with `InsertPoint + (x+0.5)U + (Size.Y-y-0.5)V` and filled with `BackgroundColor` at opacity 1; no frame; `ClipMode.Inside` is NotImplemented; a transparent background skips the wipeout with a Warning. In SVG the mask covers only its own layer group and earlier groups, because layer grouping takes precedence over draw order." README: add "wipeouts (masked with the background colour; needs an opaque `BackgroundColor`; in SVG the mask stays within layer-group order)".
 
 - [ ] **Step 6: Commit**
 
@@ -1255,15 +1253,16 @@ git commit -m "Mask wipeouts with the background colour"
 ### Task 7: Size raster text in ems at 72 dpi and fix the line-spacing compensation
 
 **Files:**
-- Modify: `ACadSharp.Image/Rendering/RasterDrawingSurface.cs:176-232, 279-282`
+- Create: `ACadSharp.Image/Rendering/TextMetrics.cs`
+- Modify: `ACadSharp.Image/Rendering/RasterDrawingSurface.cs:176-232, 279-282`, `ACadSharp.Image/Rendering/Svg/SvgTextLayout.cs:17-20`
 - Modify: `ACadSharp.Image.Tests/RasterDrawingSurfaceTests.cs`
 - Modify: `README.md`, spec 5.3, `docs/research/remaining-rendering-limitations.md`
 
 **Interfaces:**
-- Consumes: `SvgTextLayout.EmSize(double capHeight)` (= `capHeight * 4/3`), `FontResolver.Create(string?, float size)`, `RasterDrawingSurfaceTests.DrawnText(value, baseline, lineSpacingFactor, rotation)` and `InkBandStarts(image)` helpers.
-- Produces: no new API.
+- Consumes: `FontResolver.Create(string?, float size)`, `RasterDrawingSurfaceTests.DrawnText(value, baseline, lineSpacingFactor, rotation)` and `InkBandStarts(image)` helpers.
+- Produces: `internal static class TextMetrics` in `ACadSharp.Image/Rendering/TextMetrics.cs` with `public const double CapHeightToEm = 4d / 3d;` and `public static double EmSize(double capHeight) => capHeight * CapHeightToEm;`. `SvgTextLayout.CapHeightToEm` and `SvgTextLayout.EmSize` become forwarders to it (`public const double CapHeightToEm = TextMetrics.CapHeightToEm;`, `public static double EmSize(double capHeight) => TextMetrics.EmSize(capHeight);`) so the SVG code and its tests do not change. The raster must not reference the `Svg` namespace.
 
-Background: SixLabors draws glyphs at `Font.Size x Dpi / 72` pixels, so passing the CAD height with `Dpi = configuration.Dpi` makes text grow with `Dpi` while geometry does not. `(size = h, Dpi = 96)` and `(size = 4h/3, Dpi = 72)` render identically, so the fix is `Dpi = 72f` with the size in ems, shared with the SVG backend through `SvgTextLayout.EmSize`. Separately, SixLabors splits the extra leading `em x (LineSpacing - 1)` half above and half below each line; the current compensation `factor x em / 8` equals that only when `factor = 1`. The correct value is `em x (LineSpacing - 1) / 2`.
+Background: SixLabors draws glyphs at `Font.Size x Dpi / 72` pixels, so passing the CAD height with `Dpi = configuration.Dpi` makes text grow with `Dpi` while geometry does not. `(size = h, Dpi = 96)` and `(size = 4h/3, Dpi = 72)` render identically, so the fix is `Dpi = 72f` with the size in ems, shared with the SVG backend through the new `TextMetrics.EmSize`. Separately, SixLabors splits the extra leading `em x (LineSpacing - 1)` half above and half below each line; the current compensation `factor x em / 8` equals that only when `factor = 1`. The correct value is `em x (LineSpacing - 1) / 2`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1335,8 +1334,8 @@ In `RasterDrawingSurface.DrawText` replace the font creation, comment, `halfLead
 ```csharp
         // The font size is the em, 4/3 of the CAD text height, laid out at 72 dpi so one point is one pixel: text
         // then scales with the page like the geometry does and not with ImageConfiguration.Dpi, which only sizes
-        // line weights. The SVG backend uses the same em through SvgTextLayout.EmSize.
-        Font font = this.CreateFont(Svg.SvgTextLayout.EmSize(text.Height));
+        // line weights. The SVG backend uses the same em through TextMetrics.EmSize.
+        Font font = this.CreateFont(TextMetrics.EmSize(text.Height));
 
         // ImageSharp advances the baseline by one em per line; AutoCAD and the SVG backend space lines at 5/3 of
         // the text height, that is 5/4 em, so the spacing factor carries the 5/4. ImageSharp then splits the extra
@@ -1360,12 +1359,12 @@ The change is arithmetically a no-op at 96 dpi but not bit-exact (one-ULP float 
 
 - [ ] **Step 5: Docs**
 
-Spec 5.3 "Text" bullet: append "**Amended 2026-09-03 (remaining fixes):** the raster backend lays text out at a fixed 72 dpi with the em size (`SvgTextLayout.EmSize`), so text no longer scales with `ImageConfiguration.Dpi`; the single-line compensation is `em x (LineSpacing - 1) / 2`, exact for every line-spacing factor." README line ~250: replace "a non-default `Dpi` scales raster text but not SVG text" (or the equivalent sentence) with "`ImageConfiguration.Dpi` affects only line weights; text is sized from the drawing on both backends." In `docs/research/remaining-rendering-limitations.md`, add under each topic heading (1.1 to 1.4, 2, 3, 4.1, 4.2 and the incidental ATTDEF finding) one line `**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md)`, with the deviations noted for 1.2 (cuts ignored, like ezdxf) and 1.3 (Y-flipped mapping).
+Spec 5.3 "Text" bullet: append "**Amended 2026-09-03 (remaining fixes):** the raster backend lays text out at a fixed 72 dpi with the em size (`TextMetrics.EmSize`, shared with the SVG backend), so text no longer scales with `ImageConfiguration.Dpi`; the single-line compensation is `em x (LineSpacing - 1) / 2`, exact for every line-spacing factor." README line ~250: replace "a non-default `Dpi` scales raster text but not SVG text" (or the equivalent sentence) with "`ImageConfiguration.Dpi` affects only line weights; text is sized from the drawing on both backends." In `docs/research/remaining-rendering-limitations.md`, add under each topic heading (1.1 to 1.4, 2, 3, 4.1, 4.2 and the incidental ATTDEF finding) one line `**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md)`, with the deviations noted for 1.2 (cuts ignored, like ezdxf) and 1.3 (Y-flipped mapping).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ACadSharp.Image/Rendering/RasterDrawingSurface.cs ACadSharp.Image.Tests/RasterDrawingSurfaceTests.cs README.md docs/superpowers/specs/2026-09-02-layers-and-svg-design.md docs/research/remaining-rendering-limitations.md ACadSharp.Image.Tests/Baselines
+git add ACadSharp.Image/Rendering/TextMetrics.cs ACadSharp.Image/Rendering/RasterDrawingSurface.cs ACadSharp.Image/Rendering/Svg/SvgTextLayout.cs ACadSharp.Image.Tests/RasterDrawingSurfaceTests.cs README.md docs/superpowers/specs/2026-09-02-layers-and-svg-design.md docs/research/remaining-rendering-limitations.md ACadSharp.Image.Tests/Baselines
 git commit -m "Size raster text in ems at 72 dpi and fix the leading compensation"
 ```
 

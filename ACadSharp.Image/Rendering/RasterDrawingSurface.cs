@@ -260,13 +260,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
     private Font CreateFont(double height)
     {
-        float size = Math.Max(1f, (float)height);
-        if (SystemFonts.TryGet(this._configuration.FontFamilyName, out FontFamily family))
-        {
-            return family.CreateFont(size);
-        }
-
-        return SystemFonts.Families.First().CreateFont(size);
+        return FontResolver.Create(this._configuration.FontFamilyName, (float)height);
     }
 
     private static Pen CreatePen(ImageStyle style)

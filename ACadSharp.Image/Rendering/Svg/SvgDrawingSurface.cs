@@ -384,10 +384,15 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             return;
         }
 
+        double emSize = SvgTextLayout.EmSize(text.Height);
+        IReadOnlyList<string> lines = SvgTextLayout.Wrap(SvgXmlText.Clean(text.Text), text.WrappingWidth, emSize, this._configuration.FontFamilyName);
+        double lineHeight = SvgTextLayout.LineHeight(text.Height, text.LineSpacingFactor);
+        double firstLineY = text.Origin.Y + SvgTextLayout.BlockOffset(lines.Count, lineHeight, text.Baseline);
+
         XElement element = new(Ns + "text",
             new XAttribute("x", this.N(text.Origin.X)),
-            new XAttribute("y", this.N(text.Origin.Y)),
-            new XAttribute("font-size", this.N(text.Height)));
+            new XAttribute("y", this.N(firstLineY)),
+            new XAttribute("font-size", this.N(emSize)));
 
         if (text.Anchor != SurfaceTextAnchor.Start)
         {
@@ -409,15 +414,13 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             element.Add(new XAttribute("textLength", this.N(text.FixedLength)), new XAttribute("lengthAdjust", "spacingAndGlyphs"));
         }
 
-        string[] lines = SvgXmlText.Clean(text.Text).Replace("\r\n", "\n").Split('\n');
-        if (lines.Length == 1)
+        if (lines.Count == 1)
         {
             element.Add(lines[0]);
         }
         else
         {
-            double lineHeight = text.Height * (text.LineSpacingFactor <= 0 ? 1d : text.LineSpacingFactor) * 5d / 3d;
-            for (int i = 0; i < lines.Length; i++)
+            for (int i = 0; i < lines.Count; i++)
             {
                 XElement span = new(Ns + "tspan", new XAttribute("x", this.N(text.Origin.X)), lines[i]);
                 if (i > 0)

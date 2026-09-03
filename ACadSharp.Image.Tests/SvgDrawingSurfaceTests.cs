@@ -317,7 +317,7 @@ public sealed class SvgDrawingSurfaceTests
         Assert.Equal("Hello", text.Value);
         Assert.Equal("10", (string?)text.Attribute("x"));
         Assert.Equal("20", (string?)text.Attribute("y"));
-        Assert.Equal("2.5", (string?)text.Attribute("font-size"));
+        Assert.Equal("3.33", (string?)text.Attribute("font-size"));   // 2.5 × 4/3
         Assert.Equal("middle", (string?)text.Attribute("text-anchor"));
         Assert.Equal("central", (string?)text.Attribute("dominant-baseline"));
         Assert.Equal("rotate(-30 10 20)", (string?)text.Attribute("transform"));
@@ -469,5 +469,65 @@ public sealed class SvgDrawingSurfaceTests
 
         Assert.Equal("Plan_1-", SvgIdSanitizer.SanitizePrefix("Plan_1-"));
         Assert.Equal(string.Empty, SvgIdSanitizer.SanitizePrefix(""));
+    }
+
+    [Fact]
+    public void FontSizeIsTheEmForTheCadCapHeight()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        surface.BeginEntity(Entity("Anno", "TEXT"), Layer("Anno"));
+        surface.DrawText(new ImageStyle(Color.Black, 1f), new SurfaceText("H", new SurfacePoint(0, 0), 3, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, 0));
+        surface.EndEntity();
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        Assert.Equal("4", (string?)text.Attribute("font-size"));   // 3 × 4/3
+    }
+
+    [Fact]
+    public void MultiLineBlocksAreAnchoredByTheirBaseline()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        ImageStyle style = new(Color.Black, 1f);
+        surface.BeginEntity(Entity("Anno", "MTEXT"), Layer("Anno"));
+        surface.DrawText(style, new SurfaceText("a\nb\nc", new SurfacePoint(10, 50), 3, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Central, -1, 1, 0));
+        surface.DrawText(style, new SurfaceText("a\nb", new SurfacePoint(10, 50), 3, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, 0));
+        surface.DrawText(style, new SurfaceText("a\nb", new SurfacePoint(10, 50), 3, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Hanging, -1, 1, 0));
+        surface.EndEntity();
+
+        List<XElement> texts = surface.ToDocument().Descendants(Ns + "text").ToList();
+        // Line height is 5/3 of the cap height: 5. Central: three lines, first line one line height above the origin.
+        Assert.Equal("45", (string?)texts[0].Attribute("y"));
+        // Alphabetic (bottom): two lines, first line one line height above.
+        Assert.Equal("45", (string?)texts[1].Attribute("y"));
+        // Hanging (top): first line at the origin.
+        Assert.Equal("50", (string?)texts[2].Attribute("y"));
+        Assert.Equal(["a", "b", "c"], texts[0].Elements(Ns + "tspan").Select(t => t.Value).ToArray());
+        Assert.Equal("5", (string?)texts[0].Elements(Ns + "tspan").ElementAt(1).Attribute("dy"));
+    }
+
+    [Fact]
+    public void TextIsWrappedAtTheWrappingWidth()
+    {
+        using SvgDrawingSurface surface = CreateSurface(c => c.FontFamilyName = "DejaVu Sans");
+        surface.BeginEntity(Entity("Anno", "MTEXT"), Layer("Anno"));
+        // Width 14 at cap height 3 (em 4) fits roughly five to six characters of DejaVu Sans per line.
+        surface.DrawText(new ImageStyle(Color.Black, 1f), new SurfaceText("alpha beta gamma delta", new SurfacePoint(0, 0), 3, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Hanging, 14, 1, 0));
+        surface.EndEntity();
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        string[] lines = text.Elements(Ns + "tspan").Select(t => t.Value).ToArray();
+        Assert.Equal(["alpha", "beta", "gamma", "delta"], lines);
+    }
+
+    [Fact]
+    public void WrapKeepsExplicitBreaksAndLongWords()
+    {
+        IReadOnlyList<string> lines = SvgTextLayout.Wrap("one two\nthree fourfivesixseven", 8, 4, "DejaVu Sans");
+
+        Assert.Equal("one", lines[0]);
+        Assert.Equal("two", lines[1]);
+        Assert.Equal("three", lines[2]);
+        Assert.Equal("fourfivesixseven", lines[3]);   // a single word wider than the width stays on its own line
+        Assert.Equal(["x"], SvgTextLayout.Wrap("x", -1, 4, "DejaVu Sans"));
     }
 }

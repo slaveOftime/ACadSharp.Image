@@ -441,12 +441,12 @@
         <path d="M38.525 9.65A2.5 2.5 0 0 0 37.236 10.008" vector-effect="non-scaling-stroke" data-handle="1FE" data-type="ARC" />
         <line x1="38.525" y1="12.15" x2="36.025" y2="10.707" vector-effect="non-scaling-stroke" data-handle="1FF" data-type="LINE" />
         <line x1="36.025" y1="10.707" x2="36.025" y2="3.125" vector-effect="non-scaling-stroke" data-handle="200" data-type="LINE" />
-        <text x="33.775" y="2.5" font-size="2.5" fill="#ff0000" stroke="none" data-handle="201" data-type="TEXT">30°</text>
+        <text x="33.775" y="2.5" font-size="3.333" fill="#ff0000" stroke="none" data-handle="201" data-type="TEXT">30°</text>
         <line x1="63.024" y1="12.15" x2="63.336" y2="10.9" vector-effect="non-scaling-stroke" data-handle="202" data-type="LINE" />
         <line x1="63.336" y1="10.9" x2="62.711" y2="10.9" vector-effect="non-scaling-stroke" data-handle="203" data-type="LINE" />
         <line x1="62.711" y1="10.9" x2="63.024" y2="12.15" vector-effect="non-scaling-stroke" data-handle="204" data-type="LINE" />
         <line x1="63.024" y1="10.9" x2="63.024" y2="3.125" vector-effect="non-scaling-stroke" data-handle="205" data-type="LINE" />
-        <text x="61.524" y="2.5" font-size="2.5" fill="#ff0000" stroke="none" data-handle="206" data-type="TEXT">2Z</text>
+        <text x="61.524" y="2.5" font-size="3.333" fill="#ff0000" stroke="none" data-handle="206" data-type="TEXT">2Z</text>
       </g>
       <g id="layer-dimensions" class="cad-layer" data-layer="DIMENSIONS" stroke="#0000ff" stroke-width="1">
         <line x1="6.775" y1="14.9" x2="6.775" y2="25.525" vector-effect="non-scaling-stroke" data-handle="207" data-type="LINE" />
@@ -459,7 +459,7 @@
         <line x1="62.525" y1="24.587" x2="62.525" y2="25.212" vector-effect="non-scaling-stroke" data-handle="20E" data-type="LINE" />
         <line x1="62.525" y1="25.212" x2="63.775" y2="24.9" vector-effect="non-scaling-stroke" data-handle="20F" data-type="LINE" />
         <line x1="35.275" y1="24.9" x2="62.525" y2="24.9" vector-effect="non-scaling-stroke" data-handle="210" data-type="LINE" />
-        <text x="18.775" y="24.275" font-size="2.5" fill="#0000ff" stroke="none" data-handle="211" data-type="TEXT">57</text>
+        <text x="18.775" y="24.275" font-size="3.333" fill="#0000ff" stroke="none" data-handle="211" data-type="TEXT">57</text>
         <line x1="33.775" y1="14.9" x2="33.775" y2="20.525" vector-effect="non-scaling-stroke" data-handle="212" data-type="LINE" />
         <line x1="63.775" y1="14.9" x2="63.775" y2="20.525" vector-effect="non-scaling-stroke" data-handle="213" data-type="LINE" />
         <line x1="33.775" y1="19.9" x2="35.025" y2="19.587" vector-effect="non-scaling-stroke" data-handle="214" data-type="LINE" />
@@ -470,7 +470,7 @@
         <line x1="62.525" y1="19.587" x2="62.525" y2="20.212" vector-effect="non-scaling-stroke" data-handle="219" data-type="LINE" />
         <line x1="62.525" y1="20.212" x2="63.775" y2="19.9" vector-effect="non-scaling-stroke" data-handle="21A" data-type="LINE" />
         <line x1="48.775" y1="19.9" x2="62.525" y2="19.9" vector-effect="non-scaling-stroke" data-handle="21B" data-type="LINE" />
-        <text x="47.275" y="19.275" font-size="2.5" fill="#0000ff" stroke="none" data-handle="21C" data-type="TEXT">30</text>
+        <text x="47.275" y="19.275" font-size="3.333" fill="#0000ff" stroke="none" data-handle="21C" data-type="TEXT">30</text>
         <line x1="64.025" y1="14.65" x2="71.525" y2="14.65" vector-effect="non-scaling-stroke" data-handle="21D" data-type="LINE" />
         <line x1="64.025" y1="12.15" x2="71.525" y2="12.15" vector-effect="non-scaling-stroke" data-handle="21E" data-type="LINE" />
         <line x1="70.275" y1="14.65" x2="70.587" y2="15.9" vector-effect="non-scaling-stroke" data-handle="21F" data-type="LINE" />
@@ -481,7 +481,7 @@
         <line x1="70.587" y1="10.9" x2="69.962" y2="10.9" vector-effect="non-scaling-stroke" data-handle="224" data-type="LINE" />
         <line x1="69.962" y1="10.9" x2="70.275" y2="12.15" vector-effect="non-scaling-stroke" data-handle="225" data-type="LINE" />
         <line x1="70.275" y1="10.9" x2="70.275" y2="10.275" vector-effect="non-scaling-stroke" data-handle="226" data-type="LINE" />
-        <text x="71.525" y="21.65" font-size="2.5" transform="rotate(-116.6202 71.525 21.65)" fill="#0000ff" stroke="none" data-handle="227" data-type="TEXT">2.5</text>
+        <text x="71.525" y="21.65" font-size="3.333" transform="rotate(-116.6202 71.525 21.65)" fill="#0000ff" stroke="none" data-handle="227" data-type="TEXT">2.5</text>
         <line x1="67.581" y1="17.251" x2="67.196" y2="16.759" vector-effect="non-scaling-stroke" data-handle="228" data-type="LINE" />
         <line x1="67.196" y1="16.759" x2="66.404" y2="17.775" vector-effect="non-scaling-stroke" data-handle="229" data-type="LINE" />
         <line x1="66.404" y1="17.775" x2="67.581" y2="17.251" vector-effect="non-scaling-stroke" data-handle="22A" data-type="LINE" />

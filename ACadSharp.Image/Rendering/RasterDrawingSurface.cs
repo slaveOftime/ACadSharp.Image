@@ -181,18 +181,21 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
         }
 
         PointF origin = ToPointF(text.Origin);
-        Font font = this.CreateFont(text.Height);
 
-        // ImageSharp advances the baseline by one em per line, and an em is 4/3 of the CAD text height; AutoCAD and
-        // the SVG backend space lines at 5/3 of that height, so the spacing factor carries the 5/3 over 4/3 = 5/4
-        // correction. ImageSharp then splits the extra (5/4 - 1) em of leading evenly above and below the block,
-        // which would displace even a single line, so the origin is pulled back by that half-leading (em/8 per unit
-        // of factor, that is height/6 at the default 96 dpi) on whichever end the alignment anchors: up for Hanging,
-        // which anchors the top, down for Alphabetic, which anchors the bottom, and not at all for Central. The
-        // offset rides on the layout origin rather than the canvas, so the rotation below turns it with the glyphs
-        // and rotated text stays on its anchor too.
+        // The font size is the em, 4/3 of the CAD text height, laid out at 72 dpi so one point is one pixel: text
+        // then scales with the page like the geometry does and not with ImageConfiguration.Dpi, which only sizes
+        // line weights. The SVG backend uses the same em through TextMetrics.EmSize.
+        Font font = this.CreateFont(TextMetrics.EmSize(text.Height));
+
+        // ImageSharp advances the baseline by one em per line; AutoCAD and the SVG backend space lines at 5/3 of
+        // the text height, that is 5/4 em, so the spacing factor carries the 5/4. ImageSharp then splits the extra
+        // (LineSpacing - 1) em of leading evenly above and below every line, which would displace even a single
+        // line, so the origin is pulled back by that half-leading on whichever end the alignment anchors: up for
+        // Hanging, which anchors the top, down for Alphabetic, which anchors the bottom, and not at all for
+        // Central. The offset rides on the layout origin, so the rotation below turns it with the glyphs.
         double factor = text.LineSpacingFactor <= 0d ? 1d : text.LineSpacingFactor;
-        double halfLeading = factor * font.Size * this._configuration.Dpi / 72d / 8d;
+        float lineSpacing = (float)factor * 5f / 4f;
+        double halfLeading = font.Size * (lineSpacing - 1d) / 2d;
         double leadingOffset = text.Baseline switch
         {
             SurfaceTextBaseline.Hanging => -halfLeading,
@@ -202,7 +205,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
         TextOptions options = new(font)
         {
-            Dpi = this._configuration.Dpi,
+            Dpi = 72f,
             Origin = new PointF(origin.X, origin.Y + (float)leadingOffset),
             HorizontalAlignment = text.Anchor switch
             {
@@ -217,7 +220,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
                 _ => VerticalAlignment.Bottom,
             },
             WrappingLength = text.WrappingWidth > 0 ? (float)text.WrappingWidth : -1,
-            LineSpacing = (float)factor * 5f / 4f,
+            LineSpacing = lineSpacing,
         };
 
         IPathCollection glyphs = TextBuilder.GenerateGlyphs(text.Text, options);
@@ -276,9 +279,10 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
         }
     }
 
-    private Font CreateFont(double height)
+    /// <summary>Font at the given em size in points; at 72 dpi one point is one pixel.</summary>
+    private Font CreateFont(double emSize)
     {
-        return FontResolver.Create(this._configuration.FontFamilyName, (float)height);
+        return FontResolver.Create(this._configuration.FontFamilyName, (float)emSize);
     }
 
     private static Pen CreatePen(ImageStyle style)

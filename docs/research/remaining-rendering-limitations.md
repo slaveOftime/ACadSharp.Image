@@ -28,6 +28,8 @@ All four fall through `EntityRenderDispatcher.Draw`'s `default:` arm and raise a
 
 ### 1.1 3DFACE (`AcDbFace`)
 
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md).
+
 **What ACadSharp 3.7.1 exposes.** `ACadSharp.Entities.Face3D : Entity`, with `XYZ FirstCorner/SecondCorner/ThirdCorner/FourthCorner`, `InvisibleEdgeFlags Flags`, `ApplyTransform`, `GetBoundingBox` *(verified in package)*. `InvisibleEdgeFlags` is `[Flags]`-shaped with `None = 0, First = 1, Second = 2, Third = 4, Fourth = 8` *(verified in package)*. It does **not** implement `IOrientable` and has no `Normal` property — its corners are world coordinates and need no OCS step, unlike `Solid` (contrast `EntityRenderDispatcher.DrawSolid`, `:239-255`, which does apply `OcsTransform`). `ApplyTransform` simply maps all four corners *(v3.7.1 source, `Entities/Face3D.cs:69-75`)*.
 
 **DXF semantics.** Group 10/11/12/13 are the first…fourth corner, each *"(in WCS)"*; *"If only three corners are entered, this [the fourth] is the same as the third corner"*; group 70 is *"Invisible edge flags (optional; default = 0): 1 = First edge is invisible / 2 = Second edge is invisible / 4 = Third edge is invisible / 8 = Fourth edge is invisible"* (DXF Reference, *3dface group codes*). Edge *n* runs from corner *n* to corner *n+1*, with edge 4 closing corner 4 back to corner 1.
@@ -43,6 +45,8 @@ All four fall through `EntityRenderDispatcher.Draw`'s `default:` arm and raise a
 **Recommendation — effort S, no baseline impact.** Add a `case Face3D face:` above the `default:` arm and a `DrawFace3D` helper next to `DrawSolid`. Cover it with a `RecordingDrawingSurface` unit test per flag combination, plus one entity in the synthetic `features` sample if a visual golden is wanted (that *would* rewrite `features.model.01.png/.svg`).
 
 ### 1.2 MLINE (`AcDbMline`)
+
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md); deviation: MLEDIT cuts (the group-41 values after the first) are ignored, like ezdxf's renderer — the elements stay continuous and a Warning is raised when any are present.
 
 **What ACadSharp 3.7.1 exposes.** `ACadSharp.Entities.MLine : Entity, IOrientable` with `MLineFlags Flags` (`Has = 1, Closed = 2, NoStartCaps = 4, NoEndCaps = 8`), `MLineJustification Justification` (`Top = 0, Zero = 1, Bottom = 2`), `XYZ Normal`, `double ScaleFactor`, `XYZ StartPoint`, `MLineStyle Style`, `List<MLine.Vertex> Vertices` *(verified in package)*. `MLine.Vertex` has `XYZ Position`, `XYZ Direction` ("Direction vector of segment starting at this vertex"), `XYZ Miter` ("Direction vector of miter at this vertex") and `List<Vertex.Segment> Segments` ("Segments in MLineStyle definition"); `Vertex.Segment` has `List<double> Parameters` ("Element parameters") and `List<double> AreaFillParameters` *(verified in package; XML docs)*. `ACadSharp.Objects.MLineStyle : NonGraphicalObject` has `IEnumerable<Element> Elements`, `Color FillColor`, `MLineStyleFlags Flags` (`FillOn = 1, DisplayJoints = 2, StartSquareCap = 16, StartInnerArcsCap = 32, StartRoundCap = 64, EndSquareCap = 256, EndInnerArcsCap = 512, EndRoundCap = 1024`), `StartAngle`/`EndAngle`, and `MLineStyle.Element` has `double Offset`, `Color Color`, `LineType LineType` *(verified in package)*. `MLine.Style` can never be null: the setter throws on null and the field is initialised to `MLineStyle.Default` *(v3.7.1 source, `Entities/MLine.cs:63-93`)*; `MLineStyle.Default` is named `Standard` and carries 2 elements *(probe)*.
 
@@ -68,6 +72,8 @@ Group 41 is ACadSharp's `Vertex.Segments[j].Parameters`, and `Segments[j]` corre
 **Recommendation — effort M, no baseline impact.** Implement the parameter-driven path plus the style-offset fallback; guard against the clone bug. Unit-test with `RecordingDrawingSurface` against a hand-built `MLine` (offsets, closed flag, fill on/off).
 
 ### 1.3 WIPEOUT (`AcDbWipeout`)
+
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md); deviation: the pixel→WCS mapping is Y-flipped relative to the derivation below (`world = InsertPoint + (p.X + 0.5) * U + (Size.Y - p.Y - 0.5) * V`, matching ezdxf's `boundary_path_wcs`, which also writes wipeouts this way) — the flip is what makes the documented default boundary cover exactly the image extent with the top-left pixel at the top.
 
 **What ACadSharp 3.7.1 exposes.** `ACadSharp.Entities.Wipeout : CadWipeoutBase : Entity` — `CadWipeoutBase` is documented as the *"Common base class for `RasterImage` and `Wipeout`"* and carries `List<XY> ClipBoundaryVertices`, `ClipType ClipType` (`Rectangular = 1, Polygonal = 2`), `bool ClippingState`, `ClipMode ClipMode` (`Outside = 0, Inside = 1`), `XYZ InsertPoint`, `XYZ UVector`, `XYZ VVector`, `XY Size`, `ImageDisplayFlags Flags` (`ShowImage = 1, ShowNotAlignedImage = 2, UseClippingBoundary = 4, TransparencyIsOn = 8`), `bool ShowImage`, `byte Brightness/Contrast/Fade`, `ImageDefinition Definition` *(verified in package)*.
 
@@ -100,6 +106,8 @@ So the boundary vertices are in **pixel space**, not drawing units, and the mapp
 
 ### 1.4 LEADER (`AcDbLeader`)
 
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md).
+
 **What ACadSharp 3.7.1 exposes.** `ACadSharp.Entities.Leader : Entity, IOrientable` with `List<XYZ> Vertices`, `bool ArrowHeadEnabled`, `LeaderPathType PathType` (`StraightLineSegments = 0, Spline = 1`), `bool HasHookline` *(get-only)*, `HookLineDirection HookLineDirection` (`Opposite = 0, Same = 1`), `XYZ HorizontalDirection`, `XYZ Normal`, `DimensionStyle Style`, `Entity AssociatedAnnotation`, `LeaderCreationType CreationType` (`CreatedWithTextAnnotation = 0, CreatedWithToleranceAnnotation = 1, CreatedWithBlockReferenceAnnotation = 2, CreatedWithoutAnnotation = 3`), `XYZ AnnotationOffset`, `XYZ BlockOffset`, `double TextHeight`, `double TextWidth`, plus `SetDimensionOverride`/`SetStyleOverrideMap` *(verified in package)*. `Style` defaults to `DimensionStyle.Default` and cannot be set to null *(v3.7.1 source, `Entities/Leader.cs:113-128`)*; `DimensionStyle.Default.ArrowSize` is `0.18`, `ScaleFactor` is `1`, `LeaderArrow` is `null` *(probe)*. `DimensionStyle.ArrowSize` is documented as *"Controls the size of dimension line and leader line arrowheads. Also controls the size of hook lines (see DIMASZ System Variable)"* and `DimensionStyle.LeaderArrow` as *"Specifies the arrow type for leaders (see DIMLDRBLK System Variable). A [BlockRecord] that makes up an arrowhead or null if the default, closed-filled arrowhead is to be displayed"* *(XML docs)*.
 
 **DXF semantics.** From the DXF Reference (*Leader group codes*): 3 = dimension style name; 71 = *"Arrowhead flag: 0 = Disabled; 1 = Enabled"*; 72 = *"Leader path type: 0 = Straight line segments; 1 = Spline"*; 73 = creation flag; 74 = hookline direction; 75 = *"Hookline flag: 0 = No hookline; 1 = Has a hookline"*; 40/41 = text annotation height/width; 76 = vertex count; 10/20/30 = *"Vertex coordinates (one entry for each vertex)"* with no OCS qualifier, i.e. WCS; 340 = *"Hard reference to associated annotation (mtext, tolerance, or insert entity)"*; 211 = the "horizontal" direction; 212/213 = offsets of the last vertex from the block/annotation placement point.
@@ -121,6 +129,8 @@ Two consequences: **the hookline is already one of the stored vertices** (it is 
 
 ## 2. INSERT attributes (ATTRIB)
 
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md).
+
 **Does ACadSharp expose them?** Yes. `Insert.Attributes` is `SeqendCollection<AttributeEntity>` with a public getter, documented as *"Attributes from the block reference. If an attribute should be added in this collection a definition will be added into the block reference as well"*; `Insert.HasAttributes` is *"True if the insert has attribute entities in it"* *(verified in package; XML docs)*. The type chain is `AttributeEntity : AttributeBase : TextEntity : Entity`, and `AttributeEntity` implements `IText` *(verified in package)*. `AttributeBase` adds `AttributeType AttributeType` (`SingleLine = 1, MultiLine = 2, ConstantMultiLine = 4`), `AttributeFlags Flags` (`None = 0, Hidden = 1, Constant = 2, Verify = 4, Preset = 8`), `bool IsLocked`, `MText MText`, `string Tag`, `byte Version`, and an **`override`** of `TextEntity.VerticalAlignment` *(verified in package; `override`, not `new`, confirmed at `Entities/AttributeBase.cs:63-64` against `virtual` at `Entities/TextEntity.cs:135` — v3.7.1 source)*. That last point matters: reading `VerticalAlignment` through a `TextEntity` reference yields the ATTRIB's own value, so `TextRenderer.Draw(ImageRenderContext, ImageStyle, TextEntity, Transform?)` works unchanged on an `AttributeEntity`.
 
 **Are they in world coordinates?** Yes — they need **no** insert transform. The DXF Reference's *Attrib group codes* give ATTRIB the subclass chain `AcDbText` then `AcDbAttribute`, with 10 = *"Text start point (in OCS)"*, 11 = *"Alignment point (in OCS) (optional) … Present only if 72 or 74 group is present and nonzero"*, 40 = text height, 50 = rotation, 72/74 = horizontal/vertical justification *"See TEXT … group codes"*, 210 = extrusion. Those are absolute coordinates in the ATTRIB's own OCS, exactly like a TEXT entity — the insert's translation, rotation and scale are already applied by whatever wrote the file. So: pass `placement: null` to `TextRenderer.Draw`. The existing OCS handling in `TextRenderer.Draw` (`ACadSharp.Image/Rendering/TextRenderer.cs:86-89`) is exactly what ATTRIB needs.
@@ -140,6 +150,8 @@ Two consequences: **the hookline is already one of the stored vertices** (it is 
 ---
 
 ## 3. Original-to-clone pairing after `Insert.Explode()`
+
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md).
 
 **Is the order guaranteed in 3.7.1?** Yes, structurally — the pairing in `EntityRenderDispatcher.DrawBlockContents` (`:402-412`) is sound. `Explode()` is a single `foreach` over `this.Block.Entities` that yields exactly one entity per source entity, in order, with no filtering and no fan-out:
 
@@ -189,6 +201,8 @@ A probe over a five-entity block (`Line`, `Circle`, `Arc`, `TextEntity`, `Attrib
 
 ### 4.1 Text size scales with `ImageConfiguration.Dpi`; geometry does not
 
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md).
+
 **Confirmation of the problem.** Geometry scale comes from the page fit, not from `Dpi`: `ImageRenderContext.ToSurfaceLength` multiplies by `Scale` (`ACadSharp.Image/Rendering/ImageRenderContext.cs:387-392`), which is computed from the requested width/height. `Dpi` (default `96f`, `ACadSharp.Image/ImageConfiguration.cs:148`) is used in exactly two places: line weights, where it is *intended* (`GetLineWeightPixels`: `millimeters * Dpi / 25.4`, `:360`) because line weights are physical millimetres; and text, where it is not — `RasterDrawingSurface.DrawText` sets `TextOptions.Dpi = this._configuration.Dpi` while passing the CAD text height straight in as a font size (`RasterDrawingSurface.cs:184,205` via `CreateFont`, `:279-282`). The SVG backend has no `Dpi` at all: it converts the same height with a fixed factor, `SvgTextLayout.EmSize(h) = h * 4/3` (`ACadSharp.Image/Rendering/Svg/SvgTextLayout.cs:17-20`), and measures at a pinned `Dpi = 72f` (`:64`).
 
 **Why.** `Font.Size` is documented as *"the size of the font in PT units"*; `TextOptions.Dpi` is *"the DPI (Dots Per Inch) to render/measure the text at. Defaults to 72"*; and `FontMetrics.ScaleFactor` is *"the scale factor that is applied to all glyphs in this face. Calculated as `72 * UnitsPerEm` so that 1pt = 1px"* *(SixLabors.Fonts 2.1.3 XML docs, `~/.nuget/packages/sixlabors.fonts/2.1.3/lib/net6.0/SixLabors.Fonts.xml`)*. In the layout code the whole box is computed in inches (`Vector2 boxLocation = options.Origin / options.Dpi;`, `wrappingLength = options.WrappingLength / options.Dpi`) and one line box is `float lineHeight = metric.UnitsPerEm * scaleY;` with `scaleY = pointSize / metric.ScaleFactor.Y` *(v2.1.3 source, `src/SixLabors.Fonts/TextLayout.cs:196,933,1138,1140`)*. Substituting `ScaleFactor = 72 · UnitsPerEm` gives `lineHeight = pointSize / 72` inches, i.e. **em size in pixels = `Font.Size × Dpi / 72`** — so glyphs grow linearly with `Dpi` while the geometry around them does not.
@@ -208,6 +222,8 @@ Three knock-on edits in `RasterDrawingSurface.DrawText`:
 **Recommendation — effort S.** Make the change and add a regression test that renders the same text at `Dpi = 96` and `Dpi = 300` and asserts the glyph bounding box in pixels is unchanged.
 
 ### 4.2 Single-line vertical shift when `LineSpacing ≠ 1`
+
+**Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md).
 
 **How SixLabors distributes the extra leading.** In `LayoutLineHorizontal` *(v2.1.3 source, `src/SixLabors.Fonts/TextLayout.cs:316-348`)*:
 
@@ -256,7 +272,7 @@ or, written directly from the mechanism, `halfLeading = emPx * (lineSpacing - 1d
 
 Two things surfaced while verifying the above; neither was asked for, both are cheap to fix and adjacent to the work.
 
-1. **ATTDEF default values are drawn inside every `Insert`.** `BlockRecord.AttributeDefinitions` is `this.Entities.OfType<AttributeDefinition>()` *(v3.7.1 source, `Tables/BlockRecord.cs:72-76`)* — ATTDEFs live in `Block.Entities`, so `Insert.Explode()` yields them, and a probe confirms an `AttributeDefinition` clone comes back among the exploded entities *(probe)*. `AttributeDefinition : AttributeBase : TextEntity`, so `EntityRenderDispatcher`'s `case TextEntity textEntity:` (`:141-143`) draws its `Value` (the ATTDEF's *default* string, DXF group 1) at the ATTDEF's position, for every insert of that block. AutoCAD does not: a non-`Constant` ATTDEF is replaced by the insert's ATTRIB and is not displayed. Fix: skip `AttributeDefinition` in the explode loop (adding `case AttributeDefinition:` before `case TextEntity:` with a `continue`), and draw `Constant` ATTDEFs only. This pairs naturally with [section 2](#2-insert-attributes-attrib). Effort S; no sample or golden contains an ATTDEF *(probe)*, so no baseline moves.
+1. **ATTDEF default values are drawn inside every `Insert`.** **Status (2026-09-03):** implemented in plan 08 (docs/superpowers/plans/2026-09-03-08-remaining-entities.md). `BlockRecord.AttributeDefinitions` is `this.Entities.OfType<AttributeDefinition>()` *(v3.7.1 source, `Tables/BlockRecord.cs:72-76`)* — ATTDEFs live in `Block.Entities`, so `Insert.Explode()` yields them, and a probe confirms an `AttributeDefinition` clone comes back among the exploded entities *(probe)*. `AttributeDefinition : AttributeBase : TextEntity`, so `EntityRenderDispatcher`'s `case TextEntity textEntity:` (`:141-143`) draws its `Value` (the ATTDEF's *default* string, DXF group 1) at the ATTDEF's position, for every insert of that block. AutoCAD does not: a non-`Constant` ATTDEF is replaced by the insert's ATTRIB and is not displayed. Fix: skip `AttributeDefinition` in the explode loop (adding `case AttributeDefinition:` before `case TextEntity:` with a `continue`), and draw `Constant` ATTDEFs only. This pairs naturally with [section 2](#2-insert-attributes-attrib). Effort S; no sample or golden contains an ATTDEF *(probe)*, so no baseline moves.
 2. **`MLine.Clone()` destroys the source in 3.7.1.** Detailed in [section 1.2](#12-mline-acdbmline). Verified by probe. Relevant even before MLINE rendering exists, because `Insert.Explode()` clones every block entity — an MLINE inside a block is silently emptied for the rest of the process's lifetime.
 
 ---

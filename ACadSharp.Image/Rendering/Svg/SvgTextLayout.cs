@@ -14,10 +14,10 @@ namespace ACadSharp.Image.Rendering.Svg;
 internal static class SvgTextLayout
 {
     /// <summary>Em size per unit of cap height.</summary>
-    public const double CapHeightToEm = 4d / 3d;
+    public const double CapHeightToEm = TextMetrics.CapHeightToEm;
 
     /// <summary>Font size (em) for a CAD text height.</summary>
-    public static double EmSize(double capHeight) => capHeight * CapHeightToEm;
+    public static double EmSize(double capHeight) => TextMetrics.EmSize(capHeight);
 
     /// <summary>Distance between consecutive baselines.</summary>
     public static double LineHeight(double capHeight, double lineSpacingFactor) =>

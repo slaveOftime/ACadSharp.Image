@@ -237,10 +237,10 @@ public sealed class RasterDrawingSurfaceTests
     }
 
     /// <summary>Draws one text run of height 10 at the canvas centre and returns the canvas.</summary>
-    private static Image<Rgba32> DrawnText(string value, SurfaceTextBaseline baseline, double lineSpacingFactor, double rotation)
+    private static Image<Rgba32> DrawnText(string value, SurfaceTextBaseline baseline, double lineSpacingFactor, double rotation, float dpi = 96f)
     {
         Image<Rgba32> canvas = new(200, 200, ImageColor.White);
-        using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
+        using RasterDrawingSurface surface = new(canvas, new ImageConfiguration { Dpi = dpi }, ownsCanvas: false);
         surface.DrawText(
             new ImageStyle(ImageColor.Black, 1f),
             new SurfaceText(value, new SurfacePoint(100, 100), 10, rotation, SurfaceTextAnchor.Start, baseline, 0, lineSpacingFactor, 0));
@@ -293,5 +293,55 @@ public sealed class RasterDrawingSurfaceTests
         }
 
         return starts.ToArray();
+    }
+
+    [Fact]
+    public void TextSizeDoesNotDependOnTheConfiguredDpi()
+    {
+        int[] at96 = InkColumnBounds(DrawnText("Hg", SurfaceTextBaseline.Alphabetic, 1d, 0d, dpi: 96f));
+        int[] at300 = InkColumnBounds(DrawnText("Hg", SurfaceTextBaseline.Alphabetic, 1d, 0d, dpi: 300f));
+
+        Assert.True(Math.Abs(at96[0] - at300[0]) <= 1 && Math.Abs(at96[1] - at300[1]) <= 1, $"ink columns {at96[0]}..{at96[1]} at 96 dpi but {at300[0]}..{at300[1]} at 300 dpi.");
+    }
+
+    [Fact]
+    public void HangingTextStaysOnItsAnchorForAnyLineSpacingFactor()
+    {
+        using Image<Rgba32> single = DrawnText("H", SurfaceTextBaseline.Hanging, 1d, 0d);
+        using Image<Rgba32> spaced = DrawnText("H\nH", SurfaceTextBaseline.Hanging, 2d, 0d);
+
+        int[] one = InkBandStarts(single);
+        int[] two = InkBandStarts(spaced);
+
+        Assert.Equal(Assert.Single(one), two[0]);
+        double distance = two[1] - two[0];
+        Assert.True(Math.Abs(distance - 100d / 3d) <= 1d, $"expected the lines about {100d / 3d:F1} px apart (2 x 5/3 of the text height), got {distance}.");
+    }
+
+    /// <summary>First and last canvas column holding a pixel darker than mid grey.</summary>
+    private static int[] InkColumnBounds(Image<Rgba32> canvas)
+    {
+        int first = -1;
+        int last = -1;
+        for (int x = 0; x < canvas.Width; x++)
+        {
+            bool inked = false;
+            for (int y = 0; y < canvas.Height && !inked; y++)
+            {
+                inked = canvas[x, y].R < 128;
+            }
+
+            if (inked)
+            {
+                if (first < 0)
+                {
+                    first = x;
+                }
+
+                last = x;
+            }
+        }
+
+        return [first, last];
     }
 }

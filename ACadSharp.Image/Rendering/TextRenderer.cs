@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ACadSharp.Entities;
 using ACadSharp.IO;
 using CSMath;
@@ -9,6 +10,8 @@ namespace ACadSharp.Image.Rendering;
 /// </summary>
 internal sealed class TextRenderer
 {
+    private static readonly Regex UnicodeEscape = new(@"\\[Uu]\+([0-9A-Fa-f]{4})", RegexOptions.Compiled);
+
     /// <summary>
     /// Draws a multiline text entity, optionally placed by a block reference.
     /// </summary>
@@ -23,7 +26,7 @@ internal sealed class TextRenderer
     /// </remarks>
     public void Draw(ImageRenderContext context, ImageStyle style, MText mtext, Transform? placement)
     {
-        string text = NormalizeText(mtext.PlainText);
+        string text = NormalizeText(PlainTextOf(mtext));
         if (string.IsNullOrWhiteSpace(text))
         {
             return;
@@ -250,17 +253,38 @@ internal sealed class TextRenderer
         };
     }
 
-    private static string NormalizeText(string? value)
+    /// <summary>
+    /// The MTEXT's text with formatting stripped. Unicode escapes are decoded before ACadSharp strips the formatting,
+    /// because its <c>PlainText</c> drops the backslash of <c>\U+XXXX</c> and would leave the literal code behind.
+    /// </summary>
+    internal static string PlainTextOf(MText mtext)
+    {
+        string value = mtext.Value ?? string.Empty;
+        string decoded = UnicodeEscape.Replace(value, m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
+        return ReferenceEquals(decoded, value) || decoded == value ? mtext.PlainText : new MText { Value = decoded }.PlainText;
+    }
+
+    /// <summary>
+    /// Applies the DXF text codes: <c>\U+XXXX</c> code points, <c>%%C</c> diameter, <c>%%D</c> degree, <c>%%P</c>
+    /// plus-minus, <c>%%%</c> percent, the <c>%%U</c>/<c>%%O</c> underline and overline toggles (dropped), and
+    /// <c>\P</c> paragraph breaks.
+    /// </summary>
+    internal static string NormalizeText(string? value)
     {
         if (string.IsNullOrEmpty(value))
         {
             return string.Empty;
         }
 
-        return value
+        string text = UnicodeEscape.Replace(value, m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
+        return text
+            .Replace("%%%", "\u0001", StringComparison.Ordinal)
             .Replace("%%C", "Ø", StringComparison.OrdinalIgnoreCase)
             .Replace("%%D", "°", StringComparison.OrdinalIgnoreCase)
             .Replace("%%P", "±", StringComparison.OrdinalIgnoreCase)
+            .Replace("%%U", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("%%O", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("\u0001", "%", StringComparison.Ordinal)
             .Replace("\\P", "\n", StringComparison.OrdinalIgnoreCase);
     }
 }

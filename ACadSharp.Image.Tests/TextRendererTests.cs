@@ -222,4 +222,26 @@ public sealed class TextRendererTests
         Assert.Equal(NotificationType.Warning, notification.NotificationType);
         Assert.Contains("edge-on", notification.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void UnicodeEscapesAndPercentCodesAreDecoded()
+    {
+        Assert.Equal("Ø 50 ´", TextRenderer.NormalizeText("\\U+00D8 50 \\u+00b4"));
+        Assert.Equal("Ø ° ± % under", TextRenderer.NormalizeText("%%c %%d %%p %%% %%uunder%%u"));
+        Assert.Equal("A\nB", TextRenderer.NormalizeText("A\\PB"));
+        Assert.Equal("U+12", TextRenderer.NormalizeText("U+12"));            // not an escape without the backslash
+        Assert.Equal("\\U+12G4", TextRenderer.NormalizeText("\\U+12G4"));    // not four hex digits: left alone
+    }
+
+    [Fact]
+    public void MTextEscapesAreDecodedBeforeFormattingIsStripped()
+    {
+        MText mtext = new() { Value = "\\C10;\\fArial|b0|i0|;\\H1.5;A\\P\\U+00B4" };
+
+        Assert.Equal("A\n´", TextRenderer.PlainTextOf(mtext));
+
+        (RecordingDrawingSurface surface, ImageRenderContext context, EntityRenderDispatcher dispatcher) = Setup();
+        dispatcher.Draw(context, new MText { Value = "\\U+00D8\\P\\U+2205", InsertPoint = new XYZ(0, 0, 0), Height = 2 });
+        Assert.Equal("Ø\n∅", Assert.Single(surface.Texts).Text);
+    }
 }

@@ -86,13 +86,17 @@ public sealed class ImagePage
     /// <param name="block">The block record to add entities from.</param>
     /// <param name="entityFilter">Optional predicate to filter entities. Return true to include the entity.</param>
     /// <param name="resizeLayout">Whether to automatically calculate layout bounds. Defaults to true.</param>
+    /// <remarks>
+    /// Entities are added in the drawing's draw order (handle order, overridden by the block's DRAWORDER table),
+    /// so later entities paint over earlier ones on both backends.
+    /// </remarks>
     public void Add(BlockRecord block, Func<Entity, bool>? entityFilter, bool resizeLayout = true)
     {
         ArgumentNullException.ThrowIfNull(block);
 
         if (entityFilter != null)
         {
-            foreach (Entity entity in block.Entities)
+            foreach (Entity entity in block.GetSortedEntities())
             {
                 if (entityFilter(entity))
                 {
@@ -102,7 +106,7 @@ public sealed class ImagePage
         }
         else
         {
-            foreach (Entity entity in block.Entities)
+            foreach (Entity entity in block.GetSortedEntities())
             {
                 this.AddEntity(entity);
             }

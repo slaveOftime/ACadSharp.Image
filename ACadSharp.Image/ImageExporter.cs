@@ -107,7 +107,7 @@ public sealed class ImageExporter
             Document = layout.Document,
         };
 
-        foreach (Entity entity in layout.AssociatedBlock.Entities)
+        foreach (Entity entity in layout.AssociatedBlock.GetSortedEntities())
         {
             if (ShouldIncludeEntity(entity))
             {

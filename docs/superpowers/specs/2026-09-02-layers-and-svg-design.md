@@ -89,6 +89,10 @@ Facts from ACadSharp 3.7.1 used by the rules: `Layer.IsOn` (bool, default true),
 - **Amended during review (2026-09-03):** `ExplodePattern()` builds every line before returning, so the cap alone did not bound work or memory. Before calling it, `EntityRenderDispatcher.EstimateScanLines(hatch)` counts the scan lines the expansion would sweep across the hatch's bounding box (the library's own arithmetic); when the count exceeds `MaxHatchLines` the hatch is skipped with a `Warning`. The per-line cap still applies to what is drawn.
 - **Amended during review (2026-09-03):** boundary points and exploded pattern lines are OCS coordinates. When `hatch.Normal` is not `(0,0,1)` they are transformed to world space with `OcsTransform` (`hatch.Elevation` as OCS Z) before projection.
 
+### 4.6 Additional entities (2026-09-03)
+
+- Draw order: pages enumerate `BlockRecord.GetSortedEntities()` (handle order, then the DRAWORDER `SortEntitiesTable`), not file order, on both backends.
+
 ## 5. SVG backend
 
 ### 5.1 Coordinate system

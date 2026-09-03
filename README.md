@@ -233,6 +233,10 @@ exporter.Configuration.LayerVisibility = LayerVisibilityMode.Plot; // All (defau
 
 `Screen` hides off and frozen layers, invisible entities and layers frozen per viewport. `Plot` also hides non-plottable layers such as `DEFPOINTS`.
 
+### Supported entities
+
+Lines, arcs, circles, ellipses, polylines (2D, 3D, lightweight, with bulges), splines, points, solids, hatches (solid and pattern), TEXT, MTEXT, dimensions, block references and paper-space viewports. Entities are drawn in the drawing's draw order (handle order overridden by DRAWORDER), so later entities paint over earlier ones.
+
 ### Linetypes, transparency and colour 7
 
 Dashed linetypes are rendered using `LTSCALE`, the entity linetype scale and `PSLTSCALE` (honoured from the raw `$PSLTSCALE` header value) in paper space; patterns shorter than `MinimumDashPixels` are drawn solid (pixel-width modes only; not applied in SVG drawing-unit mode), and embedded shapes and text in a linetype render as gaps. Entity transparency becomes opacity (ByLayer is treated as opaque because the ACadSharp layer table carries no transparency). Colour index 7 resolves to black or white from the background luminance, or to `ForegroundColor` when set.

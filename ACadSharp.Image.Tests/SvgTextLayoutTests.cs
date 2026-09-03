@@ -39,6 +39,24 @@ public sealed class SvgTextLayoutTests
         Assert.Equal(["A  B"], SvgTextLayout.Wrap("A  B", 100, 4, Family));
     }
 
+    [Fact]
+    public void CombiningMarksDoNotBreakTheWrapper()
+    {
+        // Combining marks below the baseline (U+0332 COMBINING LOW LINE) and their precomposed equivalents.
+        Assert.Equal(["\u05D5\u0332\u05D5\u0332 abc"], SvgTextLayout.Wrap("\u05D5\u0332\u05D5\u0332 abc", 100, 4, Family));
+        Assert.Equal(["\u1E3B abc"], SvgTextLayout.Wrap("\u1E3B abc", 100, 4, Family));
+        Assert.Equal(["l\u0332l\u0332 abc"], SvgTextLayout.Wrap("l\u0332l\u0332 abc", 100, 4, Family));
+    }
+
+    [Fact]
+    public void RightToLeftTextWrapsInLogicalOrder()
+    {
+        // Three Hebrew words; the lines must be logical-order slices, not visual-order ones.
+        IReadOnlyList<string> lines = SvgTextLayout.Wrap("\u05D0\u05D1\u05D2 \u05D3\u05D4\u05D5 \u05D6\u05D7\u05D8", 6, 4, Family);
+
+        Assert.Equal(["\u05D0\u05D1\u05D2", "\u05D3\u05D4\u05D5", "\u05D6\u05D7\u05D8"], lines);
+    }
+
     [Theory]
     [InlineData("alpha beta gamma delta", 6)]
     [InlineData("alpha beta gamma delta", 9)]

@@ -62,10 +62,10 @@ internal sealed class EntityRenderDispatcher
     /// </remarks>
     public void Draw(ImageRenderContext context, Entity entity)
     {
-        this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parentOpacity: 1f);
+        this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parent: null);
     }
 
-    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, float parentOpacity)
+    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
         Layer? layer = GetEffectiveLayer(entity, parentLayer);
@@ -84,7 +84,8 @@ internal sealed class EntityRenderDispatcher
         }
 
         ImageColor foreground = context.Configuration.ResolveForegroundColor();
-        ImageStyle style = this._styleResolver.Resolve(entity, context, parentOpacity, foreground);
+        ResolvedStyle resolved = this._styleResolver.ResolveAttributes(entity, layer, parent);
+        ImageStyle style = this._styleResolver.ToImageStyle(resolved, context, foreground);
         EntityRenderInfo info = new(layerName, entity.ObjectName, entity.Handle, parentHandle, blockName);
         LayerRenderInfo layerInfo = CreateLayerInfo(layer, layerName, context, foreground);
 
@@ -115,7 +116,7 @@ internal sealed class EntityRenderDispatcher
                     context.Surface.DrawLine(style, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
                     break;
                 case Dimension dimension:
-                    this.DrawDimension(context, dimension, layer, style.Opacity);
+                    this.DrawDimension(context, dimension, layer, resolved);
                     break;
                 case Solid solid:
                     DrawSolid(context, style, solid);
@@ -145,7 +146,7 @@ internal sealed class EntityRenderDispatcher
                     this.DrawHatch(context, style, hatch);
                     break;
                 case Insert insert:
-                    this.DrawBlockContents(context, insert, layer, style.Opacity);
+                    this.DrawBlockContents(context, insert, layer, resolved);
                     break;
                 default:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
@@ -194,7 +195,7 @@ internal sealed class EntityRenderDispatcher
         context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), context.ToSurfacePixels(radius));
     }
 
-    private void DrawDimension(ImageRenderContext context, Dimension dimension, Layer? layer, float parentOpacity)
+    private void DrawDimension(ImageRenderContext context, Dimension dimension, Layer? layer, ResolvedStyle parent)
     {
         BlockRecord? block = dimension.Block;
         if (block == null)
@@ -216,7 +217,7 @@ internal sealed class EntityRenderDispatcher
                 continue;
             }
 
-            this.Draw(context, entity, layer, dimension.Handle, blockName: null, parentOpacity);
+            this.Draw(context, entity, layer, dimension.Handle, blockName: null, parent);
         }
     }
 
@@ -369,11 +370,13 @@ internal sealed class EntityRenderDispatcher
         context.Surface.DrawPolyline(style, points, SplineRenderer.ShouldClosePoints(points, close));
     }
 
-    private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, float parentOpacity)
+    private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
     {
+        // The exploded clones carry the block entities' own attributes but no owner or document; ByBlock and
+        // layer-0 inheritance, and the header's LTSCALE, come from the insert's resolved style and effective layer.
         foreach (Entity entity in insert.Explode())
         {
-            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parentOpacity);
+            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent);
         }
     }
 

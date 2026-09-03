@@ -1,5 +1,8 @@
 using ACadSharp.Entities;
+using ACadSharp.Header;
 using ACadSharp.Image.Extensions;
+using ACadSharp.Tables;
+using CadColor = ACadSharp.Color;
 using ImageColor = SixLabors.ImageSharp.Color;
 
 namespace ACadSharp.Image.Rendering;
@@ -8,31 +11,113 @@ namespace ACadSharp.Image.Rendering;
 /// Resolves <see cref="ImageStyle"/> values from CAD entity properties.
 /// </summary>
 /// <remarks>
-/// This class reads color, line weight, linetype and transparency information from an <see cref="Entity"/>
-/// and converts it into surface-unit rendering values, plus an opacity, using the
-/// <see cref="ImageRenderContext"/> the entity is drawn in.
+/// <para>
+/// Resolution happens in two steps. <see cref="ResolveAttributes"/> substitutes ByLayer and ByBlock: ByLayer reads the
+/// entity's <em>effective</em> layer (an entity on layer "0" inside a block takes the layer of the insert that placed
+/// it, see <see cref="EntityRenderDispatcher.GetEffectiveLayer"/>), ByBlock reads the placing entity's resolved
+/// attributes, and at top level ByBlock falls back to the defaults AutoCAD draws it with (colour 7, default weight,
+/// continuous). <see cref="ToImageStyle"/> then converts the result into surface units for a render context.
+/// </para>
+/// <para>
+/// ACadSharp's own <c>GetActiveColor</c> family cannot do this: it resolves ByLayer against the entity's stored layer
+/// and ByBlock against the block record's owner, and the block-content clones it hands out have neither owner nor
+/// document.
+/// </para>
 /// </remarks>
 internal sealed class ImageStyleResolver
 {
+    /// <summary>AutoCAD colour index 7, the colour ByBlock resolves to when there is no block.</summary>
+    private static readonly CadColor ByBackground = new(7);
+
     /// <summary>
-    /// Resolves the visual style for a CAD entity in the given context.
+    /// Resolves an entity's colour, line weight, linetype, linetype scale and opacity.
+    /// </summary>
+    /// <param name="entity">The entity whose attributes should be resolved.</param>
+    /// <param name="effectiveLayer">The layer the entity is drawn on after layer-0 inheritance; null when it has none.</param>
+    /// <param name="parent">The resolved attributes of the insert or dimension that placed the entity, or null at top level.</param>
+    /// <returns>The resolved attributes, in CAD terms.</returns>
+    public ResolvedStyle ResolveAttributes(Entity entity, Layer? effectiveLayer, ResolvedStyle? parent)
+    {
+        CadHeader? header = entity.Document?.Header ?? parent?.Header;
+
+        CadColor color = entity.Color;
+        if (color.IsByLayer)
+        {
+            color = effectiveLayer?.Color ?? ByBackground;
+        }
+        else if (color.IsByBlock)
+        {
+            color = parent?.Color ?? ByBackground;
+        }
+
+        if (color.IsByLayer || color.IsByBlock)
+        {
+            // A layer table entry itself set to ByLayer/ByBlock is malformed; draw it as the default colour.
+            color = ByBackground;
+        }
+
+        LineWeightType lineWeight = entity.LineWeight switch
+        {
+            LineWeightType.ByLayer => effectiveLayer?.LineWeight ?? LineWeightType.Default,
+            LineWeightType.ByBlock => parent?.LineWeight ?? LineWeightType.Default,
+            _ => entity.LineWeight,
+        };
+        if (lineWeight is LineWeightType.ByLayer or LineWeightType.ByBlock)
+        {
+            lineWeight = LineWeightType.Default;
+        }
+
+        LineType? lineType = entity.LineType;
+        if (IsNamed(lineType, LineType.ByLayerName))
+        {
+            lineType = effectiveLayer?.LineType;
+        }
+        else if (IsNamed(lineType, LineType.ByBlockName))
+        {
+            lineType = parent?.LineType;
+        }
+
+        if (IsNamed(lineType, LineType.ByLayerName) || IsNamed(lineType, LineType.ByBlockName))
+        {
+            lineType = null;
+        }
+
+        double lineTypeScale = (entity.LineTypeScale > 0d ? entity.LineTypeScale : 1d) * (parent?.LineTypeScale ?? 1d);
+        float opacity = ResolveOpacity(entity, parent?.Opacity ?? 1f);
+
+        return new ResolvedStyle(color, lineWeight, lineType, lineTypeScale, opacity, header);
+    }
+
+    /// <summary>
+    /// Converts resolved attributes into the surface-unit style a context draws with.
+    /// </summary>
+    /// <param name="resolved">Attributes from <see cref="ResolveAttributes"/>.</param>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="foreground">The colour to use for AutoCAD colour index 7 ("ByBackground").</param>
+    /// <returns>
+    /// An <see cref="ImageStyle"/> containing the stroke color (in RGBA), stroke width and dash pattern (in surface
+    /// units), and opacity.
+    /// </returns>
+    public ImageStyle ToImageStyle(ResolvedStyle resolved, ImageRenderContext context, ImageColor foreground)
+    {
+        float width = context.ToStrokeWidth(resolved.LineWeight);
+        return new ImageStyle(
+            resolved.Color.ToImageColor(foreground),
+            width,
+            LineTypeDashResolver.Resolve(resolved.LineType, resolved.Header, resolved.LineTypeScale, context, width),
+            resolved.Opacity);
+    }
+
+    /// <summary>
+    /// Resolves the visual style of a top-level entity (no placing insert) in the given context.
     /// </summary>
     /// <param name="entity">The entity whose style should be resolved.</param>
     /// <param name="context">The context that maps drawing units onto the surface.</param>
-    /// <param name="parentOpacity">The opacity to inherit when the entity's transparency is ByBlock.</param>
     /// <param name="foreground">The colour to use for AutoCAD colour index 7 ("ByBackground").</param>
-    /// <returns>
-    /// An <see cref="ImageStyle"/> containing the stroke color (in RGBA),
-    /// stroke width and dash pattern (in surface units), and opacity for the entity.
-    /// </returns>
-    public ImageStyle Resolve(Entity entity, ImageRenderContext context, float parentOpacity, ImageColor foreground)
+    /// <returns>The entity's style in surface units.</returns>
+    public ImageStyle Resolve(Entity entity, ImageRenderContext context, ImageColor foreground)
     {
-        float width = context.ToStrokeWidth(entity.GetActiveLineWeightType());
-        return new ImageStyle(
-            entity.GetActiveColor().ToImageColor(foreground),
-            width,
-            LineTypeDashResolver.Resolve(entity, context, width),
-            ResolveOpacity(entity, parentOpacity));
+        return this.ToImageStyle(this.ResolveAttributes(entity, entity.Layer, parent: null), context, foreground);
     }
 
     /// <summary>
@@ -53,5 +138,10 @@ internal sealed class ImageStyleResolver
         }
 
         return Math.Clamp(1f - (transparency.Value / 100f), 0f, 1f);
+    }
+
+    private static bool IsNamed(LineType? lineType, string name)
+    {
+        return lineType != null && string.Equals(lineType.Name, name, StringComparison.OrdinalIgnoreCase);
     }
 }

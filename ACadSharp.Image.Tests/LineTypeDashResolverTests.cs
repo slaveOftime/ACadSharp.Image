@@ -1,4 +1,5 @@
 using ACadSharp.Entities;
+using ACadSharp.Header;
 using ACadSharp.Image.Rendering;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
@@ -87,9 +88,9 @@ public sealed class LineTypeDashResolverTests
     {
         Line line = new() { LineType = Dashed(0.1, -0.1) };
 
-        Assert.Null(LineTypeDashResolver.Resolve(line, Context(1d), 1f));
-        Assert.NotNull(LineTypeDashResolver.Resolve(line, Context(20d), 1f));
-        Assert.NotNull(LineTypeDashResolver.Resolve(line, Context(1d, unitsPerMillimeter: 1d), 1f));
+        Assert.Null(Resolve(line, Context(1d)));
+        Assert.NotNull(Resolve(line, Context(20d)));
+        Assert.NotNull(Resolve(line, Context(1d, unitsPerMillimeter: 1d)));
     }
 
     [Fact]
@@ -98,7 +99,7 @@ public sealed class LineTypeDashResolverTests
         // A huge CELTSCALE overflows the pattern lengths to infinity, which no surface can dash with.
         Line line = new() { LineType = Dashed(1, -1), LineTypeScale = double.MaxValue };
 
-        Assert.Null(LineTypeDashResolver.Resolve(line, Context(1d), 1f));
+        Assert.Null(Resolve(line, Context(1d)));
     }
 
     [Fact]
@@ -106,9 +107,24 @@ public sealed class LineTypeDashResolverTests
     {
         Line line = new() { LineType = Dashed(1, -1), LineTypeScale = 3 };
 
-        float[]? pattern = LineTypeDashResolver.Resolve(line, Context(1d), 1f);
+        float[]? pattern = Resolve(line, Context(1d));
 
         Assert.NotNull(pattern);
         Assert.Equal([3f, 3f], pattern);
     }
+
+    [Fact]
+    public void HeaderLineTypeScaleMultiplies()
+    {
+        CadHeader header = new() { LineTypeScale = 2d };
+        Line line = new() { LineType = Dashed(1, -1), LineTypeScale = 3 };
+
+        float[]? pattern = LineTypeDashResolver.Resolve(line.LineType, header, line.LineTypeScale, Context(1d), 1f);
+
+        Assert.NotNull(pattern);
+        Assert.Equal([6f, 6f], pattern);
+    }
+
+    private static float[]? Resolve(Line line, ImageRenderContext context) =>
+        LineTypeDashResolver.Resolve(line.LineType, line.Document?.Header, line.LineTypeScale, context, 1f);
 }

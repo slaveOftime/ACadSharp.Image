@@ -69,6 +69,74 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal("Hardware", surface.Entities[2].LayerName);
         Assert.Equal(0, surface.Depth);
         Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), surface.Layers[1].Color);
+
+        // The layer-0 line is ByLayer, so it is drawn with the effective (insert) layer's colour, not layer 0's.
+        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), surface.Styles[0].StrokeColor);
+    }
+
+    [Fact]
+    public void NestedEntitiesResolveByLayerAgainstTheEffectiveLayerAndByBlockAgainstTheInsert()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        CadDocument document = new();
+        document.Header.LineTypeScale = 2d;
+        LineType dashed = new("DASHED");
+        dashed.AddSegment(new LineType.Segment { Length = 1 });
+        dashed.AddSegment(new LineType.Segment { Length = -1 });
+        document.LineTypes.Add(dashed);
+        Layer doors = new("Doors") { Color = new ACadSharp.Color(1), LineWeight = LineWeightType.W50, LineType = dashed };
+        document.Layers.Add(doors);
+        Layer hardware = new("Hardware") { Color = new ACadSharp.Color(5), LineWeight = LineWeightType.W100 };
+        document.Layers.Add(hardware);
+
+        BlockRecord block = new("DOOR");
+        document.BlockRecords.Add(block);
+        // (a) layer 0, everything ByLayer: takes the insert's layer, including its dashed linetype and weight.
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)) { Layer = document.Layers[Layer.DefaultName] });
+        // (b) everything ByBlock: takes the insert's own resolved attributes.
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(0, 10, 0)) { Color = ACadSharp.Color.ByBlock, LineWeight = LineWeightType.ByBlock, LineType = document.LineTypes.ByBlock });
+        // (c) an explicit layer keeps its own attributes.
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)) { Layer = hardware });
+
+        Insert insert = new(block) { Layer = doors, Color = new ACadSharp.Color(3), LineWeight = LineWeightType.W200, LineType = document.LineTypes.Continuous, LineTypeScale = 1.5 };
+        document.Entities.Add(insert);
+
+        dispatcher.Draw(CreateContext(surface, configuration), insert);
+
+        // Styles are recorded per drawing call: (a), (b), (c); the insert itself draws nothing.
+        Assert.Equal(3, surface.Styles.Count);
+        ImageStyle layerZero = surface.Styles[0];
+        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), layerZero.StrokeColor);
+        Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.W50), layerZero.StrokeWidth);
+        // LTSCALE 2 (header, reached through the insert since the clone has no document) x CELTSCALE 1.5 (insert) x 1.
+        Assert.NotNull(layerZero.DashPattern);
+        Assert.Equal([3f, 3f], layerZero.DashPattern);
+
+        ImageStyle byBlock = surface.Styles[1];
+        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(0, 255, 0), byBlock.StrokeColor);
+        Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.W200), byBlock.StrokeWidth);
+        Assert.Null(byBlock.DashPattern);
+
+        ImageStyle own = surface.Styles[2];
+        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(0, 0, 255), own.StrokeColor);
+        Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.W100), own.StrokeWidth);
+    }
+
+    [Fact]
+    public void TopLevelByBlockDrawsAsColourSeven()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.Black };
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)) { Color = ACadSharp.Color.ByBlock, LineWeight = LineWeightType.ByBlock });
+
+        ImageStyle style = Assert.Single(surface.Styles);
+        Assert.Equal(SixLabors.ImageSharp.Color.White, style.StrokeColor);
+        Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.Default), style.StrokeWidth);
     }
 
     [Fact]

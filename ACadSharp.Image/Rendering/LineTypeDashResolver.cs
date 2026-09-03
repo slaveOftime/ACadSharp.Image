@@ -10,25 +10,25 @@ namespace ACadSharp.Image.Rendering;
 internal static class LineTypeDashResolver
 {
     /// <summary>
-    /// Resolves the dash pattern of an entity's active linetype.
+    /// Resolves the dash pattern of a resolved linetype.
     /// </summary>
-    /// <param name="entity">The entity whose linetype should be converted.</param>
+    /// <param name="lineType">The linetype after ByLayer/ByBlock substitution, or null for a solid stroke.</param>
+    /// <param name="header">Header supplying LTSCALE, or null when the entity belongs to no document (scale 1).</param>
+    /// <param name="lineTypeScale">The entity's effective CELTSCALE, including every enclosing insert's.</param>
     /// <param name="context">The context that maps linetype units onto the surface.</param>
     /// <param name="strokeWidth">The stroke width in surface units; dots are drawn as a dash this long.</param>
     /// <returns>
     /// Alternating dash and gap lengths in surface units, or <see langword="null"/> for a solid stroke.
     /// </returns>
-    public static float[]? Resolve(Entity entity, ImageRenderContext context, float strokeWidth)
+    public static float[]? Resolve(LineType? lineType, CadHeader? header, double lineTypeScale, ImageRenderContext context, float strokeWidth)
     {
-        LineType? lineType = entity.GetActiveLineType();
         if (lineType == null)
         {
             return null;
         }
 
-        CadHeader? header = entity.Document?.Header;
         double ltscale = header != null && header.LineTypeScale > 0d ? header.LineTypeScale : 1d;
-        double celtscale = entity.LineTypeScale > 0d ? entity.LineTypeScale : 1d;
+        double celtscale = lineTypeScale > 0d ? lineTypeScale : 1d;
         float[]? pattern = BuildPattern(lineType, ltscale * celtscale * context.LineTypeScale, strokeWidth);
         if (pattern == null)
         {

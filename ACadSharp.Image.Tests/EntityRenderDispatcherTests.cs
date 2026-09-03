@@ -491,6 +491,27 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
+    public void TextInsideANestedInsertIsPlacedThroughBothTransforms()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        BlockRecord inner = new("INNER");
+        inner.Entities.Add(new TextEntity { Value = "N", InsertPoint = new XYZ(1, 2, 0), AlignmentPoint = new XYZ(3, 2, 0), HorizontalAlignment = TextHorizontalAlignment.Right, Height = 1 });
+        BlockRecord outer = new("OUTER");
+        outer.Entities.Add(new Insert(inner) { InsertPoint = new XYZ(5, 0, 0) });
+        Insert insert = new(outer) { InsertPoint = new XYZ(10, 0, 0) };
+
+        dispatcher.Draw(CreateContext(surface, configuration), insert);
+
+        // (3,2) + (5,0) + (10,0): the alignment point travels through both inserts.
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal(18d, run.Origin.X, 6);
+        Assert.Equal(100d - 2d, run.Origin.Y, 6);
+        Assert.Equal(SurfaceTextAnchor.End, run.Anchor);
+    }
+
+    [Fact]
     public void TextAndMTextInsideARotatedScaledInsertFollowIt()
     {
         RecordingDrawingSurface surface = new();

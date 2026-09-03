@@ -24,6 +24,13 @@ internal static class Program
                 throw new FileNotFoundException("Input file was not found.", inputPath);
             }
 
+            CadDocument document = LoadDocument(inputPath);
+            if (options.ListLayers)
+            {
+                WriteLayerTable(document);
+                return 0;
+            }
+
             ImageExportFormat format = ResolveFormat(options);
             string outputPath = ResolveOutputPath(options, inputPath, format);
 
@@ -31,7 +38,6 @@ internal static class Program
             Configure(exporter.Configuration, options);
             exporter.Configuration.OnNotification += OnExporterNotification;
 
-            CadDocument document = LoadDocument(inputPath);
             if (options.ExportPaperLayouts)
             {
                 exporter.AddPaperLayouts(document);
@@ -86,6 +92,18 @@ internal static class Program
         configuration.Svg.EmitSize = options.SvgEmitSize;
         configuration.Svg.IdPrefix = options.SvgIdPrefix;
         configuration.Svg.Precision = options.SvgPrecision;
+
+        foreach (string layer in options.OnlyLayers)
+        {
+            configuration.IncludeLayer(layer);
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.LayerVisibility))
+        {
+            configuration.LayerVisibility = Enum.TryParse(options.LayerVisibility, ignoreCase: true, out LayerVisibilityMode mode)
+                ? mode
+                : throw new InvalidOperationException($"Invalid --layer-visibility '{options.LayerVisibility}'. Use all, screen or plot.");
+        }
     }
 
     private static CadDocument LoadDocument(string inputPath)
@@ -96,6 +114,31 @@ internal static class Program
             ".dwg" => DwgReader.Read(inputPath, OnReaderNotification),
             _ => throw new InvalidOperationException("Unsupported input format. Use a .dxf or .dwg file."),
         };
+    }
+
+    private static void WriteLayerTable(CadDocument document)
+    {
+        Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
+        foreach (ACadSharp.Entities.Entity entity in document.ModelSpace.Entities)
+        {
+            string name = entity.Layer?.Name ?? "0";
+            counts[name] = counts.TryGetValue(name, out int count) ? count + 1 : 1;
+        }
+
+        List<ACadSharp.Tables.Layer> layers = document.Layers.OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        int nameWidth = Math.Max(5, layers.Max(l => l.Name.Length));
+        int lineTypeWidth = Math.Max(8, layers.Max(l => (l.LineType?.Name ?? "-").Length));
+
+        Console.WriteLine($"{"Layer".PadRight(nameWidth)}  On   Frozen  Plot  Color        Weight  {"Linetype".PadRight(lineTypeWidth)}  Entities");
+        foreach (ACadSharp.Tables.Layer layer in layers)
+        {
+            string color = layer.Color.IsTrueColor
+                ? $"#{layer.Color.R:x2}{layer.Color.G:x2}{layer.Color.B:x2}"
+                : layer.Color.Index.ToString(CultureInfo.InvariantCulture);
+            counts.TryGetValue(layer.Name, out int count);
+            Console.WriteLine(
+                $"{layer.Name.PadRight(nameWidth)}  {(layer.IsOn ? "yes" : "no ")}  {(layer.Flags.HasFlag(ACadSharp.Tables.LayerFlags.Frozen) ? "yes   " : "no    ")}  {(layer.PlotFlag ? "yes " : "no  ")}  {color.PadRight(11)}  {layer.LineWeight.ToString().PadRight(6)}  {(layer.LineType?.Name ?? "-").PadRight(lineTypeWidth)}  {count}");
+        }
     }
 
     private static SixLabors.ImageSharp.Color ParseColor(string value)
@@ -160,6 +203,9 @@ internal static class Program
         bool svgEmitSize = false;
         string svgIdPrefix = string.Empty;
         int? svgPrecision = null;
+        string? layerVisibility = null;
+        List<string> onlyLayers = new();
+        bool listLayers = false;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -221,6 +267,15 @@ internal static class Program
                 case "--svg-precision":
                     svgPrecision = ParseRange(GetRequiredValue(args, ref i, current), current, 0, 8);
                     break;
+                case "--layer-visibility":
+                    layerVisibility = GetRequiredValue(args, ref i, current);
+                    break;
+                case "--only-layer":
+                    onlyLayers.Add(GetRequiredValue(args, ref i, current));
+                    break;
+                case "--list-layers":
+                    listLayers = true;
+                    break;
                 default:
                     throw new InvalidOperationException($"Unknown argument '{current}'.");
             }
@@ -231,7 +286,7 @@ internal static class Program
             throw new InvalidOperationException("An input .dxf or .dwg file is required.");
         }
 
-        return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers, svgNoScalingStroke, svgNoEntityAttributes, svgEmitSize, svgIdPrefix, svgPrecision);
+        return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers, svgNoScalingStroke, svgNoEntityAttributes, svgEmitSize, svgIdPrefix, svgPrecision, layerVisibility, onlyLayers, listLayers);
     }
 
     private static int ParseRange(string value, string argumentName, int min, int max)
@@ -339,6 +394,9 @@ Options:
   -q, --quality <1-100>       Output quality for lossy formats. Default: 90.
       --paper-layouts         Export paper layouts instead of model space.
       --hide-layer <name>     Hide entities on the specified layer. Can be used multiple times.
+      --only-layer <name>     Render only the specified layer(s). Can be used multiple times.
+      --layer-visibility <m>  all (default), screen (honour off/frozen), or plot (also honour non-plottable).
+      --list-layers           Print the drawing's layers and exit without rendering.
       --svg-no-scaling-stroke Write SVG stroke widths in drawing units instead of constant pixels.
       --svg-no-entity-attributes
                               Omit data-handle/data-type/data-parent/data-block attributes from SVG.

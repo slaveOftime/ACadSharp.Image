@@ -18,5 +18,8 @@ internal sealed record CliOptions(
     bool SvgNoEntityAttributes,
     bool SvgEmitSize,
     string SvgIdPrefix,
-    int? SvgPrecision
+    int? SvgPrecision,
+    string? LayerVisibility,
+    IReadOnlyList<string> OnlyLayers,
+    bool ListLayers
 );

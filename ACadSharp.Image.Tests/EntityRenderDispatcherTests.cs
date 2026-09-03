@@ -848,7 +848,26 @@ public sealed class EntityRenderDispatcherTests
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
-        Assert.Contains(surface.Texts, t => t.Text == "ACME");
+        Assert.Single(surface.Texts, t => t.Text == "ACME");
+    }
+
+    [Fact]
+    public void ConstantAttributeDefinitionIsDrawnOnceWhenTheInsertCarriesNoAttrib()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("CONST2");
+        block.Entities.Add(new AttributeDefinition { Tag = "MAKER", Value = "ACME2", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant });
+        // Insert has no parameterless constructor and Block has no public setter in ACadSharp 3.7.1 (verified by
+        // probe), so an insert with no ATTRIB is built via Insert(BlockRecord) and then Attributes.Clear(),
+        // reproducing a file where a constant attribute was never persisted as an ATTRIB.
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+        insert.Attributes.Clear();
+        Assert.Empty(insert.Attributes);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Single(surface.Texts, t => t.Text == "ACME2");
     }
 
     [Theory]
@@ -884,5 +903,36 @@ public sealed class EntityRenderDispatcherTests
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
         Assert.Contains(surface.Texts, t => t.Text == "SHOWN");
+    }
+
+    [Fact]
+    public void NestedInsertAttributesFollowTheOuterInsertsDocumentAttmode()
+    {
+        // A nested Insert exploded out of an outer block's contents carries no Document of its own; its ATTMODE
+        // must still come from the outer insert's document, not fall back to Normal.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { LayerVisibility = LayerVisibilityMode.Screen };
+
+        BlockRecord innerBlock = new("INNER_BLK");
+        innerBlock.Entities.Add(new AttributeDefinition { Tag = "X", Value = "DEFAULT_INNER", InsertPoint = new XYZ(0, 0, 0), Height = 2, Flags = AttributeFlags.None });
+        Insert innerInsert = new(innerBlock) { InsertPoint = new XYZ(0, 0, 0) };
+        AttributeEntity innerAttribute = Assert.Single(innerInsert.Attributes);
+        innerAttribute.Value = "INNER";
+        innerAttribute.InsertPoint = new XYZ(0, 0, 0);
+        innerAttribute.Flags = AttributeFlags.None;
+
+        BlockRecord outerBlock = new("OUTER_BLK");
+        outerBlock.Entities.Add(innerInsert);
+        Insert outerInsert = new(outerBlock) { InsertPoint = new XYZ(10, 0, 0) };
+
+        CadDocument document = new();
+        document.Header.AttributeVisibility = AttributeVisibilityMode.None;
+        document.BlockRecords.Add(innerBlock);
+        document.BlockRecords.Add(outerBlock);
+        document.Entities.Add(outerInsert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), outerInsert);
+
+        Assert.DoesNotContain(surface.Texts, t => t.Text == "INNER");
     }
 }

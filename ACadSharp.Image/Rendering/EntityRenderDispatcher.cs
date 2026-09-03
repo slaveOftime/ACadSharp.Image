@@ -464,9 +464,12 @@ internal sealed class EntityRenderDispatcher
         {
             Entity? original = index < originals.Count ? originals[index] : null;
             index++;
-            if (entity is AttributeDefinition definition && !definition.Flags.HasFlag(AttributeFlags.Constant))
+            if (entity is AttributeDefinition definition
+                && (!definition.Flags.HasFlag(AttributeFlags.Constant) || insert.Attributes.Any(a => string.Equals(a.Tag, definition.Tag, StringComparison.Ordinal))))
             {
-                // A non-constant ATTDEF is a template: the insert's ATTRIB carries the value that is actually shown.
+                // A non-constant ATTDEF is a template shown through its ATTRIB; a constant one is skipped too when
+                // an ATTRIB with its tag already exists (ACadSharp's Insert(BlockRecord) constructor emits one even
+                // for constant definitions), so the value is not drawn twice.
                 continue;
             }
 
@@ -494,7 +497,7 @@ internal sealed class EntityRenderDispatcher
     {
         foreach (AttributeEntity attribute in insert.Attributes)
         {
-            if (this.IsAttributeVisible(attribute, insert))
+            if (this.IsAttributeVisible(attribute, insert, parent))
             {
                 this.Draw(context, attribute, layer, insert.Handle, insert.Block?.Name, parent);
             }
@@ -506,14 +509,17 @@ internal sealed class EntityRenderDispatcher
     /// <see cref="LayerVisibilityMode.All"/> like entity invisibility; otherwise None hides every attribute,
     /// Normal hides the ones flagged Hidden and All shows them all.
     /// </summary>
-    private bool IsAttributeVisible(AttributeEntity attribute, Insert insert)
+    private bool IsAttributeVisible(AttributeEntity attribute, Insert insert, ResolvedStyle parent)
     {
         if (this._configuration.LayerVisibility == LayerVisibilityMode.All)
         {
             return true;
         }
 
-        AttributeVisibilityMode mode = insert.Document?.Header.AttributeVisibility ?? AttributeVisibilityMode.Normal;
+        // A nested insert exploded out of an outer block carries no Document of its own; its ATTMODE comes from
+        // the outermost placing insert's header instead, via the resolved style that is threaded down for LTSCALE.
+        CadHeader? header = insert.Document?.Header ?? parent.Header;
+        AttributeVisibilityMode mode = header?.AttributeVisibility ?? AttributeVisibilityMode.Normal;
         return mode switch
         {
             AttributeVisibilityMode.None => false,

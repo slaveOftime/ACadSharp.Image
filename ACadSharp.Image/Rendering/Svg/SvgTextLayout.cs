@@ -44,7 +44,8 @@ internal static class SvgTextLayout
     /// <summary>
     /// Splits text into lines: explicit line breaks always break; when <paramref name="wrappingWidth"/> is positive,
     /// the words are fitted greedily, measured with SixLabors.Fonts, at the raster's break opportunities, so both
-    /// backends break the same labels in the same places. A token wider than the width stays alone on its line.
+    /// backends break the same labels at the same break opportunities. A token wider than the width stays alone on its
+    /// line.
     /// </summary>
     /// <param name="text">Text with <c>\n</c> for explicit breaks.</param>
     /// <param name="wrappingWidth">Available width in surface units, or a non-positive value for no wrapping.</param>
@@ -103,13 +104,13 @@ internal static class SvgTextLayout
             }
 
             string candidate = current + token;
-            if (TextMeasurer.MeasureAdvance(candidate.TrimEnd(), options).Width <= limit)
+            if (TextMeasurer.MeasureAdvance(candidate.TrimEnd(' ', '\t'), options).Width <= limit)
             {
                 current = candidate;
             }
             else
             {
-                lines.Add(current.TrimEnd());
+                lines.Add(current.TrimEnd(' ', '\t'));
                 current = token;
             }
         }
@@ -161,6 +162,6 @@ internal static class SvgTextLayout
 
     /// <summary>Whether the character ends a run that a line may break after.</summary>
     /// <param name="value">The character to classify.</param>
-    /// <returns><c>true</c> for a space, a tab or a no-break space.</returns>
-    private static bool IsBreakingSpace(char value) => value is ' ' or '\t' or '\u00A0';
+    /// <returns><c>true</c> for a space or a tab; a no-break space (U+00A0) never breaks, as in UAX #14.</returns>
+    private static bool IsBreakingSpace(char value) => value is ' ' or '\t';
 }

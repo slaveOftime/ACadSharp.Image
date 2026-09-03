@@ -40,6 +40,24 @@ public sealed class SvgTextLayoutTests
     }
 
     [Fact]
+    public void SlashesBreakAfterTheSlash()
+    {
+        Assert.Equal(["a/", "b/", "c/", "d"], SvgTextLayout.Wrap("a/b/c/d", 4, 4, Family));
+    }
+
+    [Fact]
+    public void TokenWiderThanTheWidthStaysAloneOnItsLine()
+    {
+        Assert.Equal(["supercalifragilistic"], SvgTextLayout.Wrap("supercalifragilistic", 2, 4, Family));
+    }
+
+    [Fact]
+    public void NoBreakSpaceNeverBreaks()
+    {
+        Assert.Equal(["A\u00A0B"], SvgTextLayout.Wrap("A\u00A0B", 1, 4, Family));
+    }
+
+    [Fact]
     public void CombiningMarksDoNotBreakTheWrapper()
     {
         // Combining marks below the baseline (U+0332 COMBINING LOW LINE) and their precomposed equivalents.
@@ -70,6 +88,8 @@ public sealed class SvgTextLayoutTests
     [InlineData("A  B   C", 9)]
     [InlineData("A  B   C", 14)]
     [InlineData("A  B   C", 30)]
+    [InlineData("A\u00A0B", 1)]
+    [InlineData("keep\u00A0together x", 12)]
     public void LineCountMatchesImageSharpLayout(string text, double width)
     {
         int expected = ImageSharpLineCount(text, width, 4d);

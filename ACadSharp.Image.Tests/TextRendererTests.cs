@@ -188,11 +188,21 @@ public sealed class TextRendererTests
     }
 
     [Fact]
-    public void ResolvePlacementLeavesWorldPlaneTextAlone()
+    public void OrientLeavesFrontFacingPlacementsAlone()
     {
-        (double rotation, SurfaceTextAnchor anchor) = TextRenderer.ResolvePlacement(0.7, SurfaceTextAnchor.End, null);
+        TextRenderer.Placement front = new(new XY(0, 0), new XY(Math.Cos(0.7), Math.Sin(0.7)), Mirrored: false, Scale: 1d);
+        (double rotation, SurfaceTextAnchor anchor) = TextRenderer.Orient(front, SurfaceTextAnchor.End);
 
-        Assert.Equal(0.7, rotation);
+        Assert.Equal(0.7, rotation, 9);
         Assert.Equal(SurfaceTextAnchor.End, anchor);
+    }
+
+    [Fact]
+    public void PlaceDetectsMirroringAndEdgeOnPlanes()
+    {
+        TextRenderer.Placement? mirrored = TextRenderer.Place(null, new XYZ(0, 0, 0), new XYZ(-1, 0, 0), new XYZ(0, 1, 0));
+
+        Assert.True(mirrored!.Value.Mirrored);
+        Assert.Null(TextRenderer.Place(null, new XYZ(0, 0, 0), new XYZ(0, 0, 1), new XYZ(0, 1, 0)));
     }
 }

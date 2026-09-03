@@ -65,7 +65,9 @@ internal sealed class EntityRenderDispatcher
         this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parent: null);
     }
 
-    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent)
+    // textSource is the original block entity a TEXT or MTEXT clone came from, whose geometry is used instead of the
+    // clone's, and placement is the transform of the insert that placed it; both are null outside a block reference.
+    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? textSource = null, Transform? placement = null)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
         Layer? layer = GetEffectiveLayer(entity, parentLayer);
@@ -134,10 +136,10 @@ internal sealed class EntityRenderDispatcher
                     this._splineRenderer.Draw(context, style, spline);
                     break;
                 case MText mtext:
-                    this._textRenderer.Draw(context, style, mtext);
+                    this._textRenderer.Draw(context, style, textSource as MText ?? mtext, placement);
                     break;
                 case TextEntity textEntity:
-                    this._textRenderer.Draw(context, style, textEntity);
+                    this._textRenderer.Draw(context, style, textSource as TextEntity ?? textEntity, placement);
                     break;
                 case IText text:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
@@ -384,29 +386,34 @@ internal sealed class EntityRenderDispatcher
     {
         // The exploded clones carry the block entities' own attributes but no owner or document; ByBlock and
         // layer-0 inheritance, and the header's LTSCALE, come from the insert's resolved style and effective layer.
+        // ACadSharp 3.7.1's Explode() yields one clone per block entity, in order. Text geometry comes from the
+        // original entity placed through the insert's transform, because the clones' alignment points and MTEXT
+        // X axes are never transformed and mirrored inserts hand back world points with a flipped normal.
+        Transform transform = insert.GetTransform();
+        IReadOnlyList<Entity> originals = insert.Block?.Entities.ToList() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
+        int index = 0;
         foreach (Entity entity in insert.Explode())
         {
-            NormalizeExplodedText(entity);
-            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent);
+            Entity? original = index < originals.Count ? originals[index] : null;
+            index++;
+            NormalizeExplodedClone(entity);
+            bool placeText = original is TextEntity or MText && original.GetType() == entity.GetType();
+            this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent, placeText ? original : null, placeText ? transform : null);
         }
     }
 
     /// <summary>
-    /// ACadSharp 3.7.1's <c>Insert.Explode()</c> writes a TEXT clone's insertion and alignment points in world
-    /// coordinates while still giving it the transformed (for a mirrored insert, <c>(0,0,-1)</c>) normal; polyline
-    /// clones, by contrast, come back as true OCS. The renderer treats TEXT points as OCS, so the clone's points are
-    /// mapped back into its OCS here. The clones are transient, so mutating them is safe.
+    /// Hatch clones from <c>Insert.Explode()</c> carry world boundary points but the transformed normal (a mirrored
+    /// insert gives <c>(0,0,-1)</c>); the renderer would apply that normal again. The points are already world, so
+    /// the clone is marked as lying on the world plane. Clones are transient, so mutating them is safe.
     /// </summary>
-    private static void NormalizeExplodedText(Entity entity)
+    /// <param name="entity">The exploded clone to normalise.</param>
+    private static void NormalizeExplodedClone(Entity entity)
     {
-        if (entity is not TextEntity text || OcsTransform.IsWorldPlane(text.Normal))
+        if (entity is Hatch hatch && !IsWorldPlane(hatch.Normal))
         {
-            return;
+            hatch.Normal = XYZ.AxisZ;
         }
-
-        OcsTransform frame = OcsTransform.For(text.Normal);
-        text.InsertPoint = frame.ToOcs(text.InsertPoint);
-        text.AlignmentPoint = frame.ToOcs(text.AlignmentPoint);
     }
 
     private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch)

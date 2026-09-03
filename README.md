@@ -223,7 +223,7 @@ exporter.Configuration.HideLayer("A-DOOR");                    // then remove on
 exporter.AddModelSpace(document);
 ```
 
-Filtering happens when rendering, so it also applies to block contents, dimension geometry and paper-space viewport contents. Entities on layer `0` inside a block take the layer of the insert that placed them, including its colour, line weight and linetype when theirs are ByLayer; ByBlock attributes resolve to the placing insert's own (colour 7 and defaults at top level). Rendering never modifies the pages, so changing filters between renders is safe.
+Filtering happens when rendering, so it also applies to block contents, dimension geometry and paper-space viewport contents. Entities on layer `0` inside a block take the layer of the insert that placed them, including its colour, line weight and linetype when theirs are ByLayer; ByBlock attributes resolve to the placing insert's own (colour 7 and defaults at top level). Text inside block references is placed through the insert's transform from the original entity, because ACadSharp 3.7.1 leaves TEXT alignment points and MTEXT directions untransformed when exploding. Rendering never modifies the pages, so changing filters between renders is safe.
 
 ### Layer visibility
 

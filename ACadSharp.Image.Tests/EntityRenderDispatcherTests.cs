@@ -449,18 +449,6 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
-    public void ToOcsInvertsToWorld()
-    {
-        OcsTransform frame = OcsTransform.For(new XYZ(2, 2, 2));
-        XYZ world = frame.ToWorld(1.5, -2, 0.25);
-        XYZ back = frame.ToOcs(world);
-
-        Assert.Equal(1.5, back.X, 9);
-        Assert.Equal(-2d, back.Y, 9);
-        Assert.Equal(0.25, back.Z, 9);
-    }
-
-    [Fact]
     public void TextInsideAMirroredInsertStaysWithItsGeometry()
     {
         RecordingDrawingSurface surface = new();
@@ -481,6 +469,73 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal(start.Y, run.Origin.Y, 6);
         Assert.Equal(SurfaceTextAnchor.End, run.Anchor);
         Assert.Equal(1d, Math.Cos(run.Rotation), 6);
+    }
+
+    [Fact]
+    public void AlignedTextInsideAnInsertIsTranslatedWithIt()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        BlockRecord block = new("TAG");
+        block.Entities.Add(new TextEntity { Value = "R", InsertPoint = new XYZ(1, 2, 0), AlignmentPoint = new XYZ(4, 2, 0), HorizontalAlignment = TextHorizontalAlignment.Right, Height = 1 });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+
+        dispatcher.Draw(CreateContext(surface, configuration), insert);
+
+        // ACadSharp leaves the clone's alignment point at (4,2); the renderer places the original through the insert.
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal(14d, run.Origin.X, 6);
+        Assert.Equal(100d - 2d, run.Origin.Y, 6);
+        Assert.Equal(SurfaceTextAnchor.End, run.Anchor);
+    }
+
+    [Fact]
+    public void TextAndMTextInsideARotatedScaledInsertFollowIt()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        BlockRecord block = new("ROT");
+        block.Entities.Add(new TextEntity { Value = "T", InsertPoint = new XYZ(1, 2, 0), Height = 1 });
+        block.Entities.Add(new MText { Value = "M", InsertPoint = new XYZ(1, 5, 0), Height = 1, AlignmentPoint = new XYZ(1, 0, 0) });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0), Rotation = Math.PI / 2, XScale = 2, YScale = 2 };
+
+        dispatcher.Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Equal(2, surface.Texts.Count);
+        SurfaceText text = surface.Texts[0];
+        // (1,2) scaled by 2 and rotated a quarter turn about the origin, then moved to (10,0): (10 - 4, 2) = (6, 2).
+        Assert.Equal(6d, text.Origin.X, 6);
+        Assert.Equal(100d - 2d, text.Origin.Y, 6);
+        Assert.Equal(0d, Math.Cos(text.Rotation), 6);
+        Assert.Equal(1d, Math.Sin(text.Rotation), 6);
+        Assert.Equal(2d, text.Height, 6);
+        Assert.Equal(SurfaceTextAnchor.Start, text.Anchor);
+
+        SurfaceText mtext = surface.Texts[1];
+        Assert.Equal(0d, Math.Cos(mtext.Rotation), 6);
+        Assert.Equal(1d, Math.Sin(mtext.Rotation), 6);
+        Assert.Equal(2d, mtext.Height, 6);
+    }
+
+    [Fact]
+    public void HatchInsideAMirroredInsertStaysWithItsGeometry()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        BlockRecord block = new("HATCHED");
+        Hatch hatch = SquareHatch(solid: true);
+        block.Entities.Add(hatch);
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0), XScale = -1 };
+
+        dispatcher.Draw(CreateContext(surface, configuration), insert);
+
+        // The clone's points are already world: the 0..10 square mirrored about x = 10 spans 0..10 again.
+        IReadOnlyList<SurfacePoint> ring = Assert.Single(Assert.Single(surface.FillPaths));
+        Assert.Equal(0d, ring.Min(p => p.X), 6);
+        Assert.Equal(10d, ring.Max(p => p.X), 6);
     }
 
     [Fact]

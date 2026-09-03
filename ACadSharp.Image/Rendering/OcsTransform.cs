@@ -99,20 +99,6 @@ internal sealed class OcsTransform
             (x * this.AxisX.Z) + (y * this.AxisY.Z) + (elevation * this.Normal.Z));
     }
 
-    /// <summary>
-    /// Transforms a world point into this frame's OCS (the inverse of <see cref="ToWorld"/>; the frame is orthonormal,
-    /// so the inverse is the transpose).
-    /// </summary>
-    /// <param name="world">The world point.</param>
-    /// <returns>The OCS coordinates (X, Y, elevation).</returns>
-    public XYZ ToOcs(XYZ world)
-    {
-        return new XYZ(
-            (world.X * this.AxisX.X) + (world.Y * this.AxisX.Y) + (world.Z * this.AxisX.Z),
-            (world.X * this.AxisY.X) + (world.Y * this.AxisY.Y) + (world.Z * this.AxisY.Z),
-            (world.X * this.Normal.X) + (world.Y * this.Normal.Y) + (world.Z * this.Normal.Z));
-    }
-
     private static XYZ Normalize(XYZ v)
     {
         double length = Math.Sqrt((v.X * v.X) + (v.Y * v.Y) + (v.Z * v.Z));

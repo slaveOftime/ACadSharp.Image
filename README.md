@@ -2,12 +2,12 @@
 
 [![NuGet downloads](https://img.shields.io/nuget/dt/ACadSharp.Image?logo=nuget&label=downloads)](https://www.nuget.org/packages/ACadSharp.Image)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-6.0%20%7C%208.0%20%7C%2010.0-512bd4)](https://dotnet.microsoft.com/download)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%2010.0-512bd4)](https://dotnet.microsoft.com/download)
 [![CI](https://github.com/slaveoftime/ACadSharp.Image/actions/workflows/ci.yml/badge.svg)](https://github.com/slaveoftime/ACadSharp.Image/actions)
 
 **High-performance DXF/DWG to image renderer for .NET**, built on [ACadSharp](https://github.com/DomCR/ACadSharp) and [ImageSharp](https://github.com/SixLabors/ImageSharp).
 
-Transform CAD drawings into raster images for **previews**, **CI/CD pipelines**, **web applications**, **documentation**, and **automated workflows** — with zero AutoCAD dependency.
+Transform CAD drawings into raster images or SVG for **previews**, **CI/CD pipelines**, **web applications**, **documentation**, and **automated workflows** — with zero AutoCAD dependency.
 
 ![Rendered sample](Samples/HSK80AHCP16190M_BMG.webp)
 
@@ -15,11 +15,14 @@ Transform CAD drawings into raster images for **previews**, **CI/CD pipelines**,
 
 ## ✨ Features
 
-- 🎨 **Multi-format export** — PNG, BMP, JPEG, GIF, and WebP support
+- 🎨 **Multi-format export** — PNG, BMP, JPEG, GIF, WebP, and SVG support
 - 📐 **Full CAD support** — Render DXF and DWG files with ACadSharp
 - 🖼️ **Customizable output** — Control width, height, padding, background color, and quality
 - 📊 **Space support** — Model space, paper layouts, and viewports
-- 🎭 **Layer filtering** — Hide specific layers with `--hide-layer` option
+- 🖋️ **SVG output** — One `<g>` per layer, `data-*` attributes and real `<text>`, ready for React pan/zoom viewers
+- 👁️ **Layer visibility modes** — `screen` and `plot` honour off, frozen, non-plottable and viewport-frozen layers
+- 🎭 **Layer filtering** — Include and exclude layer lists, with `--hide-layer` and `--only-layer` CLI options
+- 〰️ **Linetypes, transparency and hatches** — Dashed linetypes, entity transparency and hatch fills are rendered
 - ⚡ **CLI tool** — Cross-platform command-line interface for automation
 - 🔧 **Library API** — Full .NET integration with intuitive fluent-style configuration
 - 🚀 **Native AOT** - Publish as standalone native binaries with zero .NET runtime requirement
@@ -64,7 +67,7 @@ using SixLabors.ImageSharp;
 var document = DwgReader.Read("part.dwg");
 
 // Configure and export
-var exporter = new ImageExporter("output.webp");
+var exporter = new ImageExporter();
 exporter.Configuration.Width = 2000;
 exporter.Configuration.Height = 1400;
 exporter.Configuration.SetPadding(24, 12);
@@ -121,6 +124,18 @@ cad-to-image "complex.dxf" --hide-layer "DIMENSIONS" --hide-layer "ANNOTATIONS" 
 cad-to-image "multi-sheet.dwg" --paper-layouts --output ./sheets/
 ```
 
+**Render to SVG:**
+
+```bash
+cad-to-image "drawing.dxf" --format svg --layer-visibility plot --only-layer "A-WALL" --only-layer "A-DOOR"
+```
+
+**List a drawing's layers:**
+
+```bash
+cad-to-image "drawing.dxf" --list-layers
+```
+
 ---
 
 ## 📖 CLI Reference
@@ -131,7 +146,7 @@ Usage:
 
 Options:
   -o, --output <path>         Output file or directory path.
-  -f, --format <format>       png, bmp, jpg, jpeg, gif, webp.
+  -f, --format <format>       png, bmp, jpg, jpeg, gif, webp, svg.
   -w, --width <pixels>        Output width in pixels. Default: 1600.
   -H, --height <pixels>       Output height in pixels. Default: 900.
   -p, --padding <value>       Padding in pixels: <all>, <x,y>, or <left,top,right,bottom>.
@@ -139,6 +154,15 @@ Options:
   -q, --quality <1-100>       Output quality for lossy formats. Default: 90.
       --paper-layouts         Export paper layouts instead of model space.
       --hide-layer <name>     Hide entities on the specified layer. Can be used multiple times.
+      --only-layer <name>     Render only the specified layer(s). Can be used multiple times.
+      --layer-visibility <m>  all (default), screen (honour off/frozen), or plot (also honour non-plottable).
+      --list-layers           Print the drawing's layers and exit without rendering.
+      --svg-no-scaling-stroke Write SVG stroke widths in drawing units instead of constant pixels.
+      --svg-no-entity-attributes
+                              Omit data-handle/data-type/data-parent/data-block attributes from SVG.
+      --svg-size              Emit width/height on the SVG root from --width/--height.
+      --svg-id-prefix <text>  Prefix for SVG ids so several drawings can share one page.
+      --svg-precision <0-8>   Decimal places for SVG coordinates. Default: adaptive.
       --help, -h, -?          Show this help text.
 ```
 
@@ -148,43 +172,82 @@ Options:
 
 ```
 ACadSharp.Image/
-├── ImageExporter.cs          # Main public API
-├── ImageConfiguration.cs     # Fluent configuration
-├── ImagePage.cs              # Page representation
-├── RenderedImagePage.cs      # Rendered output
+├── ImageExporter.cs                  # Main public API
+├── ImageConfiguration.cs             # Configuration (layers, colours, SVG options)
+├── ImagePage.cs                      # Page representation
+├── RenderedPage.cs                   # Abstract rendered output (Save to path/stream)
+├── RenderedImagePage.cs              # Raster output (ImageSharp)
+├── RenderedSvgPage.cs                # SVG output
+├── SvgOptions.cs                     # SVG-only settings
+├── LayerVisibilityMode.cs            # All / Screen / Plot
+├── ImageExportFormat.cs              # Png, Bmp, Jpeg, Gif, Webp, Svg
+├── ImageExportFormatExtensions.cs    # Format <-> file extension helpers
 └── Rendering/
-    ├── ImagePageRenderer.cs      # Page-level rendering
-    ├── EntityRenderDispatcher.cs # Entity routing & primitive drawing
-    ├── SplineRenderer.cs         # Spline path generation and sampling
-    ├── TextRenderer.cs           # Text and MText rendering
-    ├── ImageRenderContext.cs     # Coordinate transforms
-    └── ImageStyleResolver.cs     # Color & line weight resolution
+    ├── IDrawingSurface.cs            # Backend-neutral primitives
+    ├── RasterDrawingSurface.cs       # ImageSharp backend
+    ├── Svg/
+    │   ├── SvgDrawingSurface.cs      # SVG backend
+    │   ├── SvgIdSanitizer.cs         # HTML-safe id generation
+    │   └── SvgNumberFormatter.cs     # Coordinate formatting/precision
+    ├── ImagePageRenderer.cs          # Page-level rendering and viewports
+    ├── EntityRenderDispatcher.cs     # Entity routing, layer filtering, hatches
+    ├── EntityRenderInfo.cs           # Handle/type/parent/block identity for a drawn entity
+    ├── EntityVisibilityFilter.cs     # Include/hide lists and layer state
+    ├── ImageStyle.cs                 # Resolved colour, width, dashes, opacity for one entity
+    ├── ImageStyleResolver.cs         # Colour, width, dashes, opacity
+    ├── LineTypeDashResolver.cs       # Linetype to dash array
+    ├── SplineRenderer.cs / SplineBezierConverter.cs
+    ├── CurveTessellation.cs          # Arc/circle/ellipse sampling for raster and off-plane entities
+    ├── TextRenderer.cs               # Text to SurfaceText
+    ├── SurfacePoint.cs               # Surface-space point/rect primitives
+    ├── SurfaceText.cs                # Backend-neutral text placement
+    └── ImageRenderContext.cs         # Coordinate transforms
 ```
 
 The library follows a clean architecture pattern:
 - **ImageExporter** - Public API for adding CAD content
 - **ImagePage** - Represents individual renderable pages
-- **Rendering pipeline** - Transforms CAD entities to pixel coordinates and draws them
+- **Rendering pipeline** - Transforms CAD entities to surface coordinates and draws them through a backend-neutral `IDrawingSurface`, implemented by a raster (ImageSharp) and an SVG surface
 - **Configuration** - Fluent, extensible settings for customization
 
 ---
 
 ## 💡 Advanced Usage
 
-### Layer Filtering
-
-Control visibility of specific layers programmatically:
+### Layer selection
 
 ```csharp
 var exporter = new ImageExporter();
-
-// Hide multiple layers (case-insensitive)
-exporter.Configuration.HideLayer("0");
-exporter.Configuration.HideLayer("DEFPOINTS");
-exporter.Configuration.HideLayer("ANNO_TEXT");
-
+exporter.Configuration.IncludeLayers(["A-WALL", "A-DOOR"]);   // render only these (optional)
+exporter.Configuration.HideLayer("DEFPOINTS");                 // then remove these
 exporter.AddModelSpace(document);
 ```
+
+Filtering happens when rendering, so it also applies to block contents, dimension geometry and paper-space viewport contents. Entities on layer `0` inside a block take the layer of the insert that placed them.
+
+### Layer visibility
+
+```csharp
+exporter.Configuration.LayerVisibility = LayerVisibilityMode.Plot; // All (default), Screen, Plot
+```
+
+`Screen` hides off and frozen layers, invisible entities and layers frozen per viewport. `Plot` also hides non-plottable layers such as `DEFPOINTS`.
+
+### Linetypes, transparency and colour 7
+
+Dashed linetypes are rendered using `LTSCALE`, the entity linetype scale and `PSLTSCALE` (honoured from the raw `$PSLTSCALE` header value) in paper space; patterns shorter than `MinimumDashPixels` are drawn solid, and embedded shapes and text in a linetype render as gaps. Entity transparency becomes opacity (ByLayer is treated as opaque because the ACadSharp layer table carries no transparency). Colour index 7 resolves to black or white from the background luminance, or to `ForegroundColor` when set.
+
+### SVG output
+
+```csharp
+exporter.Configuration.Svg.NonScalingStroke = true;      // constant on-screen stroke width when zooming (default)
+exporter.Configuration.Svg.IdPrefix = "plan1-";           // when inlining several drawings in one page
+exporter.Save("plan.svg", ImageExportFormat.Svg);
+```
+
+The SVG has a drawing-unit `viewBox`, no `width`/`height` unless `Svg.EmitSize` is set, an attribute-free `<g class="cad-root">` for your pan/zoom transform, and one `<g data-layer="...">` per layer. Every element carries `data-handle` and `data-type` (plus `data-parent`/`data-block` for block contents); `data-handle` is omitted for exploded block contents, since they are transient clones with no handle of their own. In React, prefer injecting the markup at runtime or configure SVGO to keep ids; `data-*` attributes survive the default SVGR pipeline. Toggle a layer with CSS `display: none` on its group.
+
+SVG and PNG are built from the same geometry and never disagree on it, but they intentionally differ in fidelity: SVG keeps native arcs, Beziers and `<text>`, while raster output tessellates curves and outlines glyphs. Entities with a non-world extrusion normal (an OCS other than the default) are tessellated in SVG too, since their curve parameters no longer describe an ellipse in output space. The available `Svg` options are `NonScalingStroke`, `EmitEntityAttributes`, `EmitSize`, `IdPrefix`, and `Precision`.
 
 ### Custom Line Weights
 
@@ -244,6 +307,8 @@ dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samp
 dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/HSK80AHCP16190M_BMG.dwg" --format webp --width 1200 --height 760
 
 dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/Subaru Logo Vector Free Wrap.dxf" --format webp --width 1200 --height 700 --background "#a0a7ae"
+
+dotnet run --project ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj -- "./Samples/6-57-1119.dxf" --format svg --layer-visibility plot
 ```
 
 ### Build NuGet Package
@@ -285,10 +350,14 @@ These changes preserve the rendering behavior while making mutation points expli
 
 Changes on the way to the next major release:
 
-- `ImageExporter.Render()` now takes an optional `ImageExportFormat` and returns `IReadOnlyList<RenderedPage>`; cast items to `RenderedImagePage` for the raster canvas, or call `Save(path)`/`Save(stream)` on the page.
+- `ImageExporter.Render()` now takes an optional `ImageExportFormat` and returns `IReadOnlyList<RenderedPage>`; cast items to `RenderedImagePage` for the raster canvas or `RenderedSvgPage` (its `Content` holds the markup), or call `Save(path)`/`Save(stream)` on the page.
 - `RenderedImagePage` derives from the new abstract `RenderedPage` and its constructor takes the format and quality it will save with.
 - The library targets net8.0 and net10.0; net6.0 is no longer supported.
 - ACadSharp 3.7.1 is required.
+- `ImagePage.Entities` now keeps every added entity; `ImageConfiguration.HiddenLayers` and `LayerVisibility` are applied at render time instead of at `Add`, so changing them afterwards takes effect, and the framing of auto-sized pages follows the currently visible entities.
+- New public members: `ImageConfiguration.GetLineWeightMillimeters`, `ImagePage.Document`, and `ImagePage.UpdateLayoutSize(Func<Entity, bool>?)`.
+- `RenderedImagePage.Save` throws `NotSupportedException` when its format is `ImageExportFormat.Svg`; use a `RenderedSvgPage` for SVG output instead.
+- This release ships with a major version tag (`v2.0.0`).
 
 ---
 

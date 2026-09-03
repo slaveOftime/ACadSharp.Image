@@ -19,7 +19,7 @@ internal sealed record CliOptions(
     bool SvgEmitSize,
     string SvgIdPrefix,
     int? SvgPrecision,
-    string? LayerVisibility,
+    LayerVisibilityMode? LayerVisibility,
     IReadOnlyList<string> OnlyLayers,
     bool ListLayers
 );

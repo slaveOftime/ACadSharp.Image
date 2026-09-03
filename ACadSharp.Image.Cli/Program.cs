@@ -98,11 +98,9 @@ internal static class Program
             configuration.IncludeLayer(layer);
         }
 
-        if (!string.IsNullOrWhiteSpace(options.LayerVisibility))
+        if (options.LayerVisibility is not null)
         {
-            configuration.LayerVisibility = Enum.TryParse(options.LayerVisibility, ignoreCase: true, out LayerVisibilityMode mode)
-                ? mode
-                : throw new InvalidOperationException($"Invalid --layer-visibility '{options.LayerVisibility}'. Use all, screen or plot.");
+            configuration.LayerVisibility = options.LayerVisibility.Value;
         }
     }
 
@@ -118,6 +116,13 @@ internal static class Program
 
     private static void WriteLayerTable(CadDocument document)
     {
+        List<ACadSharp.Tables.Layer> layers = document.Layers.OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        if (layers.Count == 0)
+        {
+            Console.WriteLine("No layers.");
+            return;
+        }
+
         Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
         foreach (ACadSharp.Entities.Entity entity in document.ModelSpace.Entities)
         {
@@ -125,11 +130,11 @@ internal static class Program
             counts[name] = counts.TryGetValue(name, out int count) ? count + 1 : 1;
         }
 
-        List<ACadSharp.Tables.Layer> layers = document.Layers.OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase).ToList();
         int nameWidth = Math.Max(5, layers.Max(l => l.Name.Length));
         int lineTypeWidth = Math.Max(8, layers.Max(l => (l.LineType?.Name ?? "-").Length));
+        int weightWidth = Math.Max(6, layers.Max(l => l.LineWeight.ToString().Length));
 
-        Console.WriteLine($"{"Layer".PadRight(nameWidth)}  On   Frozen  Plot  Color        Weight  {"Linetype".PadRight(lineTypeWidth)}  Entities");
+        Console.WriteLine($"{"Layer".PadRight(nameWidth)}  On   Frozen  Plot  Color        {"Weight".PadRight(weightWidth)}  {"Linetype".PadRight(lineTypeWidth)}  Entities");
         foreach (ACadSharp.Tables.Layer layer in layers)
         {
             string color = layer.Color.IsTrueColor
@@ -137,7 +142,7 @@ internal static class Program
                 : layer.Color.Index.ToString(CultureInfo.InvariantCulture);
             counts.TryGetValue(layer.Name, out int count);
             Console.WriteLine(
-                $"{layer.Name.PadRight(nameWidth)}  {(layer.IsOn ? "yes" : "no ")}  {(layer.Flags.HasFlag(ACadSharp.Tables.LayerFlags.Frozen) ? "yes   " : "no    ")}  {(layer.PlotFlag ? "yes " : "no  ")}  {color.PadRight(11)}  {layer.LineWeight.ToString().PadRight(6)}  {(layer.LineType?.Name ?? "-").PadRight(lineTypeWidth)}  {count}");
+                $"{layer.Name.PadRight(nameWidth)}  {(layer.IsOn ? "yes" : "no ")}  {(layer.Flags.HasFlag(ACadSharp.Tables.LayerFlags.Frozen) ? "yes   " : "no    ")}  {(layer.PlotFlag ? "yes " : "no  ")}  {color.PadRight(11)}  {layer.LineWeight.ToString().PadRight(weightWidth)}  {(layer.LineType?.Name ?? "-").PadRight(lineTypeWidth)}  {count}");
         }
     }
 
@@ -203,7 +208,7 @@ internal static class Program
         bool svgEmitSize = false;
         string svgIdPrefix = string.Empty;
         int? svgPrecision = null;
-        string? layerVisibility = null;
+        LayerVisibilityMode? layerVisibility = null;
         List<string> onlyLayers = new();
         bool listLayers = false;
 
@@ -268,7 +273,7 @@ internal static class Program
                     svgPrecision = ParseRange(GetRequiredValue(args, ref i, current), current, 0, 8);
                     break;
                 case "--layer-visibility":
-                    layerVisibility = GetRequiredValue(args, ref i, current);
+                    layerVisibility = ParseLayerVisibility(GetRequiredValue(args, ref i, current));
                     break;
                 case "--only-layer":
                     onlyLayers.Add(GetRequiredValue(args, ref i, current));
@@ -287,6 +292,21 @@ internal static class Program
         }
 
         return new CliOptions(inputPath, outputPath, format, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom, backgroundColor, quality, exportPaperLayouts, hideLayers, svgNoScalingStroke, svgNoEntityAttributes, svgEmitSize, svgIdPrefix, svgPrecision, layerVisibility, onlyLayers, listLayers);
+    }
+
+    private static LayerVisibilityMode ParseLayerVisibility(string? value)
+    {
+        switch (value?.Trim().ToLowerInvariant())
+        {
+            case "all":
+                return LayerVisibilityMode.All;
+            case "screen":
+                return LayerVisibilityMode.Screen;
+            case "plot":
+                return LayerVisibilityMode.Plot;
+            default:
+                throw new InvalidOperationException($"Invalid --layer-visibility '{value}'. Use all, screen or plot.");
+        }
     }
 
     private static int ParseRange(string value, string argumentName, int min, int max)

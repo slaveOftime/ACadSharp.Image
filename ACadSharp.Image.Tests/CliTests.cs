@@ -151,8 +151,8 @@ public sealed class CliTests
         Assert.EndsWith("  2", lines[2]);
         Assert.StartsWith("N                no   no      no    #102030", lines[3]);
         Assert.EndsWith("  0", lines[3]);
-        // The weight column is as wide as its widest value ("Default" is 7 characters), so every data row has the
-        // same length (the header is 7 characters longer, since "Entities" outweighs a single-digit count).
+        // Every column except the trailing entity count is padded to a fixed width, and every count here ("7",
+        // "2", "0") is a single digit, so all three data rows come out the same length.
         Assert.Single(lines.Skip(1).Select(l => l.Length).Distinct());
     }
 

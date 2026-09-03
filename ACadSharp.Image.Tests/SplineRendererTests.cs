@@ -85,7 +85,7 @@ public sealed class SplineRendererTests
     }
 
     [Fact]
-    public void BezierFormSplineStaysNativeOnCurveSurfaces()
+    public void ClampedCubicIsConvertedToBezierOnCurveSurfaces()
     {
         RecordingDrawingSurface surface = new() { SupportsCurves = true };
         ImageConfiguration configuration = new();
@@ -99,7 +99,23 @@ public sealed class SplineRendererTests
     }
 
     [Fact]
-    public void InconsistentSplineWarnsAndDrawsNothing()
+    public void EmptySplineWarnsAndDrawsNothing()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        EntityRenderDispatcher dispatcher = new(configuration);
+        Spline spline = new() { Degree = 3 }; // no knots, no control points: every fallback in SplineRenderer.Draw fails.
+
+        dispatcher.Draw(Context(surface, configuration), spline);
+
+        Assert.Empty(surface.Polylines);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("spline", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void InconsistentKnotSplineFallsBackToAcadSharpTessellation()
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
@@ -114,6 +130,7 @@ public sealed class SplineRendererTests
 
         // ACadSharp 3.7.1's TryPolygonalVertexes tessellates this malformed spline anyway (via its own
         // fallback), so the renderer's last-resort path succeeds and draws a polyline instead of warning.
-        Assert.True(surface.Polylines.Count <= 1);
+        Assert.Single(surface.Polylines);
+        Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.Warning);
     }
 }

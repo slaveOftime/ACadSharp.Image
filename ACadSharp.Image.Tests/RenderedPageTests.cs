@@ -11,12 +11,12 @@ namespace ACadSharp.Image.Tests;
 public sealed class RenderedPageTests
 {
     [Theory]
-    [InlineData(ImageExportFormat.Png, new byte[] { 0x89, 0x50, 0x4E, 0x47 })]
-    [InlineData(ImageExportFormat.Bmp, new byte[] { 0x42, 0x4D })]
-    [InlineData(ImageExportFormat.Jpeg, new byte[] { 0xFF, 0xD8, 0xFF })]
-    [InlineData(ImageExportFormat.Gif, new byte[] { 0x47, 0x49, 0x46, 0x38 })]
-    [InlineData(ImageExportFormat.Webp, new byte[] { 0x52, 0x49, 0x46, 0x46 })]
-    public void RasterPagesEncodeInTheirFormat(ImageExportFormat format, byte[] signature)
+    [InlineData(ImageExportFormat.Png, new byte[] { 0x89, 0x50, 0x4E, 0x47 }, null)]
+    [InlineData(ImageExportFormat.Bmp, new byte[] { 0x42, 0x4D }, null)]
+    [InlineData(ImageExportFormat.Jpeg, new byte[] { 0xFF, 0xD8, 0xFF }, null)]
+    [InlineData(ImageExportFormat.Gif, new byte[] { 0x47, 0x49, 0x46, 0x38 }, null)]
+    [InlineData(ImageExportFormat.Webp, new byte[] { 0x52, 0x49, 0x46, 0x46 }, "WEBP")]
+    public void RasterPagesEncodeInTheirFormat(ImageExportFormat format, byte[] signature, string? fourcc)
     {
         using Image<Rgba32> canvas = new(8, 8, SixLabors.ImageSharp.Color.White);
         using RenderedImagePage page = new("p", canvas, format, 80);
@@ -27,6 +27,10 @@ public sealed class RenderedPageTests
         byte[] bytes = stream.ToArray();
         Assert.True(bytes.Length > signature.Length);
         Assert.Equal(signature, bytes.Take(signature.Length).ToArray());
+        if (fourcc is not null)
+        {
+            Assert.Equal(fourcc, System.Text.Encoding.ASCII.GetString(bytes, 8, 4));
+        }
     }
 
     [Fact]

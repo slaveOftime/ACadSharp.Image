@@ -7,6 +7,7 @@ using ACadSharp.IO;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
+using SixLabors.ImageSharp.PixelFormats;
 using ImageColor = SixLabors.ImageSharp.Color;
 
 namespace ACadSharp.Image.Rendering;
@@ -161,6 +162,9 @@ internal sealed class EntityRenderDispatcher
                     break;
                 case MLine mline:
                     this.DrawMLine(context, style, resolved, mline, placement);
+                    break;
+                case Wipeout wipeout:
+                    this.DrawWipeout(context, style, wipeout);
                     break;
                 default:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
@@ -649,6 +653,64 @@ internal sealed class EntityRenderDispatcher
 
         ImageColor ElementColor(ACadSharp.Color color) => color.IsByLayer || color.IsByBlock ? style.StrokeColor : color.ToImageColor(foreground);
     }
+
+    /// <summary>
+    /// A wipeout masks whatever was drawn before it: its clip boundary (or the whole image frame when clipping is
+    /// off) is filled with the page background at full opacity, so the page must be drawn in the drawing's order.
+    /// The frame is never stroked. An inverted clip (everything outside the boundary masked) and a transparent
+    /// background cannot be honoured and are skipped with a notification.
+    /// </summary>
+    private void DrawWipeout(ImageRenderContext context, ImageStyle style, Wipeout wipeout)
+    {
+        if (!wipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage))
+        {
+            return;
+        }
+
+        string handle = wipeout.Handle.ToString("X", CultureInfo.InvariantCulture);
+        if (wipeout.ClipMode == ClipMode.Inside)
+        {
+            this._configuration.Notify($"[{wipeout.SubclassMarker}] Handle {handle}: inverted clip boundaries are not rendered.", NotificationType.NotImplemented);
+            return;
+        }
+
+        ImageColor background = this._configuration.BackgroundColor;
+        if (background.ToPixel<Rgba32>().A == 0)
+        {
+            this._configuration.Notify($"[{wipeout.SubclassMarker}] Handle {handle}: a wipeout cannot mask on a transparent background; skipped.", NotificationType.Warning);
+            return;
+        }
+
+        List<XY> pixels;
+        if (wipeout.ClippingState && wipeout.ClipBoundaryVertices.Count >= 2)
+        {
+            if (wipeout.ClipType == ClipType.Rectangular || wipeout.ClipBoundaryVertices.Count == 2)
+            {
+                XY a = wipeout.ClipBoundaryVertices[0];
+                XY b = wipeout.ClipBoundaryVertices[1];
+                pixels = [a, new XY(b.X, a.Y), b, new XY(a.X, b.Y)];
+            }
+            else
+            {
+                pixels = wipeout.ClipBoundaryVertices.ToList();
+            }
+        }
+        else
+        {
+            pixels = [new XY(-0.5, -0.5), new XY(wipeout.Size.X - 0.5, -0.5), new XY(wipeout.Size.X - 0.5, wipeout.Size.Y - 0.5), new XY(-0.5, wipeout.Size.Y - 0.5)];
+        }
+
+        SurfacePoint[] points = pixels.Select(p => context.ToSurfacePoint(WipeoutPixelToWorld(wipeout, p))).ToArray();
+        context.Surface.FillPolygon(style with { StrokeColor = background, Opacity = 1f, DashPattern = null }, points);
+    }
+
+    /// <summary>
+    /// Maps an image-space boundary vertex to world coordinates. Pixel (0,0) is the top-left pixel and Y grows
+    /// downwards; <c>UVector</c> runs along the visual bottom and <c>VVector</c> up the visual left side, each one
+    /// pixel long. The documented default boundary (-0.5,-0.5)..(Size-0.5) therefore covers exactly the image.
+    /// </summary>
+    internal static XYZ WipeoutPixelToWorld(CadWipeoutBase image, XY pixel)
+        => image.InsertPoint + (image.UVector * (pixel.X + 0.5)) + (image.VVector * (image.Size.Y - pixel.Y - 0.5));
 
     private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
     {

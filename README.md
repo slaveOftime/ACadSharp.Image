@@ -235,7 +235,7 @@ exporter.Configuration.LayerVisibility = LayerVisibilityMode.Plot; // All (defau
 
 ### Supported entities
 
-Lines, arcs, circles, ellipses, polylines (2D, 3D, lightweight, with bulges), splines, points, solids, 3D faces (edges, honouring invisible-edge flags), hatches (solid and pattern), TEXT, MTEXT, dimensions, block references, block attributes (ATTRIB; hidden ones follow ATTMODE under `Screen`/`Plot`), leaders (straight and splined, with the default arrowhead), multilines (element offsets, fill, square caps; cuts are not rendered) and paper-space viewports. Entities are drawn in the drawing's draw order (handle order overridden by DRAWORDER), so later entities paint over earlier ones.
+Lines, arcs, circles, ellipses, polylines (2D, 3D, lightweight, with bulges), splines, points, solids, 3D faces (edges, honouring invisible-edge flags), hatches (solid and pattern), TEXT, MTEXT, dimensions, block references, block attributes (ATTRIB; hidden ones follow ATTMODE under `Screen`/`Plot`), leaders (straight and splined, with the default arrowhead), multilines (element offsets, fill, square caps; cuts are not rendered), wipeouts (masked with the background colour; needs an opaque `BackgroundColor`; in SVG the mask stays within layer-group order) and paper-space viewports. Entities are drawn in the drawing's draw order (handle order overridden by DRAWORDER), so later entities paint over earlier ones.
 
 ### Linetypes, transparency and colour 7
 

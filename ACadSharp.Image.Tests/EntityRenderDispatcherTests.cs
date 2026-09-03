@@ -1205,4 +1205,109 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal([new SurfacePoint(7, 76.5), new SurfacePoint(17, 76.5)], surface.Polylines[0]);
         Assert.Equal([new SurfacePoint(7, 77.5), new SurfacePoint(17, 77.5)], surface.Polylines[1]);
     }
+
+    private static Wipeout UnitWipeout()
+    {
+        // Insert (10,10), one-pixel image whose pixel spans 5 x 5 drawing units.
+        return new Wipeout
+        {
+            InsertPoint = new XYZ(10, 10, 0),
+            UVector = new XYZ(5, 0, 0),
+            VVector = new XYZ(0, 5, 0),
+            Size = new XY(1, 1),
+            Flags = ImageDisplayFlags.ShowImage | ImageDisplayFlags.UseClippingBoundary,
+            ClippingState = true,
+        };
+    }
+
+    [Fact]
+    public void WipeoutPixelMappingFlipsYAndCentresPixels()
+    {
+        Wipeout wipeout = UnitWipeout();
+
+        Assert.Equal(new XYZ(10, 15, 0), EntityRenderDispatcher.WipeoutPixelToWorld(wipeout, new XY(-0.5, -0.5)));
+        Assert.Equal(new XYZ(15, 10, 0), EntityRenderDispatcher.WipeoutPixelToWorld(wipeout, new XY(0.5, 0.5)));
+    }
+
+    [Fact]
+    public void RectangularWipeoutFillsTheBackgroundColourOpaquely()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.White };
+        Wipeout wipeout = UnitWipeout();
+        wipeout.ClipType = ClipType.Rectangular;
+        wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
+        wipeout.Transparency = new Transparency(50);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
+
+        IReadOnlyList<SurfacePoint> polygon = Assert.Single(surface.Polygons);
+        Assert.Equal(4, polygon.Count);
+        Assert.Equal(new HashSet<SurfacePoint> { new(10, 90), new(15, 90), new(15, 85), new(10, 85) }, polygon.ToHashSet());
+        ImageStyle style = Assert.Single(surface.Styles);
+        Assert.Equal(SixLabors.ImageSharp.Color.White.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgba32>(), style.StrokeColor.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgba32>());
+        Assert.Equal(1f, style.Opacity);
+        Assert.Empty(surface.Polylines);
+    }
+
+    [Fact]
+    public void PolygonalWipeoutUsesItsVertices()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Wipeout wipeout = UnitWipeout();
+        wipeout.ClipType = ClipType.Polygonal;
+        wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, -0.5), new XY(0, 0.5)]);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
+
+        Assert.Equal([new SurfacePoint(10, 85), new SurfacePoint(15, 85), new SurfacePoint(12.5, 90)], Assert.Single(surface.Polygons));
+    }
+
+    [Fact]
+    public void WipeoutWithoutClippingFillsTheWholeImageFrame()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Wipeout wipeout = UnitWipeout();
+        wipeout.ClippingState = false;
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
+
+        Assert.Equal(new HashSet<SurfacePoint> { new(10, 90), new(15, 90), new(15, 85), new(10, 85) }, Assert.Single(surface.Polygons).ToHashSet());
+    }
+
+    [Fact]
+    public void WipeoutOnTransparentBackgroundIsSkippedWithAWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.Transparent };
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), UnitWipeout());
+
+        Assert.Empty(surface.Polygons);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning);
+    }
+
+    [Fact]
+    public void InvertedAndHiddenWipeoutsDrawNothing()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        Wipeout inverted = UnitWipeout();
+        inverted.ClipMode = ClipMode.Inside;
+        Wipeout hidden = UnitWipeout();
+        hidden.Flags = ImageDisplayFlags.None;
+        EntityRenderDispatcher dispatcher = new(configuration);
+
+        dispatcher.Draw(CreateContext(surface, configuration), inverted);
+        dispatcher.Draw(CreateContext(surface, configuration), hidden);
+
+        Assert.Empty(surface.Polygons);
+        Assert.Single(notifications, n => n.NotificationType == NotificationType.NotImplemented);
+    }
 }

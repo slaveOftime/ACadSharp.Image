@@ -209,7 +209,7 @@ A probe over a five-entity block (`Line`, `Circle`, `Arc`, `TextEntity`, `Attrib
 
 Measured against the pinned assembly *(probe, Liberation Sans)*: at `Font.Size = 10`, `MeasureBounds("Hg")` returns `11.32 × 8.96` px at `Dpi = 72`, `15.09 × 11.94` at `96`, `23.58 × 18.66` at `150`, `47.16 × 37.31` at `300`.
 
-**The correct fix.** Set `TextOptions.Dpi = 72f` and pass the size in **ems**: `size = height * SvgTextLayout.CapHeightToEm` (that is `height * 4/3`). Because `Font.Size × Dpi / 72` is the only thing that matters, `(size = h, Dpi = 96)` and `(size = 4h/3, Dpi = 72)` are the same rendering — verified exactly: `MeasureBounds("Hg")` at `12pt @ 96dpi` and at `16pt @ 72dpi` both return `bounds=(1.3125, 2.2773) 18.1094 × 14.3281` *(probe)*. Under the new scheme the measurement is `Dpi`-invariant: `height = 10` gives `15.09 × 11.94` px at every `Dpi` in `{72, 96, 150, 300}` *(probe)*.
+**The correct fix.** Set `TextOptions.Dpi = 72f` and pass the size in **ems**: `size = height * TextMetrics.CapHeightToEm` (that is `height * 4/3`). Because `Font.Size × Dpi / 72` is the only thing that matters, `(size = h, Dpi = 96)` and `(size = 4h/3, Dpi = 72)` are the same rendering — verified exactly: `MeasureBounds("Hg")` at `12pt @ 96dpi` and at `16pt @ 72dpi` both return `bounds=(1.3125, 2.2773) 18.1094 × 14.3281` *(probe)*. Under the new scheme the measurement is `Dpi`-invariant: `height = 10` gives `15.09 × 11.94` px at every `Dpi` in `{72, 96, 150, 300}` *(probe)*.
 
 Three knock-on edits in `RasterDrawingSurface.DrawText`:
 
@@ -284,7 +284,7 @@ Two things surfaced while verifying the above; neither was asked for, both are c
 - `ACadSharp.Image/Rendering/EntityRenderDispatcher.cs` — type routing and the `default:` NotImplemented arm (`:153-155`), `DrawSolid` OCS handling (`:239-255`), `DrawBlockContents` explode pairing (`:393-413`), `case TextEntity` (`:141-143`).
 - `ACadSharp.Image/Rendering/RasterDrawingSurface.cs` — `DrawText` (`:176-232`), `TextOptions.Dpi` (`:205`), `halfLeading` (`:194-201`), `LineSpacing` (`:220`), `CreateFont` (`:279-282`), `FillPolygon` (`:137-147`).
 - `ACadSharp.Image/Rendering/Svg/SvgDrawingSurface.cs` — background `<rect>` gating (`:62-79`), `DrawText` (`:374-436`), `BeginViewport` clip (`:438-453`).
-- `ACadSharp.Image/Rendering/Svg/SvgTextLayout.cs` — `CapHeightToEm`/`EmSize` (`:17-20`), `LineHeight` (`:23-24`), `BlockOffset` (`:30-35`), `Wrap` (`:55-83`), measuring `Dpi = 72f` (`:64`).
+- `ACadSharp.Image/Rendering/TextMetrics.cs` — `CapHeightToEm`/`EmSize` (moved there by plan 08; `SvgTextLayout.EmSize` forwards), `LineHeight` (`:23-24`), `BlockOffset` (`:30-35`), `Wrap` (`:55-83`), measuring `Dpi = 72f` (`:64`).
 - `ACadSharp.Image/Rendering/TextRenderer.cs` — MTEXT/TEXT transform rationale (`:22-26`, `:72-76`), `GetTextOrigin` (`:209-214`), `LineSpacing` pass-through (`:59`).
 - `ACadSharp.Image/Rendering/FontResolver.cs` — the 1-point clamp (`:77-80`).
 - `ACadSharp.Image/Rendering/SplineRenderer.cs` — fit-points fallback (`:64-77`).

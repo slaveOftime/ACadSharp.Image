@@ -76,4 +76,59 @@ internal static class SyntheticSamples
             File.Delete(path);
         }
     }
+
+    /// <summary>
+    /// One block exercising every primitive the goldens from the sample files do not contain: a solid and a pattern
+    /// hatch, a full ellipse and an elliptical arc, a translucent line, an insert with layer-0 and ByBlock contents,
+    /// a bulged closed polyline, a two-line MText and a Fit-aligned text.
+    /// </summary>
+    public static BlockRecord FeatureBlock()
+    {
+        BlockRecord block = new("features");
+        Layer hatchLayer = new("Hatch") { Color = new Color(1) };
+        Layer curves = new("Curves") { Color = new Color(4) };
+        Layer trans = new("Trans") { Color = new Color(6) };
+        Layer doors = new("Doors") { Color = new Color(3) };
+        Layer anno = new("Anno") { Color = new Color(7) };
+
+        Hatch solid = new() { IsSolid = true, PatternType = HatchPatternType.SolidFill, Pattern = HatchPattern.Solid, Layer = hatchLayer };
+        solid.Paths.Add(SquarePath(0, 0, 20));
+        block.Entities.Add(solid);
+
+        Hatch pattern = new() { IsSolid = false, PatternType = HatchPatternType.PatternFill, Pattern = new HatchPattern("ANSI31"), Layer = hatchLayer };
+        pattern.Pattern.Lines.Add(new HatchPattern.Line { Angle = Math.PI / 4, BasePoint = XY.Zero, Offset = new XY(0, 3.175) });
+        pattern.PatternScale = 1;
+        pattern.Paths.Add(SquarePath(30, 0, 20));
+        block.Entities.Add(pattern);
+
+        block.Entities.Add(new Ellipse { Center = new XYZ(70, 10, 0), MajorAxisEndPoint = new XYZ(10, 0, 0), RadiusRatio = 0.5, Layer = curves });
+        block.Entities.Add(new Ellipse { Center = new XYZ(100, 10, 0), MajorAxisEndPoint = new XYZ(10, 0, 0), RadiusRatio = 0.5, StartParameter = 0, EndParameter = Math.PI, Layer = curves });
+
+        block.Entities.Add(new Line(new XYZ(0, 30, 0), new XYZ(120, 30, 0)) { Layer = trans, Transparency = new Transparency(50), LineWeight = LineWeightType.W100 });
+
+        LwPolyline bulged = new() { IsClosed = true, Layer = curves };
+        bulged.Vertices.Add(new LwPolyline.Vertex(new XY(0, 40)) { Bulge = 1 });
+        bulged.Vertices.Add(new LwPolyline.Vertex(new XY(20, 40)));
+        bulged.Vertices.Add(new LwPolyline.Vertex(new XY(20, 55)));
+        block.Entities.Add(bulged);
+
+        BlockRecord door = new("DOOR");
+        door.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)) { Layer = new Layer(Layer.DefaultName) });
+        door.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(0, 10, 0)) { Color = Color.ByBlock, LineWeight = LineWeightType.ByBlock });
+        block.Entities.Add(new Insert(door) { InsertPoint = new XYZ(40, 40, 0), Layer = doors, Color = new Color(5), LineWeight = LineWeightType.W70 });
+
+        block.Entities.Add(new MText { Value = "Line1\\PLine2", InsertPoint = new XYZ(70, 48, 0), Height = 4, Layer = anno });
+        block.Entities.Add(new TextEntity { Value = "FIT", InsertPoint = new XYZ(70, 55, 0), AlignmentPoint = new XYZ(110, 55, 0), HorizontalAlignment = TextHorizontalAlignment.Fit, Height = 4, Layer = anno });
+
+        return block;
+    }
+
+    private static Hatch.BoundaryPath SquarePath(double x, double y, double size)
+    {
+        Hatch.BoundaryPath path = new();
+        Hatch.BoundaryPath.Polyline polyline = new() { IsClosed = true };
+        polyline.Vertices.AddRange([new XYZ(x, y, 0), new XYZ(x + size, y, 0), new XYZ(x + size, y + size, 0), new XYZ(x, y + size, 0)]);
+        path.Edges.Add(polyline);
+        return path;
+    }
 }

@@ -21,6 +21,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
 
     private readonly ImageConfiguration _configuration;
     private readonly SvgOptions _options;
+    private readonly string _idPrefix;
     private readonly SvgNumberFormatter _numbers;
     private readonly SvgNumberFormatter _styleNumbers;
     private readonly SvgNumberFormatter _angleNumbers;
@@ -37,6 +38,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     {
         this._configuration = configuration;
         this._options = configuration.Svg;
+        this._idPrefix = SvgIdSanitizer.SanitizePrefix(this._options.IdPrefix);
         this._numbers = new SvgNumberFormatter(this._options.Precision ?? SvgNumberFormatter.AdaptiveDecimals(viewBox.Width, viewBox.Height));
         this._styleNumbers = new SvgNumberFormatter(StyleDecimalsFor(strokeUnitsPerMillimeter));
         // Rotations are degrees whatever the drawing units are, so they get their own fixed precision.
@@ -55,19 +57,26 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             new XAttribute("fill", "none"),
             new XAttribute("stroke-linecap", "round"),
             new XAttribute("stroke-linejoin", "round"),
-            new XAttribute("font-family", BuildFontStack(configuration.FontFamilyName)));
+            new XAttribute("font-family", BuildFontStack(SvgXmlText.Clean(configuration.FontFamilyName))));
 
         Rgba32 background = configuration.BackgroundColor.ToPixel<Rgba32>();
         if (background.A > 0)
         {
-            this._defaults.Add(new XElement(Ns + "rect",
+            XElement rect = new(Ns + "rect",
                 new XAttribute("class", "cad-background"),
                 new XAttribute("x", this.N(viewBox.X)),
                 new XAttribute("y", this.N(viewBox.Y)),
                 new XAttribute("width", this.N(viewBox.Width)),
                 new XAttribute("height", this.N(viewBox.Height)),
-                new XAttribute("fill", Hex(configuration.BackgroundColor)),
-                new XAttribute("stroke", "none")));
+                new XAttribute("fill", Hex(configuration.BackgroundColor)));
+            if (background.A < byte.MaxValue)
+            {
+                // Hex() drops the alpha channel; a translucent background keeps it as fill-opacity, like the raster canvas would.
+                rect.Add(new XAttribute("fill-opacity", this.S(background.A / 255d)));
+            }
+
+            rect.Add(new XAttribute("stroke", "none"));
+            this._defaults.Add(rect);
         }
 
         cadRoot.Add(this._defaults);
@@ -400,7 +409,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             element.Add(new XAttribute("textLength", this.N(text.FixedLength)), new XAttribute("lengthAdjust", "spacingAndGlyphs"));
         }
 
-        string[] lines = text.Text.Replace("\r\n", "\n").Split('\n');
+        string[] lines = SvgXmlText.Clean(text.Text).Replace("\r\n", "\n").Split('\n');
         if (lines.Length == 1)
         {
             element.Add(lines[0]);
@@ -426,7 +435,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
     public ViewportSurface BeginViewport(SurfaceRect bounds)
     {
         this._clipCounter++;
-        string clipId = this.UniqueId(SvgIdSanitizer.Sanitize(this._options.IdPrefix, "clip", this._clipCounter.ToString(CultureInfo.InvariantCulture)));
+        string clipId = this.UniqueId(SvgIdSanitizer.Sanitize(this._idPrefix, "clip", this._clipCounter.ToString(CultureInfo.InvariantCulture)));
         this._defs.Add(new XElement(Ns + "clipPath",
             new XAttribute("id", clipId),
             new XAttribute("clipPathUnits", "userSpaceOnUse"),
@@ -520,7 +529,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
 
             if (!string.IsNullOrEmpty(info.BlockName))
             {
-                element.Add(new XAttribute("data-block", info.BlockName));
+                element.Add(new XAttribute("data-block", SvgXmlText.Clean(info.BlockName)));
             }
         }
     }
@@ -551,9 +560,9 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
         }
 
         group = new XElement(Ns + "g",
-            new XAttribute("id", this.UniqueId(SvgIdSanitizer.Sanitize(this._options.IdPrefix, container.IdKind, name))),
+            new XAttribute("id", this.UniqueId(SvgIdSanitizer.Sanitize(this._idPrefix, container.IdKind, name))),
             new XAttribute("class", "cad-layer"),
-            new XAttribute("data-layer", name));
+            new XAttribute("data-layer", SvgXmlText.Clean(name)));
         if (layer != null)
         {
             group.Add(new XAttribute("stroke", Hex(layer.Color)), new XAttribute("stroke-width", this.S(layer.StrokeWidth)));

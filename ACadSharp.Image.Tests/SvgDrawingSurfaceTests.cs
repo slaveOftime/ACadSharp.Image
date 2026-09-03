@@ -406,4 +406,68 @@ public sealed class SvgDrawingSurfaceTests
         List<string> ids = document.Descendants().Select(e => (string?)e.Attribute("id")).Where(id => id != null).ToList()!;
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
     }
+
+    [Fact]
+    public void ForbiddenXmlCharactersAreStrippedFromTextLayerAndBlockNames()
+    {
+        string bad = "A" + (char)1 + "B";
+        using SvgDrawingSurface surface = CreateSurface();
+        SurfaceText run = new(bad + "\nC" + (char)0x1F + "D", new SurfacePoint(0, 0), 1, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, 0);
+
+        surface.BeginEntity(Entity(bad, "TEXT", block: bad), Layer(bad));
+        surface.DrawText(new ImageStyle(Color.Black, 1f), run);
+        surface.EndEntity();
+
+        // Serialising is what throws on U+0001; the whole point is that it no longer does.
+        string markup = surface.ToSvgString();
+        XDocument document = XDocument.Parse(markup);
+        XElement group = Assert.Single(document.Descendants(Ns + "g"), g => (string?)g.Attribute("class") == "cad-layer");
+        Assert.Equal("AB", (string?)group.Attribute("data-layer"));
+        XElement text = Assert.Single(document.Descendants(Ns + "text"));
+        Assert.Equal("AB", (string?)text.Attribute("data-block"));
+        Assert.Equal(["AB", "CD"], text.Elements(Ns + "tspan").Select(t => t.Value).ToArray());
+    }
+
+    [Fact]
+    public void XmlTextCleanKeepsLegalWhitespaceAndSurrogatePairs()
+    {
+        string legal = "tab\t nl\n cr\r emoji\U0001F600";
+        Assert.Same(legal, SvgXmlText.Clean(legal));
+        Assert.Equal("ab", SvgXmlText.Clean("a" + (char)0xFFFE + "b"));
+        Assert.Equal("ab", SvgXmlText.Clean("a\uD83Db"));
+    }
+
+    [Fact]
+    public void TranslucentBackgroundKeepsItsAlphaAsFillOpacity()
+    {
+        using SvgDrawingSurface surface = CreateSurface(c => c.BackgroundColor = Color.FromRgba(0, 0, 0, 128));
+
+        XElement rect = Assert.Single(surface.ToDocument().Descendants(Ns + "rect"));
+        Assert.Equal("#000000", (string?)rect.Attribute("fill"));
+        Assert.Equal("0.502", (string?)rect.Attribute("fill-opacity"));
+
+        using SvgDrawingSurface opaque = CreateSurface();
+        Assert.Null(Assert.Single(opaque.ToDocument().Descendants(Ns + "rect")).Attribute("fill-opacity"));
+    }
+
+    [Fact]
+    public void IdPrefixIsRestrictedToIdSafeCharacters()
+    {
+        using SvgDrawingSurface surface = CreateSurface(c => c.Svg.IdPrefix = "drawing one/\"2\" ");
+        ViewportSurface viewport = surface.BeginViewport(new SurfaceRect(0, 0, 10, 10));
+        surface.BeginEntity(Entity("Walls"), Layer("Walls"));
+        surface.DrawLine(new ImageStyle(Color.Black, 1f), new SurfacePoint(0, 0), new SurfacePoint(1, 1));
+        surface.EndEntity();
+        surface.EndViewport(viewport);
+
+        XDocument document = surface.ToDocument();
+        XElement clip = Assert.Single(document.Descendants(Ns + "clipPath"));
+        Assert.Equal("drawing-one-2-clip-1", (string?)clip.Attribute("id"));
+        XElement group = Assert.Single(document.Descendants(Ns + "g"), g => (string?)g.Attribute("class") == "cad-viewport");
+        Assert.Equal("url(#drawing-one-2-clip-1)", (string?)group.Attribute("clip-path"));
+        Assert.Equal("drawing-one-2-clip-1-layer-walls", (string?)Assert.Single(document.Descendants(Ns + "g"), g => (string?)g.Attribute("class") == "cad-layer").Attribute("id"));
+
+        Assert.Equal("Plan_1-", SvgIdSanitizer.SanitizePrefix("Plan_1-"));
+        Assert.Equal(string.Empty, SvgIdSanitizer.SanitizePrefix(""));
+    }
 }

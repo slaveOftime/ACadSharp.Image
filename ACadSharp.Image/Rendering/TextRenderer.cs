@@ -50,18 +50,63 @@ internal sealed class TextRenderer
             return;
         }
 
+        // TEXT stores its points and rotation in its own OCS (MTEXT does not: its insertion point and X axis are WCS).
+        OcsTransform? toWorld = OcsTransform.IsWorldPlane(textEntity.Normal) ? null : OcsTransform.For(textEntity.Normal);
+        XYZ origin = GetTextOrigin(textEntity);
+        SurfacePoint surfaceOrigin = toWorld == null
+            ? context.ToSurfacePoint(origin)
+            : context.ToSurfacePoint(toWorld.ToWorldXY(origin.X, origin.Y, origin.Z));
+        (double rotation, SurfaceTextAnchor anchor) = ResolvePlacement(textEntity.Rotation, GetAnchor(textEntity.HorizontalAlignment), toWorld);
+
         SurfaceText run = new(
             text,
-            context.ToSurfacePoint(GetTextOrigin(textEntity)),
+            surfaceOrigin,
             context.ToSurfaceLength(textEntity.Height),
-            textEntity.Rotation,
-            GetAnchor(textEntity.HorizontalAlignment),
+            rotation,
+            anchor,
             GetBaseline(textEntity.VerticalAlignment),
             WrappingWidth: -1d,
             LineSpacingFactor: 1d,
             GetFixedLength(context, textEntity));
 
         context.Surface.DrawText(style, run);
+    }
+
+    /// <summary>
+    /// Maps a TEXT entity's in-plane rotation and anchor onto the page.
+    /// </summary>
+    /// <param name="rotation">Rotation in the entity's OCS, radians.</param>
+    /// <param name="anchor">Anchor derived from the horizontal alignment.</param>
+    /// <param name="toWorld">The OCS frame, or null for the world plane.</param>
+    /// <returns>The rotation to draw with (radians, drawing convention) and the anchor to use.</returns>
+    /// <remarks>
+    /// The OCS X direction rotated by <paramref name="rotation"/> is projected onto world XY. A plane seen from the
+    /// front keeps that direction. A plane seen from behind (normal Z below zero, what MIRROR produces) would show the
+    /// glyphs mirrored; AutoCAD with <c>MIRRTEXT = 0</c>, its default, keeps them readable and lets the run occupy the
+    /// mirrored extent instead, which is the same baseline read from the other end: half a turn added to the projected
+    /// direction, and <see cref="SurfaceTextAnchor.Start"/> and <see cref="SurfaceTextAnchor.End"/> swapped.
+    /// </remarks>
+    internal static (double Rotation, SurfaceTextAnchor Anchor) ResolvePlacement(double rotation, SurfaceTextAnchor anchor, OcsTransform? toWorld)
+    {
+        if (toWorld == null)
+        {
+            return (rotation, anchor);
+        }
+
+        XYZ direction = toWorld.ToWorld(Math.Cos(rotation), Math.Sin(rotation), 0d);
+        double projected = Math.Atan2(direction.Y, direction.X);
+        if (toWorld.Normal.Z >= 0d)
+        {
+            return (projected, anchor);
+        }
+
+        SurfaceTextAnchor flipped = anchor switch
+        {
+            SurfaceTextAnchor.Start => SurfaceTextAnchor.End,
+            SurfaceTextAnchor.End => SurfaceTextAnchor.Start,
+            _ => anchor,
+        };
+        return (projected + Math.PI, flipped);
     }
 
     private static double GetFixedLength(ImageRenderContext context, TextEntity textEntity)

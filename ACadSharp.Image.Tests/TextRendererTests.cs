@@ -124,4 +124,75 @@ public sealed class TextRendererTests
         Assert.Empty(surface.Texts);
         Assert.Equal(4, surface.Calls.Count); // two Begin/End pairs, no DrawText
     }
+
+    [Fact]
+    public void MirroredPlaneTextKeepsReadableGlyphsAndOccupiesTheMirroredExtent()
+    {
+        (RecordingDrawingSurface surface, ImageRenderContext context, EntityRenderDispatcher dispatcher) = Setup();
+        TextEntity text = new() { Value = "M", InsertPoint = new XYZ(10, 20, 0), Height = 2, Normal = new XYZ(0, 0, -1) };
+
+        dispatcher.Draw(context, text);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        // (0,0,-1) mirrors X: the origin lands at x = -10, and the run is anchored at its end so it extends toward -x.
+        Assert.Equal(-10d, run.Origin.X, 9);
+        Assert.Equal(100d - 20d, run.Origin.Y, 9);
+        Assert.Equal(SurfaceTextAnchor.End, run.Anchor);
+        Assert.Equal(1d, Math.Cos(run.Rotation), 9);   // upright, MIRRTEXT = 0 semantics
+        Assert.Equal(0d, Math.Sin(run.Rotation), 9);
+    }
+
+    [Fact]
+    public void MirroredPlaneRotationIsNegatedAndRightAlignmentBecomesStart()
+    {
+        (RecordingDrawingSurface surface, ImageRenderContext context, EntityRenderDispatcher dispatcher) = Setup();
+        TextEntity text = new() { Value = "R", InsertPoint = new XYZ(1, 1, 0), AlignmentPoint = new XYZ(4, 1, 0), HorizontalAlignment = TextHorizontalAlignment.Right, Rotation = 0.5, Height = 2, Normal = new XYZ(0, 0, -1) };
+
+        dispatcher.Draw(context, text);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal(-4d, run.Origin.X, 9);
+        Assert.Equal(SurfaceTextAnchor.Start, run.Anchor);
+        Assert.Equal(Math.Cos(0.5), Math.Cos(run.Rotation), 9);
+        Assert.Equal(-Math.Sin(0.5), Math.Sin(run.Rotation), 9);
+    }
+
+    [Fact]
+    public void FrontFacingTiltedPlaneProjectsOriginAndDirection()
+    {
+        (RecordingDrawingSurface surface, ImageRenderContext context, EntityRenderDispatcher dispatcher) = Setup();
+        // Normal tilted toward +Y: the arbitrary axis algorithm makes the OCS X axis point along world -X.
+        TextEntity text = new() { Value = "T", InsertPoint = new XYZ(1, 0, 0), Height = 2, Normal = new XYZ(0, 0.6, 0.8) };
+
+        dispatcher.Draw(context, text);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal(-1d, run.Origin.X, 9);
+        Assert.Equal(SurfaceTextAnchor.Start, run.Anchor);          // seen from the front: anchor unchanged
+        Assert.Equal(-1d, Math.Cos(run.Rotation), 9);               // direction (1,0) in OCS is world -X
+        Assert.Equal(0d, Math.Sin(run.Rotation), 9);
+    }
+
+    [Fact]
+    public void MiddleAnchorAndFixedLengthSurviveMirroring()
+    {
+        (RecordingDrawingSurface surface, ImageRenderContext context, EntityRenderDispatcher dispatcher) = Setup(scale: 2d);
+        TextEntity text = new() { Value = "F", InsertPoint = new XYZ(0, 0, 0), AlignmentPoint = new XYZ(30, 0, 0), HorizontalAlignment = TextHorizontalAlignment.Fit, Height = 5, Normal = new XYZ(0, 0, -1) };
+
+        dispatcher.Draw(context, text);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal(SurfaceTextAnchor.Middle, run.Anchor);
+        Assert.Equal(60d, run.FixedLength, 9);
+        Assert.Equal(-60d, run.Origin.X, 9);
+    }
+
+    [Fact]
+    public void ResolvePlacementLeavesWorldPlaneTextAlone()
+    {
+        (double rotation, SurfaceTextAnchor anchor) = TextRenderer.ResolvePlacement(0.7, SurfaceTextAnchor.End, null);
+
+        Assert.Equal(0.7, rotation);
+        Assert.Equal(SurfaceTextAnchor.End, anchor);
+    }
 }

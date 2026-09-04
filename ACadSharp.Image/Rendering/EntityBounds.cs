@@ -25,8 +25,10 @@ internal static class EntityBounds
     /// </summary>
     /// <param name="entity">The entity to bound.</param>
     /// <param name="bounds">The bounds, or <see langword="default"/> when the entity cannot contribute.</param>
-    /// <param name="error">The exception ACadSharp raised, or null when the entity has no bounds for another reason
-    /// (an unresolved block reference, or a wipeout/solid that would occupy no area).</param>
+    /// <param name="error">The exception that made the attempt fail — either the one ACadSharp raised, or one this
+    /// method constructed itself to carry a reason of its own (a self-referencing block, which is refused before
+    /// ACadSharp is asked and so never throws); null when the entity has no bounds for another reason (an unresolved
+    /// block reference, or a wipeout/solid that would occupy no area).</param>
     /// <returns>True when <paramref name="bounds"/> is valid.</returns>
     public static bool TryGet(Entity entity, out BoundingBox bounds, out Exception? error)
     {

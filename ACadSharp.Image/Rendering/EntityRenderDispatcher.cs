@@ -96,9 +96,10 @@ internal sealed class EntityRenderDispatcher
         this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parent: null);
     }
 
-    // source is the original block entity a TEXT, MTEXT, non-world SOLID, LEADER, HATCH or WIPEOUT clone came from,
-    // whose geometry is used instead of the clone's (see UsesOriginalGeometry), and placement is the transform of the
-    // insert that placed it. Both are null outside a block reference, but they do not always travel together inside
+    // source is the original block entity a clone came from, whose geometry is used instead of the clone's, and
+    // placement is the transform of the insert that placed it. UsesOriginalGeometry's doc is the canonical list of
+    // the types drawn from their original, and it is not repeated here.
+    // Both are null outside a block reference, but they do not always travel together inside
     // one: an MLINE clone is always drawn with placement set and source null (UsesOriginalGeometry never recognises
     // an MLine original, since the heal already restores the clone's own vertices to local coordinates), and so is a
     // LEADER clone whose ordinal pairing with the block's original entities failed. A HATCH or WIPEOUT clone has no
@@ -947,6 +948,11 @@ internal sealed class EntityRenderDispatcher
     /// small fraction of a unit, so applying it would move existing output for no visible gain; it is recorded here
     /// so a later change is a deliberate one.
     /// </para>
+    /// <para>
+    /// The non-finite guard on a parameter value is unreachable through <c>Draw</c>, which skips a multiline with any
+    /// non-finite parameter outright (<c>HasFiniteGeometry</c>); it is kept as a backstop for direct callers of this
+    /// method, which is why the two policies differ — skipping the entity there, truncating the cut list here.
+    /// </para>
     /// </remarks>
     internal static IReadOnlyList<(double Start, double End)> VisibleRuns(IReadOnlyList<double> parameters, double length)
     {
@@ -1104,8 +1110,14 @@ internal sealed class EntityRenderDispatcher
 
     /// <summary>
     /// True when an exploded <paramref name="clone"/> should be drawn from <paramref name="original"/>'s geometry,
-    /// placed through the insert's transform, instead of the clone's own points: a TEXT or MTEXT (their alignment
-    /// point and, for MTEXT, X axis are never transformed by <c>Explode()</c>), a LEADER (once healed, the clone
+    /// placed through the insert's transform, instead of the clone's own points. This doc is the canonical list of
+    /// the types that are drawn that way; the block-content path and <c>Draw</c> point here rather than repeat it.
+    /// They are: a TEXT or MTEXT (their alignment point and, for MTEXT, X axis are never transformed by
+    /// <c>Explode()</c>), an ATTRIB or ATTDEF (an
+    /// <c>AttributeBase</c> is a <c>TextEntity</c>, so the TEXT arm covers it; in practice this is the constant
+    /// ATTDEF <see cref="DrawBlockContents"/> draws — a non-constant one is a template and is skipped there — and a
+    /// multi-line one is then drawn from the original's embedded MTEXT through the insert transform rather than
+    /// block-local), a LEADER (once healed, the clone
     /// shares the same local vertex list as the original, so either would draw identically; the original is used
     /// for consistency with TEXT, MTEXT and SOLID, not because it carries anything the clone lacks), a SOLID whose
     /// normal is not the world Z axis (its OCS corners must be brought into world space before the insert
@@ -1139,8 +1151,9 @@ internal sealed class EntityRenderDispatcher
 
     /// <summary>
     /// Draws the contents of a block reference by exploding it, healing the vertex lists ACadSharp 3.7.1's clones
-    /// share with their sources, and drawing every clone (text, hatches and non-planar solids from the original
-    /// entity through the insert's transform).
+    /// share with their sources, and drawing every clone — some of them from the original block entity through the
+    /// insert's transform rather than from the clone's own points. <see cref="UsesOriginalGeometry"/>'s doc is the
+    /// canonical list of which types those are and why; it is not repeated here.
     /// </summary>
     /// <param name="context">The context that maps drawing units onto the surface.</param>
     /// <param name="insert">The block reference to draw the contents of.</param>
@@ -1252,7 +1265,7 @@ internal sealed class EntityRenderDispatcher
         if (index != originals.Count)
         {
             this._configuration.Notify(
-                $"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block '{insert.Block.Name}' exploded into {index} entities but holds {originals.Count}; text inside it may be misplaced.",
+                $"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block '{insert.Block.Name}' exploded into {index} entities but holds {originals.Count}; geometry drawn from originals inside it may be misplaced.",
                 NotificationType.Warning);
         }
 
@@ -1282,18 +1295,79 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
-    /// Snapshots every MLINE's and LEADER's vertex list reachable from <paramref name="block"/>, following nested
-    /// <see cref="Insert.Block"/> references and the arrowhead block of every LEADER on the way.
+    /// The blocks <paramref name="entity"/> reaches when it is cloned, and the only edges the block-graph walks
+    /// below follow: a block reference's own <see cref="Insert.Block"/>, and every non-null block-valued property of
+    /// a LEADER's or a DIMENSION's dimension style — <c>ArrowBlock</c> (DIMBLK), <c>DimArrow1</c> (DIMBLK1),
+    /// <c>DimArrow2</c> (DIMBLK2) and <c>LeaderArrow</c> (DIMLDRBLK). ACadSharp 3.7.1's <c>DimensionStyle.Clone()</c>
+    /// deep-clones all four, and <c>Leader</c> and <c>Dimension</c> both clone their style, so an MLINE inside any of
+    /// those blocks is emptied by a clone that never names it — whether or not the renderer ever draws that
+    /// particular arrowhead, since only <c>LeaderArrow</c> is drawn. The same four edges are ones a cycle can run
+    /// through, which is why the cycle walk consumes this enumerator too. One block can be reached twice (the same
+    /// record set as two arrowheads); de-duplication is left to the callers, which all track the blocks they have
+    /// already walked.
+    /// </summary>
+    /// <param name="entity">The entity whose outgoing block references are wanted.</param>
+    /// <returns>Each referenced block, possibly yielding the same block more than once.</returns>
+    private static IEnumerable<BlockRecord> ReferencedBlocks(Entity entity)
+    {
+        if (entity is Insert insert)
+        {
+            if (insert.Block != null)
+            {
+                yield return insert.Block;
+            }
+
+            yield break;
+        }
+
+        DimensionStyle? style = entity switch
+        {
+            Leader leader => leader.Style,
+            Dimension dimension => dimension.Style,
+            _ => null,
+        };
+
+        if (style == null)
+        {
+            yield break;
+        }
+
+        if (style.ArrowBlock != null)
+        {
+            yield return style.ArrowBlock;
+        }
+
+        if (style.DimArrow1 != null)
+        {
+            yield return style.DimArrow1;
+        }
+
+        if (style.DimArrow2 != null)
+        {
+            yield return style.DimArrow2;
+        }
+
+        if (style.LeaderArrow != null)
+        {
+            yield return style.LeaderArrow;
+        }
+    }
+
+    /// <summary>
+    /// Snapshots every MLINE's and LEADER's vertex list reachable from <paramref name="block"/>, following every
+    /// edge <see cref="ReferencedBlocks"/> reports: nested <see cref="Insert.Block"/> references, and all four
+    /// arrowhead blocks of every LEADER's and DIMENSION's dimension style on the way.
     /// <see cref="Insert.Explode"/> deep-clones its entire block subtree, so an MLINE nested several blocks deep is
     /// corrupted by an ancestor insert's own explode even though it is never that ancestor's direct child, because
     /// its list is emptied the moment it is cloned; a nested LEADER's list, by contrast, is only overwritten when
     /// the insert that directly contains it is the one exploded, so snapshotting it here is a defensive backstop
-    /// rather than the fix MLINE needs. Cloning a LEADER also clones its dimension style, and that clones the
-    /// style's arrowhead block, which is how an MLINE inside a custom arrowhead is reached by a clone that never
-    /// names it. This has to run, and capture the whole subtree, before the clone that corrupts those lists — the
-    /// explode itself, or, for a document-owned block, the <c>Insert(BlockRecord)</c> constructor.
+    /// rather than the fix MLINE needs. Cloning a LEADER or a DIMENSION also clones its dimension style, and that
+    /// clones all four of the style's arrowhead blocks, which is how an MLINE inside a custom arrowhead is reached
+    /// by a clone that never names it. This has to run, and capture the whole subtree, before the clone that
+    /// corrupts those lists — the explode itself, or, for a document-owned block, the <c>Insert(BlockRecord)</c>
+    /// constructor.
     /// </summary>
-    /// <param name="block">The block whose entities, nested blocks and leader arrowhead blocks are searched.</param>
+    /// <param name="block">The block whose entities, nested blocks and dimension-style arrowhead blocks are searched.</param>
     /// <param name="mlineSnapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
     /// <param name="leaderSnapshot">Receives one entry per LEADER found, keyed by the LEADER itself.</param>
     /// <param name="visited">Blocks already walked, so a circular or diamond hierarchy is walked once.</param>
@@ -1311,34 +1385,31 @@ internal sealed class EntityRenderDispatcher
                 case MLine mline when !mlineSnapshot.ContainsKey(mline):
                     mlineSnapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
                     break;
-                case Leader leader:
-                    if (!leaderSnapshot.ContainsKey(leader))
-                    {
-                        leaderSnapshot.Add(leader, new List<XYZ>(leader.Vertices));
-                    }
+                case Leader leader when !leaderSnapshot.ContainsKey(leader):
+                    leaderSnapshot.Add(leader, new List<XYZ>(leader.Vertices));
+                    break;
+            }
 
-                    // Cloning a LEADER clones its dimension style, and that clones the style's arrowhead block, so
-                    // an MLINE inside a custom arrowhead is emptied by an explode that never names it.
-                    CollectSharedVertexLists(leader.Style?.LeaderArrow, mlineSnapshot, leaderSnapshot, visited);
-                    break;
-                case Insert nestedInsert:
-                    CollectSharedVertexLists(nestedInsert.Block, mlineSnapshot, leaderSnapshot, visited);
-                    break;
+            foreach (BlockRecord referenced in ReferencedBlocks(entity))
+            {
+                CollectSharedVertexLists(referenced, mlineSnapshot, leaderSnapshot, visited);
             }
         }
     }
 
     /// <summary>
-    /// True when <paramref name="block"/>, or any block reachable from it through a nested <see cref="Insert.Block"/>,
-    /// contains an MLINE or a LEADER — the entities <see cref="CollectSharedVertexLists"/> exists to snapshot.
-    /// Unlike that walk it needs no arrowhead-block edge of its own: an arrowhead block is only ever reached
-    /// through a LEADER, and finding a LEADER already answers yes, so the extra edge could not change an answer.
+    /// True when <paramref name="block"/>, or any block reachable from it through the edges
+    /// <see cref="ReferencedBlocks"/> reports, contains an MLINE, a LEADER or a DIMENSION. The first two are the
+    /// entities <see cref="CollectSharedVertexLists"/> exists to snapshot; a DIMENSION carries none of its own but
+    /// reaches an arrowhead block that may hold one, so it has to answer yes here or that walk would never be run.
+    /// A LEADER answers yes for the same reason as well as for its own vertices. Over-approximating costs one
+    /// wasted subtree walk and cannot lose a snapshot.
     /// Answers are memoised per block in <see cref="_blocksNeedingHeal"/>, so an insert of a block already proven
     /// clean (or already proven to need healing) elsewhere on the page costs a dictionary lookup instead of a walk.
     /// </summary>
     /// <param name="block">The block to check, or null.</param>
     /// <param name="visited">Blocks already walked in this call, so a circular or diamond hierarchy is walked once.</param>
-    /// <returns>True when the subtree contains an MLINE or a LEADER.</returns>
+    /// <returns>True when the subtree contains an MLINE, a LEADER or a DIMENSION.</returns>
     private bool BlockSubtreeNeedsHeal(BlockRecord? block, HashSet<BlockRecord> visited)
     {
         return this.ScanBlockSubtree(block, visited).NeedsHeal;
@@ -1353,7 +1424,7 @@ internal sealed class EntityRenderDispatcher
     /// </summary>
     /// <param name="block">The block to check, or null.</param>
     /// <param name="visited">Blocks already walked in this call, so a circular or diamond hierarchy is walked once.</param>
-    /// <returns>Whether the subtree contains an MLINE or a LEADER, and whether a cycle cut the walk short.</returns>
+    /// <returns>Whether the subtree contains an MLINE, a LEADER or a DIMENSION, and whether a cycle cut the walk short.</returns>
     private (bool NeedsHeal, bool Truncated) ScanBlockSubtree(BlockRecord? block, HashSet<BlockRecord> visited)
     {
         if (block == null)
@@ -1378,21 +1449,28 @@ internal sealed class EntityRenderDispatcher
         bool truncated = false;
         foreach (Entity entity in block.Entities)
         {
-            if (entity is MLine or Leader)
+            // A DIMENSION is included even though it holds no vertex list of its own: it reaches arrowhead blocks
+            // that may hold an MLINE, and a "clean" answer here means no snapshot is ever taken.
+            if (entity is MLine or Leader or Dimension)
             {
                 needsHeal = true;
                 break;
             }
 
-            if (entity is Insert nestedInsert)
+            foreach (BlockRecord referenced in ReferencedBlocks(entity))
             {
-                (bool nestedNeedsHeal, bool nestedTruncated) = this.ScanBlockSubtree(nestedInsert.Block, visited);
+                (bool nestedNeedsHeal, bool nestedTruncated) = this.ScanBlockSubtree(referenced, visited);
                 truncated |= nestedTruncated;
                 if (nestedNeedsHeal)
                 {
                     needsHeal = true;
                     break;
                 }
+            }
+
+            if (needsHeal)
+            {
+                break;
             }
         }
 
@@ -1410,13 +1488,19 @@ internal sealed class EntityRenderDispatcher
     /// <param name="block">The block a reference points at.</param>
     /// <returns>True when walking the block's nested references reaches a block already on the walk.</returns>
     /// <remarks>
-    /// This walks the whole graph without caching or stopping early, unlike the heal scan: a cycle can hide behind
-    /// any branch, and an answer that stopped at the first interesting entity would miss it. Blocks are tracked on
-    /// the current path rather than globally, so a diamond — two references to the same block from different places —
-    /// is not mistaken for a cycle. A block is reached both through a nested <c>Insert</c> and through a LEADER's
-    /// arrowhead block: <c>Leader.Clone()</c> deep-clones its dimension style, which deep-clones that style's
-    /// arrowhead block, so a leader inside its own arrowhead block exhausts the stack in exactly the same way a
-    /// self-referencing insert does.
+    /// This walks the whole graph without stopping early, unlike the heal scan: a cycle can hide behind any branch,
+    /// and an answer that stopped at the first interesting entity would miss it. Cycle detection itself is done with
+    /// a set of the blocks on the *current path*, not a global one, so a diamond — two references to the same block
+    /// from different places — is not mistaken for a cycle. A second set records the blocks already proven acyclic
+    /// anywhere in this walk, which is what keeps a heavily shared DAG (each block holding two references to the
+    /// next) from costing exponential time; it is sound because a block that reaches no cycle and no on-path
+    /// ancestor from one path cannot reach one from another — if it could, that ancestor would be reachable from it
+    /// and the first walk would already have come back to the block itself. It is scoped to the one call rather than
+    /// held in a field, because the caller's document may change between renders.
+    /// The edges followed are the ones <see cref="ReferencedBlocks"/> reports: a nested <c>Insert</c>, and all four
+    /// arrowhead blocks of a LEADER's or a DIMENSION's dimension style, since cloning either entity deep-clones its
+    /// style and with it those blocks, so a leader inside its own arrowhead block exhausts the stack in exactly the
+    /// same way a self-referencing insert does.
     /// <para>
     /// It has to be answered before <c>Insert.Explode()</c> is called, not while drawing: exploding deep-clones the
     /// whole block graph, so a cycle exhausts the stack inside ACadSharp before the renderer sees a single entity,
@@ -1427,10 +1511,15 @@ internal sealed class EntityRenderDispatcher
     /// </remarks>
     internal static bool BlockGraphIsCircular(BlockRecord? block)
     {
-        return block != null && Walk(block, new HashSet<BlockRecord>());
+        return block != null && Walk(block, new HashSet<BlockRecord>(), new HashSet<BlockRecord>());
 
-        static bool Walk(BlockRecord block, HashSet<BlockRecord> onPath)
+        static bool Walk(BlockRecord block, HashSet<BlockRecord> onPath, HashSet<BlockRecord> acyclic)
         {
+            if (acyclic.Contains(block))
+            {
+                return false;
+            }
+
             if (!onPath.Add(block))
             {
                 return true;
@@ -1440,19 +1529,16 @@ internal sealed class EntityRenderDispatcher
             {
                 foreach (Entity entity in block.Entities)
                 {
-                    BlockRecord? reached = entity switch
+                    foreach (BlockRecord reached in ReferencedBlocks(entity))
                     {
-                        Insert nested => nested.Block,
-                        Leader leader => leader.Style?.LeaderArrow,
-                        _ => null,
-                    };
-
-                    if (reached != null && Walk(reached, onPath))
-                    {
-                        return true;
+                        if (Walk(reached, onPath, acyclic))
+                        {
+                            return true;
+                        }
                     }
                 }
 
+                acyclic.Add(block);
                 return false;
             }
             finally

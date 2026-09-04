@@ -2509,4 +2509,73 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal(2, mline.Vertices.Count);
         Assert.Equal(3, surface.Polylines.Count);
     }
+
+    [Fact]
+    public void DrawingABlockWhoseLeaderStyleCarriesADimArrow1LeavesAnMLineInsideItIntact()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(-1, 0, [0.5, 0], [-0.5, 0]), VertexAt(0, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        arrow.Entities.Add(mline);
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        // Built while NOTE is still empty, so ACadSharp's Insert(BlockRecord) constructor has nothing to clone yet;
+        // the same construction-order workaround the LeaderArrow tests above use.
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0) };
+        note.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, DimArrow1 = arrow },
+        });
+        document.BlockRecords.Add(note);
+        document.Entities.Add(insert);
+        Assert.Equal(2, mline.Vertices.Count);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // DIMBLK1 is never drawn by this renderer, but DimensionStyle.Clone() deep-clones all four of its
+        // block-valued properties, so exploding the insert reaches this MLINE through the leader's style exactly as
+        // it does through LeaderArrow. The snapshot has to follow every one of those edges, not just the drawn one.
+        Assert.Equal(2, mline.Vertices.Count);
+    }
+
+    [Fact]
+    public void DrawingABlockWhoseDimensionStyleCarriesAnArrowBlockLeavesAnMLineInsideItIntact()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(-1, 0, [0.5, 0], [-0.5, 0]), VertexAt(0, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        arrow.Entities.Add(mline);
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0) };
+        note.Entities.Add(new DimensionLinear
+        {
+            FirstPoint = new XYZ(0, 0, 0),
+            SecondPoint = new XYZ(10, 0, 0),
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, ArrowBlock = arrow },
+        });
+        document.BlockRecords.Add(note);
+        document.Entities.Add(insert);
+        Assert.Equal(2, mline.Vertices.Count);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // A DIMENSION carries a DimensionStyle exactly as a LEADER does, and cloning it clones the style's arrow
+        // blocks the same way. A block holding only a dimension must therefore still be scanned and snapshotted.
+        Assert.Equal(2, mline.Vertices.Count);
+    }
 }

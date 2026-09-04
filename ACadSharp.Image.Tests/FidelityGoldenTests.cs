@@ -22,26 +22,45 @@ public sealed class FidelityGoldenTests
     private static readonly XNamespace Ns = SvgDrawingSurface.Ns;
     private static readonly Regex PathCommand = new(@"[ML](-?[0-9]*\.?[0-9]+) (-?[0-9]*\.?[0-9]+)", RegexOptions.Compiled);
 
-    private static ImageExporter FidelityExporter()
+    /// <summary>
+    /// The exporter both goldens render, with <paramref name="notifications"/> subscribed before the page is added
+    /// so anything raised during page construction is covered by the warning-free guard too, not just what the
+    /// render itself raises.
+    /// </summary>
+    private static ImageExporter FidelityExporter(List<NotificationEventArgs> notifications)
     {
         ImageExporter exporter = new();
         exporter.Configuration.Width = 800;
         exporter.Configuration.Height = 500;
         exporter.Configuration.SetPadding(10);
         exporter.Configuration.FontFamilyName = FontFamily;
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
         exporter.Add(SyntheticSamples.FidelityBlock());
         return exporter;
+    }
+
+    /// <summary>
+    /// This fixture deliberately walks four arrowhead fallback paths (an empty or self-referencing arrow block, a
+    /// non-uniform placement, a degenerate size); a silent fallback to the default triangle would still satisfy the
+    /// geometry assertions, so this is the one check that proves every feature actually took its intended path
+    /// rather than falling back unnoticed. It is asserted on both backends, since they are different surfaces.
+    /// </summary>
+    private static void AssertNothingFellBack(IReadOnlyList<NotificationEventArgs> notifications)
+    {
+        Assert.DoesNotContain(notifications, n => n.NotificationType is NotificationType.Warning or NotificationType.NotImplemented);
     }
 
     [Fact]
     public void FidelityPngMatchesBaseline()
     {
         Assert.True(SystemFonts.TryGet(FontFamily, out _), $"Font '{FontFamily}' must be installed for parity tests.");
-        ImageExporter exporter = FidelityExporter();
+        List<NotificationEventArgs> notifications = new();
+        ImageExporter exporter = FidelityExporter(notifications);
 
         using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         GoldenAssert.Png("fidelity.model.01", page.Canvas);
+        AssertNothingFellBack(notifications);
 
         // The inverted wipeout masks the whole wipeout frame (world x in [60,110], y in [10,30] — derived from its
         // own InsertPoint/UVector/VVector/Size) EXCEPT its boundary (world x in [75,95], y in [14,26] — derived the
@@ -63,19 +82,13 @@ public sealed class FidelityGoldenTests
     [Fact]
     public void FidelitySvgMatchesGoldenAndContainsEveryFeature()
     {
-        ImageExporter exporter = FidelityExporter();
         List<NotificationEventArgs> notifications = new();
-        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        ImageExporter exporter = FidelityExporter(notifications);
 
         RenderedSvgPage page = Assert.IsType<RenderedSvgPage>(Assert.Single(exporter.Render(ImageExportFormat.Svg)));
 
         GoldenAssert.Svg("fidelity.model.01", page.Content);
-
-        // This fixture deliberately walks four arrowhead fallback paths (an empty or self-referencing arrow block, a
-        // non-uniform placement, a degenerate size); a silent fallback to the default triangle would still satisfy
-        // the geometry assertions below, so this is the one check that proves every feature actually took its
-        // intended path rather than falling back unnoticed.
-        Assert.DoesNotContain(notifications, n => n.NotificationType is NotificationType.Warning or NotificationType.NotImplemented);
+        AssertNothingFellBack(notifications);
 
         XDocument document = XDocument.Parse(page.Content);
         XElement InLayer(string layer) => document.Descendants(Ns + "g").Single(g => (string?)g.Attribute("data-layer") == layer);

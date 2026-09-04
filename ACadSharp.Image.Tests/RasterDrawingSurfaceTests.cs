@@ -237,13 +237,13 @@ public sealed class RasterDrawingSurfaceTests
     }
 
     /// <summary>Draws one text run of height 10 at the canvas centre and returns the canvas.</summary>
-    private static Image<Rgba32> DrawnText(string value, SurfaceTextBaseline baseline, double lineSpacingFactor, double rotation, float dpi = 96f)
+    private static Image<Rgba32> DrawnText(string value, SurfaceTextBaseline baseline, double lineSpacingFactor, double rotation, float dpi = 96f, double widthScale = 1d)
     {
         Image<Rgba32> canvas = new(200, 200, ImageColor.White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration { Dpi = dpi }, ownsCanvas: false);
         surface.DrawText(
             new ImageStyle(ImageColor.Black, 1f),
-            new SurfaceText(value, new SurfacePoint(100, 100), 10, rotation, SurfaceTextAnchor.Start, baseline, 0, lineSpacingFactor, 0));
+            new SurfaceText(value, new SurfacePoint(100, 100), 10, rotation, SurfaceTextAnchor.Start, baseline, 0, lineSpacingFactor, 0, widthScale));
         return canvas;
     }
 
@@ -364,5 +364,68 @@ public sealed class RasterDrawingSurfaceTests
         }
 
         return [first, last];
+    }
+
+    /// <summary>First and last canvas row holding a pixel darker than mid grey.</summary>
+    private static int[] InkRowBounds(Image<Rgba32> canvas)
+    {
+        int first = -1;
+        int last = -1;
+        for (int y = 0; y < canvas.Height; y++)
+        {
+            bool inked = false;
+            for (int x = 0; x < canvas.Width && !inked; x++)
+            {
+                inked = canvas[x, y].R < 128;
+            }
+
+            if (inked)
+            {
+                if (first < 0)
+                {
+                    first = y;
+                }
+
+                last = y;
+            }
+        }
+
+        return [first, last];
+    }
+
+    [Fact]
+    public void NonUniformWidthScaleWidensGlyphsAlongTheBaselineOnly()
+    {
+        using Image<Rgba32> natural = DrawnText("H", SurfaceTextBaseline.Alphabetic, 1d, 0d);
+        using Image<Rgba32> stretched = DrawnText("H", SurfaceTextBaseline.Alphabetic, 1d, 0d, widthScale: 2d);
+
+        int[] naturalColumns = InkColumnBounds(natural);
+        int[] stretchedColumns = InkColumnBounds(stretched);
+        int[] naturalRows = InkRowBounds(natural);
+        int[] stretchedRows = InkRowBounds(stretched);
+
+        int naturalColumnSpan = naturalColumns[1] - naturalColumns[0];
+        int stretchedColumnSpan = stretchedColumns[1] - stretchedColumns[0];
+        Assert.True(Math.Abs(stretchedColumnSpan - (2 * naturalColumnSpan)) <= 2, $"expected the stretched column span (~{2 * naturalColumnSpan}) to be about double the natural span ({naturalColumnSpan}), got {stretchedColumnSpan}.");
+
+        int naturalRowSpan = naturalRows[1] - naturalRows[0];
+        int stretchedRowSpan = stretchedRows[1] - stretchedRows[0];
+        Assert.True(Math.Abs(stretchedRowSpan - naturalRowSpan) <= 1, $"expected the row span to stay about {naturalRowSpan}, got {stretchedRowSpan}.");
+    }
+
+    [Fact]
+    public void NonUniformWidthScaleWidensARotatedGlyphAlongItsOwnBaseline()
+    {
+        // A quarter turn puts the reading axis along the page's y axis, so a stretch along the reading axis must
+        // widen the ROW span, not the column span, once the glyph is rotated into place.
+        using Image<Rgba32> natural = DrawnText("H", SurfaceTextBaseline.Alphabetic, 1d, Math.PI / 2d);
+        using Image<Rgba32> stretched = DrawnText("H", SurfaceTextBaseline.Alphabetic, 1d, Math.PI / 2d, widthScale: 2d);
+
+        int[] naturalRows = InkRowBounds(natural);
+        int[] stretchedRows = InkRowBounds(stretched);
+
+        int naturalRowSpan = naturalRows[1] - naturalRows[0];
+        int stretchedRowSpan = stretchedRows[1] - stretchedRows[0];
+        Assert.True(Math.Abs(stretchedRowSpan - (2 * naturalRowSpan)) <= 2, $"expected the stretched row span (~{2 * naturalRowSpan}) to be about double the natural span ({naturalRowSpan}), got {stretchedRowSpan}.");
     }
 }

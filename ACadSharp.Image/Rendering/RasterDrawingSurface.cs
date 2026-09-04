@@ -227,15 +227,27 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
                 SurfaceTextBaseline.Central => VerticalAlignment.Center,
                 _ => VerticalAlignment.Bottom,
             },
-            WrappingLength = text.WrappingWidth > 0 ? (float)text.WrappingWidth : -1,
+            WrappingLength = text.WrappingWidth > 0 ? (float)(text.WrappingWidth / text.WidthScale) : -1,
             LineSpacing = lineSpacing,
         };
 
         IPathCollection glyphs = TextBuilder.GenerateGlyphs(text.Text, options);
         DrawingOptions drawingOptions = new();
-        if (Math.Abs(text.Rotation) > double.Epsilon)
+        bool stretched = Math.Abs(text.WidthScale - 1d) > double.Epsilon;
+        bool rotated = Math.Abs(text.Rotation) > double.Epsilon;
+        if (stretched || rotated)
         {
-            drawingOptions.Transform = Matrix3x2.CreateRotation((float)-text.Rotation, new Vector2(origin.X, origin.Y));
+            // Glyphs are laid out along the page's own x axis before any transform; scaling that layout about the
+            // origin first widens the run along its own reading axis, and the rotation that follows carries the
+            // widened run to its final orientation, so the stretch travels with the text instead of the canvas.
+            Vector2 pivot = new(origin.X, origin.Y);
+            Matrix3x2 transform = stretched ? Matrix3x2.CreateScale((float)text.WidthScale, 1f, pivot) : Matrix3x2.Identity;
+            if (rotated)
+            {
+                transform *= Matrix3x2.CreateRotation((float)-text.Rotation, pivot);
+            }
+
+            drawingOptions.Transform = transform;
         }
 
         ImageColor color = style.EffectiveColor;

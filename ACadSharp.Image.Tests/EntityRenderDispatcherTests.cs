@@ -13,7 +13,7 @@ namespace ACadSharp.Image.Tests;
 
 public sealed class EntityRenderDispatcherTests
 {
-    private static ImageRenderContext CreateContext(IDrawingSurface surface, ImageConfiguration configuration)
+    internal static ImageRenderContext CreateContext(IDrawingSurface surface, ImageConfiguration configuration)
     {
         Layout layout = new("test") { PaperWidth = 100, PaperHeight = 100 };
         return new ImageRenderContext(surface, configuration, layout, 100, 100, 0, 0, 1d, 0, 0, singlePrecision: false, lineTypeScale: 1d);

@@ -328,6 +328,45 @@ public sealed class SvgDrawingSurfaceTests
     }
 
     [Fact]
+    public void NonUniformWidthScaleAddsAScaleTransform()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        SurfaceText run = new("AB", new SurfacePoint(10, 20), 4, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, -1, WidthScale: 2);
+
+        surface.DrawText(new ImageStyle(Color.Black, 1f), run);
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        Assert.Equal("translate(10 20) scale(2 1) translate(-10 -20)", (string?)text.Attribute("transform"));
+    }
+
+    [Fact]
+    public void NonUniformWidthScaleWithRotationAppendsScaleAfterRotate()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        SurfaceText run = new("AB", new SurfacePoint(10, 20), 4, Math.PI / 2, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, -1, WidthScale: 2);
+
+        surface.DrawText(new ImageStyle(Color.Black, 1f), run);
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        string? transform = (string?)text.Attribute("transform");
+        Assert.NotNull(transform);
+        Assert.StartsWith("rotate(-90 10 20) ", transform, StringComparison.Ordinal);
+        Assert.EndsWith("translate(10 20) scale(2 1) translate(-10 -20)", transform, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnitWidthScaleAddsNoTransformAttribute()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        SurfaceText run = new("AB", new SurfacePoint(10, 20), 4, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, -1, WidthScale: 1);
+
+        surface.DrawText(new ImageStyle(Color.Black, 1f), run);
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        Assert.Null(text.Attribute("transform"));
+    }
+
+    [Fact]
     public void MultiLineTextUsesTspans()
     {
         using SvgDrawingSurface surface = CreateSurface();

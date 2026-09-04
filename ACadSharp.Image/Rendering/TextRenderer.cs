@@ -55,9 +55,10 @@ internal sealed class TextRenderer
             rotation,
             anchor,
             GetBaseline(mtext.AttachmentPoint),
-            mtext.RectangleWidth > 0 ? context.ToSurfaceLength(mtext.RectangleWidth * p.Scale) : -1d,
+            mtext.RectangleWidth > 0 ? context.ToSurfaceLength(mtext.RectangleWidth * p.WidthScale) : -1d,
             mtext.LineSpacing,
-            FixedLength: -1d);
+            FixedLength: -1d,
+            WidthScale: p.WidthScale / p.Scale);
 
         context.Surface.DrawText(style, run);
     }
@@ -104,7 +105,8 @@ internal sealed class TextRenderer
             GetBaseline(textEntity.VerticalAlignment),
             WrappingWidth: -1d,
             LineSpacingFactor: 1d,
-            GetFixedLength(context, textEntity, toWorld, placement));
+            GetFixedLength(context, textEntity, toWorld, placement),
+            WidthScale: p.WidthScale / p.Scale);
 
         context.Surface.DrawText(style, run);
     }
@@ -114,7 +116,8 @@ internal sealed class TextRenderer
     /// <param name="Direction">Unit world direction the baseline reads along.</param>
     /// <param name="Mirrored">True when the up direction lies to the right of the reading direction, i.e. the plane is seen from behind.</param>
     /// <param name="Scale">Factor the text height is multiplied by (the length of the transformed up vector).</param>
-    internal readonly record struct Placement(XY Origin, XY Direction, bool Mirrored, double Scale);
+    /// <param name="WidthScale">Length of the transformed unit reading direction, before it is normalised into <paramref name="Direction"/>.</param>
+    internal readonly record struct Placement(XY Origin, XY Direction, bool Mirrored, double Scale, double WidthScale);
 
     /// <summary>
     /// Builds a placement by mapping the origin and the tips of its unit X and Y axes through the optional insert
@@ -140,7 +143,7 @@ internal sealed class TextRenderer
         }
 
         bool mirrored = (direction.X * up.Y) - (direction.Y * up.X) < 0d;
-        return new Placement(new XY(o.X, o.Y), direction / length, mirrored, scale);
+        return new Placement(new XY(o.X, o.Y), direction / length, mirrored, scale, length);
     }
 
     /// <summary>

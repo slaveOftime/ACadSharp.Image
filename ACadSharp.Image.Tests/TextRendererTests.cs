@@ -2,6 +2,7 @@ using ACadSharp.Entities;
 using ACadSharp.Image.Rendering;
 using ACadSharp.IO;
 using ACadSharp.Objects;
+using ACadSharp.Tables;
 using CSMath;
 
 namespace ACadSharp.Image.Tests;
@@ -44,6 +45,23 @@ public sealed class TextRendererTests
         dispatcher.Draw(context, text);
 
         Assert.Equal(-1d, Assert.Single(surface.Texts).FixedLength);
+    }
+
+    [Fact]
+    public void NonUniformInsertScaleStretchesTextHorizontally()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("LABEL");
+        block.Entities.Add(new MText { Value = "Wide", InsertPoint = new XYZ(0, 0, 0), Height = 4, RectangleWidth = 30 });
+        Insert insert = new(block) { InsertPoint = new XYZ(10, 10, 0), XScale = 2, YScale = 1 };
+
+        new EntityRenderDispatcher(configuration).Draw(EntityRenderDispatcherTests.CreateContext(surface, configuration), insert);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal(4d, run.Height, 9);
+        Assert.Equal(2d, run.WidthScale, 9);
+        Assert.Equal(60d, run.WrappingWidth, 9);
     }
 
     [Theory]
@@ -191,7 +209,7 @@ public sealed class TextRendererTests
     [Fact]
     public void OrientLeavesFrontFacingPlacementsAlone()
     {
-        TextRenderer.Placement front = new(new XY(0, 0), new XY(Math.Cos(0.7), Math.Sin(0.7)), Mirrored: false, Scale: 1d);
+        TextRenderer.Placement front = new(new XY(0, 0), new XY(Math.Cos(0.7), Math.Sin(0.7)), Mirrored: false, Scale: 1d, WidthScale: 1d);
         (double rotation, SurfaceTextAnchor anchor) = TextRenderer.Orient(front, SurfaceTextAnchor.End);
 
         Assert.Equal(0.7, rotation, 9);

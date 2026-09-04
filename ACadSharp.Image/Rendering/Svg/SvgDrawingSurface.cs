@@ -378,14 +378,14 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             return;
         }
 
-        if (!IsFinite(text.Origin) || !IsFinite(text.Height) || !IsFinite(text.Rotation) || !IsFinite(text.FixedLength) || !IsFinite(text.LineSpacingFactor))
+        if (!IsFinite(text.Origin) || !IsFinite(text.Height) || !IsFinite(text.Rotation) || !IsFinite(text.FixedLength) || !IsFinite(text.LineSpacingFactor) || !IsFinite(text.WidthScale))
         {
             this.NotifyNonFinite();
             return;
         }
 
         double emSize = SvgTextLayout.EmSize(text.Height);
-        IReadOnlyList<string> lines = SvgTextLayout.Wrap(SvgXmlText.Clean(text.Text), text.WrappingWidth, emSize, this._configuration.FontFamilyName);
+        IReadOnlyList<string> lines = SvgTextLayout.Wrap(SvgXmlText.Clean(text.Text), text.WrappingWidth / text.WidthScale, emSize, this._configuration.FontFamilyName);
         double lineHeight = SvgTextLayout.LineHeight(text.Height, text.LineSpacingFactor);
         double firstLineY = text.Origin.Y + SvgTextLayout.BlockOffset(lines.Count, lineHeight, text.Baseline);
 
@@ -404,14 +404,23 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             element.Add(new XAttribute("dominant-baseline", text.Baseline == SurfaceTextBaseline.Central ? "central" : "hanging"));
         }
 
-        if (Math.Abs(text.Rotation) > 1e-12)
+        // The rotation carries the reading axis into place; a non-uniform insert scale then stretches along that axis by
+        // pivoting a scale about the anchor point, expressed as translate/scale/translate because SVG has no bare "scale
+        // about a point" primitive.
+        string? rotate = Math.Abs(text.Rotation) > 1e-12
+            ? $"rotate({this.A(-text.Rotation * 180d / Math.PI)} {this.N(text.Origin.X)} {this.N(text.Origin.Y)})"
+            : null;
+        string? stretch = Math.Abs(text.WidthScale - 1d) > 1e-9
+            ? $"translate({this.N(text.Origin.X)} {this.N(text.Origin.Y)}) scale({this.N(text.WidthScale)} 1) translate({this.N(-text.Origin.X)} {this.N(-text.Origin.Y)})"
+            : null;
+        if (rotate != null || stretch != null)
         {
-            element.Add(new XAttribute("transform", $"rotate({this.A(-text.Rotation * 180d / Math.PI)} {this.N(text.Origin.X)} {this.N(text.Origin.Y)})"));
+            element.Add(new XAttribute("transform", string.Join(' ', new[] { rotate, stretch }.Where(part => part != null))));
         }
 
         if (text.FixedLength > 0)
         {
-            element.Add(new XAttribute("textLength", this.N(text.FixedLength)), new XAttribute("lengthAdjust", "spacingAndGlyphs"));
+            element.Add(new XAttribute("textLength", this.N(text.FixedLength / text.WidthScale)), new XAttribute("lengthAdjust", "spacingAndGlyphs"));
         }
 
         if (lines.Count == 1)

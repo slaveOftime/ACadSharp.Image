@@ -44,7 +44,7 @@
 - Test: `ACadSharp.Image.Tests/ImagePageTests.cs`, `ACadSharp.Image.Tests/ImagePageRendererTests.cs`
 
 **Interfaces:**
-- Produces: `internal IReadOnlyList<CadObject> ImagePage.DrawSequence` (entities and viewports in the order they were added); `internal IEnumerable<Entity> ImagePageRenderer.SelectViewportEntities(Viewport viewport)`.
+- Produces: `internal IReadOnlyList<Entity> ImagePage.DrawSequence` (entities and viewports, `Viewport : Entity`, in the order they were added); `internal IEnumerable<Entity> ImagePageRenderer.SelectViewportEntities(Viewport viewport)`.
 - Public `ImagePage.Entities` and `ImagePage.Viewports` keep their contents and order.
 
 - [ ] **Step 1: Write the failing tests**
@@ -70,7 +70,7 @@ Append to `ImagePageTests`:
     }
 ```
 
-Append to `ImagePageRendererTests` (follow that file's existing pattern for building a renderer over a `RecordingDrawingSurface`; if it has no such helper, build one there: an `ImagePageRenderer` from an `ImageConfiguration`, a page with `Layout` set, and render through the surface the same way `ImagePageRenderer.Render` does for PNG, or call the internal `RenderTo` through a small internal hook you add and document):
+Append to `ImagePageRendererTests`. The file already renders pages with `new ImagePageRenderer(exporter.Configuration).RenderTo(new RecordingDrawingSurface(), page)` (see `LayoutPagesKeepTheirPaperSize`); `RenderThrough(exporter, surface)` below is exactly `new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0])` — write it as a private static helper in the test class:
 
 ```csharp
     [Fact]
@@ -130,22 +130,22 @@ Expected: FAIL (no `DrawSequence`; viewport drawn first; the malformed polyline 
 
 - [ ] **Step 3: Implement**
 
-`ImagePage`: add `private readonly List<CadObject> _drawSequence = [];` appended to by both `AddEntity` and `AddViewport`, exposed as `internal IReadOnlyList<CadObject> DrawSequence => this._drawSequence;` with an XML summary ("Entities and viewports in the order they were added, which is the order they are drawn in.").
+`ImagePage`: add `private readonly List<Entity> _drawSequence = [];` appended to by both `AddEntity` and `AddViewport` (`Viewport` derives from `Entity`), exposed as `internal IReadOnlyList<Entity> DrawSequence => this._drawSequence;` with an XML summary ("Entities and viewports in the order they were added, which is the order they are drawn in.").
 
 `ImageExporter.Add(Layout)`: replace the two loops with one over `layout.AssociatedBlock.GetSortedEntities()`: a `Viewport` that `RepresentsPaper` is skipped, any other `Viewport` goes to `page.AddViewport`, everything else to `page.AddEntity`. Remove `ShouldIncludeEntity` if it becomes unused (check `Add(BlockRecord)` still filters viewports out; keep the filter there).
 
 `ImagePageRenderer.RenderTo`:
 
 ```csharp
-        foreach (CadObject item in page.DrawSequence)
+        foreach (Entity item in page.DrawSequence)
         {
             if (item is Viewport viewport)
             {
                 this.DrawViewport(context, viewport);
             }
-            else if (item is Entity entity)
+            else
             {
-                this._dispatcher.Draw(context, entity);
+                this._dispatcher.Draw(context, item);
             }
         }
 ```
@@ -541,7 +541,7 @@ Expected: compile failures for `WidthScale`, then FAIL.
 
 `SvgDrawingSurface.DrawText`: wrap at `text.WrappingWidth / text.WidthScale` (the stretch is applied by the transform), set `textLength` to `text.FixedLength / text.WidthScale`, and build the transform list: rotation part as today, then when `Math.Abs(text.WidthScale - 1d) > 1e-9` append `translate({x} {y}) scale({sx} 1) translate({-x} {-y})` (space-separated, numbers through `this.N`/`this.S`). Validate `WidthScale` in the finiteness guard.
 
-`RasterDrawingSurface.DrawText`: `WrappingLength` divided by `text.WidthScale`; `drawingOptions.Transform = Matrix3x2.CreateScale((float)text.WidthScale, 1f, new Vector2(origin.X, origin.Y)) * Matrix3x2.CreateRotation((float)-text.Rotation, new Vector2(origin.X, origin.Y))` when either differs from identity (scale first, then rotation; check SixLabors' `Matrix3x2` multiplication order gives "scale then rotate" and adjust if the row-vector convention reverses it: the rotated `"H"` at `widthScale: 2` must widen along its own baseline, not along the canvas X axis — add that as a third raster assertion with rotation π/2: the ink ROW span doubles).
+`RasterDrawingSurface.DrawText`: `WrappingLength` divided by `text.WidthScale` (the raster does not use `FixedLength` at all, verified by grep, so nothing else scales); `drawingOptions.Transform = Matrix3x2.CreateScale((float)text.WidthScale, 1f, new Vector2(origin.X, origin.Y)) * Matrix3x2.CreateRotation((float)-text.Rotation, new Vector2(origin.X, origin.Y))` when either differs from identity (scale first, then rotation; check SixLabors' `Matrix3x2` multiplication order gives "scale then rotate" and adjust if the row-vector convention reverses it: the rotated `"H"` at `widthScale: 2` must widen along its own baseline, not along the canvas X axis — add that as a third raster assertion with rotation π/2: the ink ROW span doubles).
 
 - [ ] **Step 4: Run the tests and the suite**
 
@@ -630,7 +630,7 @@ Expected: FAIL (element 0 on the vertex line; solid element; NaN offsets drawn o
 
 `DrawMLine`: compute `double[] scaled = elements.Select(e => e.Offset * scale).ToArray();` and take `maxOffset`/`minOffset` and the `outer`/`inner` indices from `scaled`; shift becomes `-max(scaled)` / `-min(scaled)`. Before any drawing, when the fallback is needed for any vertex (or unconditionally, it is cheap): if `!double.IsFinite(scale) || scaled.Any(v => !double.IsFinite(v))` → Warning `"[...] Handle X: multiline style has non-finite offsets or scale; entity skipped."` and return. Element linetype: `LineType? elementType = elements[j].LineType; float[]? dashes = elementType == null || ImageStyleResolver.IsNamed(elementType, LineType.ByLayerName) || ImageStyleResolver.IsNamed(elementType, LineType.ByBlockName) ? style.DashPattern : LineTypeDashResolver.Resolve(...)`. Make `IsNamed` `internal static` with a `<summary>`.
 
-Cache: `private readonly Dictionary<BlockRecord, bool> _blocksWithMLines = new();` on the dispatcher; `private bool BlockSubtreeHasMLines(BlockRecord block, HashSet<BlockRecord> visited)` memoised per block (an MLINE directly in the block, or any nested `Insert.Block` subtree with one). `DrawBlockContents` calls `CollectMLines` only when `BlockSubtreeHasMLines(insert.Block, new HashSet<BlockRecord>())` is true; otherwise `mlineVertices` stays empty and the streaming `Explode()` path is taken. The dispatcher is created per page render, so the cache lives exactly as long as one render.
+Cache: `private readonly Dictionary<BlockRecord, bool> _blocksWithMLines = new();` on the dispatcher; `private bool BlockSubtreeHasMLines(BlockRecord block, HashSet<BlockRecord> visited)` memoised per block (an MLINE directly in the block, or any nested `Insert.Block` subtree with one). `DrawBlockContents` calls `CollectMLines` only when `BlockSubtreeHasMLines(insert.Block, new HashSet<BlockRecord>())` is true; otherwise `mlineVertices` stays empty and the streaming `Explode()` path is taken. The dispatcher belongs to an `ImagePageRenderer`, which can render several pages and outlives a single `RenderTo` (`ImagePageRenderer.cs:32-36`), so a stale `false` would let `Explode()` empty an MLINE added to a block between two renders. Add `internal void BeginPage()` on the dispatcher that clears the cache, call it at the start of `ImagePageRenderer.RenderTo`, and add this test to `ImagePageRendererTests`: render a block page holding an insert of an MLINE-free block through one renderer, then add an `MLine` (two vertices, parameters `[0.5,0]/[-0.5,0]`) to that block and render the same page again with the same renderer; assert the MLINE still has two vertices and that two polylines were drawn in the second render.
 
 - [ ] **Step 4: Run the tests and the suite**
 
@@ -719,7 +719,7 @@ git commit -m "Preserve text whitespace in SVG, refresh stale docs, reject extra
 
 - [ ] **Step 2: Synthetic entity block and goldens**
 
-Add `SyntheticSamples.EntityBlock()` returning a `BlockRecord("entities")` with: a `Face3D` quad at (0,0)-(20,15) with `Flags = InvisibleEdgeFlags.Third`; a `Leader` with arrow from (30,0) to (45,10) to (60,10) on a style `ArrowSize = 2`; a splined `Leader` through (70,0),(80,10),(90,0),(100,10); an `MLine` with a two-element fill-on style (offsets ±1, `FillColor` colour 3, element colours 1 and 5) along (0,30)-(40,30)-(40,50), vertex parameters `[1,0]/[-1,0]`; a `Line` from (60,30) to (100,30) on layer "Under" followed (later in the entity list, higher handle if handles are set) by a `Wipeout` covering (70,25)-(90,35) (`InsertPoint (70,25)`, `UVector (20,0,0)`, `VVector (0,10,0)`, `Size (1,1)`, `ClippingState = true`, rectangular `(-0.5,-0.5),(0.5,0.5)`); an `Insert` of a block with an `AttributeDefinition` tag "ROOM" at (0,0) whose insert sits at (60,45) with the attribute value "A-101" placed at (60,45) height 3. Use distinct layers with colours so the SVG groups are easy to assert.
+Add `SyntheticSamples.EntityBlock()` returning a `BlockRecord("entities")` with: a `Face3D` quad at (0,0)-(20,15) with `Flags = InvisibleEdgeFlags.Third`; a `Leader` with arrow from (30,0) to (45,10) to (60,10) on a style `ArrowSize = 2`; a splined `Leader` (`PathType = LeaderPathType.Spline`, `ArrowHeadEnabled = true`, same style) through (70,0),(80,10),(90,0),(100,10); both leaders have `ArrowHeadEnabled = true`; an `MLine` with a two-element fill-on style (offsets ±1, `FillColor` colour 3, element colours 1 and 5) along (0,30)-(40,30)-(40,50) with proper miters: first vertex `Miter (0,1,0)` parameters `[1,0]/[-1,0]`, the corner vertex `Miter (-1,1,0)/√2` with parameters `[√2,0]/[-√2,0]` (offset ±1 at a right-angle corner lies √2 along the bisector), last vertex `Miter (-1,0,0)` parameters `[1,0]/[-1,0]`; a `Line` from (60,30) to (100,30) on layer "Under" followed (later in the entity list, higher handle if handles are set) by a `Wipeout` covering (70,25)-(90,35) (`InsertPoint (70,25)`, `UVector (20,0,0)`, `VVector (0,10,0)`, `Size (1,1)`, `ClippingState = true`, rectangular `(-0.5,-0.5),(0.5,0.5)`); an `Insert` of a block with an `AttributeDefinition` tag "ROOM" at (0,0) whose insert sits at (60,45) with the attribute value "A-101" placed at (60,45) height 3. Use distinct layers with colours so the SVG groups are easy to assert.
 
 `EntityGoldenTests` mirrors `FeatureGoldenTests`: `EntityExporter()` (800x500, padding 10, font DejaVu Sans), `EntityPngMatchesBaseline` → `GoldenAssert.Png("entities.model.01", ...)`, and `EntitySvgMatchesGoldenAndContainsEveryEntity` asserting: exactly one `<polyline>` from the 3DFACE (open run, 4 points) on its layer; two `<polygon>` fills with `data-type` LEADER (arrows) and one `<path>` with `C` commands; MLINE: one `<polygon>` fill in colour 3 and two `<polyline>`s in colours 1 and 5; WIPEOUT: a `<polygon>` filled `#ffffff` on the wipeout's layer; ATTRIB: a `<text>` "A-101" with `data-parent`; no Warning/NotImplemented notifications. Create the baselines with `ACADSHARP_IMAGE_UPDATE_BASELINES=1 dotnet test ACadSharp.Image.Tests --filter "FullyQualifiedName~EntityGoldenTests"` and inspect the PNG (open it, describe it in the report). Add a raster occlusion assertion in `EntityPngMatchesBaseline`: a pixel on the "Under" line inside the wipeout rectangle is white, and one outside is not — compute the pixel positions from the exporter's fit (`ImageRenderContext.CreatePageContext(surface, page, configuration)` gives `ToSurfacePoint`; or sample a small window and assert on the darkest pixel).
 

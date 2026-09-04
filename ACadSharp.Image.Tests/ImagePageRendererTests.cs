@@ -1,6 +1,7 @@
 using ACadSharp.Entities;
 using ACadSharp.Header;
 using ACadSharp.Image.Rendering;
+using ACadSharp.IO;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
@@ -69,5 +70,58 @@ public sealed class ImagePageRendererTests
 
         Assert.Equal(translation, page.Translation);
         Assert.Equal(paperWidth, page.Layout.PaperWidth);
+    }
+
+    /// <summary>Renders the exporter's first page onto the surface, the way <see cref="ImageExporter.Render()"/> does.</summary>
+    private static void RenderThrough(ImageExporter exporter, RecordingDrawingSurface surface)
+    {
+        new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
+    }
+
+    [Fact]
+    public void PaperEntitiesAddedBeforeAViewportAreDrawnBeforeIt()
+    {
+        // A page built by ImageExporter from a layout whose title line sorts before the viewport must draw the line first.
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Line(new XYZ(5, 5, 0), new XYZ(50, 5, 0)));
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(5, 0), ViewHeight = 20 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        exporter.Add(layout);
+        RenderThrough(exporter, surface);
+
+        int line = surface.Calls.FindIndex(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        int viewport = surface.Calls.FindIndex(c => c.StartsWith("BeginViewport", StringComparison.Ordinal));
+        Assert.True(line >= 0 && viewport >= 0 && line < viewport, $"expected the title line before the viewport, got line at {line}, viewport at {viewport}.");
+    }
+
+    [Fact]
+    public void MalformedModelEntityDoesNotAbortViewportRendering()
+    {
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        LwPolyline malformed = new();
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)) { Bulge = 1 });
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)));
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(9, 5)));
+        document.Entities.Add(malformed);
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(5, 2), ViewHeight = 20 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("bounds", StringComparison.OrdinalIgnoreCase));
     }
 }

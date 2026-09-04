@@ -16,6 +16,8 @@ public sealed class ImagePage
 
     private readonly List<Viewport> _viewports = [];
 
+    private readonly List<Entity> _drawSequence = [];
+
     private readonly ReadOnlyCollection<Entity> _readOnlyEntities;
 
     private readonly ReadOnlyCollection<Viewport> _readOnlyViewports;
@@ -39,6 +41,11 @@ public sealed class ImagePage
     /// Gets the collection of viewports to be rendered on this page.
     /// </summary>
     public IReadOnlyList<Viewport> Viewports => this._readOnlyViewports;
+
+    /// <summary>
+    /// Gets the entities and viewports in the order they were added, which is the order they are drawn in.
+    /// </summary>
+    internal IReadOnlyList<Entity> DrawSequence => this._drawSequence;
 
     /// <summary>
     /// Gets or sets the document the page content came from, when known. Used for header settings such as units and linetype scale.
@@ -127,6 +134,7 @@ public sealed class ImagePage
     {
         ArgumentNullException.ThrowIfNull(entity);
         this._entities.Add(entity);
+        this._drawSequence.Add(entity);
     }
 
     /// <summary>
@@ -137,6 +145,7 @@ public sealed class ImagePage
     {
         ArgumentNullException.ThrowIfNull(viewport);
         this._viewports.Add(viewport);
+        this._drawSequence.Add(viewport);
     }
 
     /// <summary>

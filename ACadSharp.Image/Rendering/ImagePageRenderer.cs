@@ -1,6 +1,8 @@
+using System.Globalization;
 using ACadSharp.Entities;
 using ACadSharp.Header;
 using ACadSharp.Image.Rendering.Svg;
+using ACadSharp.IO;
 using ACadSharp.Tables;
 using ACadSharp.Types.Units;
 using CSMath;
@@ -122,20 +124,22 @@ internal sealed class ImagePageRenderer
         || this._configuration.LayerVisibility != LayerVisibilityMode.All;
 
     /// <summary>
-    /// Renders the page's viewports and then its page-level entities through the given page context.
+    /// Renders the page's entities and viewports through the given page context, in the order they were added.
     /// </summary>
     /// <param name="context">The page-level context.</param>
     /// <param name="page">The page to render.</param>
     private void RenderTo(ImageRenderContext context, ImagePage page)
     {
-        foreach (Viewport viewport in page.Viewports)
+        foreach (Entity item in page.DrawSequence)
         {
-            this.DrawViewport(context, viewport);
-        }
-
-        foreach (Entity entity in page.Entities)
-        {
-            this._dispatcher.Draw(context, entity);
+            if (item is Viewport viewport)
+            {
+                this.DrawViewport(context, viewport);
+            }
+            else
+            {
+                this._dispatcher.Draw(context, item);
+            }
         }
     }
 
@@ -190,6 +194,11 @@ internal sealed class ImagePageRenderer
         return psltscale == 1 ? pageLineTypeScale : pageLineTypeScale * viewportScaleFactor;
     }
 
+    /// <summary>
+    /// Draws one paper-space viewport: its window on the page surface, and the model-space entities it shows.
+    /// </summary>
+    /// <param name="pageContext">The page-level context the viewport sits on.</param>
+    /// <param name="viewport">The viewport to draw.</param>
     private void DrawViewport(ImageRenderContext pageContext, Viewport viewport)
     {
         BoundingBox viewportBounds = viewport.GetBoundingBox();
@@ -207,11 +216,47 @@ internal sealed class ImagePageRenderer
         double lineTypeScale = ResolveViewportLineTypeScale(viewport.Document?.Header, pageContext.LineTypeScale, viewport.ScaleFactor);
         ImageRenderContext viewportContext = ImageRenderContext.CreateViewportContext(pageContext, viewport, viewportSurface, viewportWidth, modelBounds, scale, lineTypeScale);
 
-        foreach (Entity entity in viewport.SelectEntities())
+        foreach (Entity entity in this.SelectViewportEntities(viewport))
         {
             this._dispatcher.Draw(viewportContext, entity);
         }
 
         pageContext.Surface.EndViewport(viewportSurface);
+    }
+
+    /// <summary>
+    /// The model-space entities a viewport shows, in the drawing's draw order: those whose bounding box lies in or
+    /// crosses the view box (what <c>Viewport.SelectEntities</c> does) minus the ones whose bounds ACadSharp cannot
+    /// compute, which are skipped with a warning instead of aborting the page.
+    /// </summary>
+    /// <param name="viewport">The viewport to select the contents of.</param>
+    /// <returns>The model-space entities to draw inside the viewport.</returns>
+    internal IEnumerable<Entity> SelectViewportEntities(Viewport viewport)
+    {
+        if (viewport.Document == null)
+        {
+            this._configuration.Notify($"[{viewport.SubclassMarker}] Handle {viewport.Handle.ToString("X", CultureInfo.InvariantCulture)}: viewport has no document; skipped.", NotificationType.Warning);
+            yield break;
+        }
+
+        BoundingBox box = viewport.GetModelBoundingBox();
+        foreach (Entity entity in viewport.Document.ModelSpace.GetSortedEntities())
+        {
+            BoundingBox bounds;
+            try
+            {
+                bounds = entity.GetBoundingBox();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: bounds could not be computed ({ex.Message}); entity skipped in viewport.", NotificationType.Warning, ex);
+                continue;
+            }
+
+            if (box.IsIn(bounds, out bool partial) || partial)
+            {
+                yield return entity;
+            }
+        }
     }
 }

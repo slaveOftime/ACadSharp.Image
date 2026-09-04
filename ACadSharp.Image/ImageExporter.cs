@@ -95,6 +95,8 @@ public sealed class ImageExporter
     /// <param name="layout">The layout to add.</param>
     /// <remarks>
     /// Layer filters and visibility settings are applied when rendering, so all entities are kept on the page.
+    /// Paper entities and viewports are taken from one sorted pass over the layout's block, so the page keeps
+    /// the drawing's draw order between them.
     /// </remarks>
     public void Add(Layout layout)
     {
@@ -109,20 +111,18 @@ public sealed class ImageExporter
 
         foreach (Entity entity in layout.AssociatedBlock.GetSortedEntities())
         {
-            if (ShouldIncludeEntity(entity))
+            if (entity is Viewport viewport)
             {
-                page.AddEntity(entity);
-            }
-        }
+                // The paper viewport is the sheet itself, not a window onto model space.
+                if (!viewport.RepresentsPaper)
+                {
+                    page.AddViewport(viewport);
+                }
 
-        foreach (Viewport viewport in layout.Viewports)
-        {
-            if (viewport.RepresentsPaper)
-            {
                 continue;
             }
 
-            page.AddViewport(viewport);
+            page.AddEntity(entity);
         }
 
         this._pages.Add(page);

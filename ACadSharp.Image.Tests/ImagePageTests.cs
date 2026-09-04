@@ -43,4 +43,21 @@ public sealed class ImagePageTests
 
         Assert.Equal([0x10UL, 0x30UL], page.Entities.Select(e => e.Handle));
     }
+
+    [Fact]
+    public void DrawSequenceKeepsViewportsAndEntitiesInInsertionOrder()
+    {
+        ImagePage page = new();
+        Line first = new(new XYZ(0, 0, 0), new XYZ(1, 0, 0));
+        Viewport viewport = new() { Center = new XYZ(50, 50, 0), Width = 10, Height = 10 };
+        Line last = new(new XYZ(0, 0, 0), new XYZ(0, 1, 0));
+
+        page.AddEntity(first);
+        page.AddViewport(viewport);
+        page.AddEntity(last);
+
+        Assert.Equal([first, viewport, last], page.DrawSequence);
+        Assert.Equal([first, last], page.Entities);
+        Assert.Equal([viewport], page.Viewports);
+    }
 }

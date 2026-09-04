@@ -1,5 +1,7 @@
 # Remaining rendering limitations: design (2026-09-04)
 
+Revised 2026-09-04 against the branch after plan 09 (signatures, the existing pairing relation and the cycle pre-check are quoted from the code as it now stands).
+
 Follow-up to the layers-and-SVG design (`2026-09-02-layers-and-svg-design.md`, whose global constraints, interface appendix and notification rules apply unchanged) and to the research notes `docs/research/remaining-rendering-limitations.md` and `docs/research/remaining-limitations-design-options.md` (the Codex consultation this design argues from). Line references below describe the branch after plan 09; plan 10 executes this design.
 
 ## 1. Goal
@@ -22,7 +24,8 @@ Draw, instead of notifying about, the five remaining gaps listed in the README: 
 - `Insert.Explode()` is one-to-one and ordered in 3.7.1; clones carry no handle, document or owner, so ordinal position is the only original/clone identity available. `Circle` explodes to `Ellipse`; every other type keeps its type.
 - Custom arrow blocks have the tip at the block base point and the body along local -X (real-world example: a square plus a line from (-1,0) to (0,0)). AutoCAD scales the block by `ArrowSize x ScaleFactor` and rotates local +X to the outward direction at the tip; ACadSharp's own `Dimension.dimensionArrow` does the same.
 - MLINE `Segment.Parameters`: `p[0]` offset along `Miter` (already multiplied by `ScaleFactor` in stored data), `p[1]` distance from that intersection to the element's actual start, `p[2..]` alternating break/resume positions. The only real-world sample with three values has `p[2]` equal to the segment length (a run to the end, no visible cut), so odd counts are normal and a break at or beyond the segment end means "no cut". Whether `p[2..]` are absolute positions or relative lengths cannot be settled from the available data (see 4.5).
-- `DrawBlockContents` has no recursion guard: a block that (directly or through nesting) contains an insert of itself recurses until the stack overflows.
+- `DrawBlockContents` has no draw-time recursion guard, but the per-block scan it already runs before exploding (`ScanBlockSubtree`, reached through `BlockSubtreeNeedsHeal`) walks the original block graph and reports whether a cycle cut the walk short. That truncation flag is the cycle signal this design builds on. A draw-time guard keyed on `BlockRecord` identity could not work anyway: nested inserts reached during `Explode()` hold deep-cloned block records, a different key every time, and `Insert.Explode()` deep-clones the whole block graph before any drawing happens, so a genuine cycle overflows the stack inside ACadSharp before a draw-time guard would ever run. The guard has to be a pre-check on the original graph. `BlockRecord.Name` survives cloning and is the usable key where a name-level check is needed.
+- Clone list sharing (probed): `MLine.Vertices`, `Leader.Vertices` and `Wipeout.ClipBoundaryVertices` are shared between a clone and its source; `LwPolyline.Vertices`, the `Spline` lists, `Polyline2D.Vertices` and `Hatch.Paths` are copied. `Explode()` overwrites the shared MLINE and LEADER lists in place, which is why the renderer snapshots and heals both. The wipeout clip list is shared but never written by `ApplyTransform`, so drawing wipeouts from the original needs no heal; its `UVector`/`VVector` are transformed as points, which is the actual defect to work around.
 
 ## 4. Design
 
@@ -36,13 +39,13 @@ One internal static class, `InsertPlacement` (`ACadSharp.Image/Rendering/InsertP
 - `Compose(Transform? outer, Insert inner)`: the placement of `inner`'s contents seen from outside `outer`.
 - `IsSimilarity(Transform, out double scale)`: true when the linear part is a rotation (possibly with a reflection) times one uniform scale; used by 4.3.
 
-Existing callers (`TextRenderer`, `DrawMLine`, and the `DrawSolid`/`DrawLeader` placement paths plan 09 adds) are moved onto these helpers where they duplicate them; behaviour and goldens do not change.
+Existing callers are moved onto these helpers where they duplicate them, without changing behaviour or goldens: `TextRenderer.Place`/`Orient` (whose `Placement` record is `(XY Origin, XY Direction, bool Mirrored, double Scale, double WidthScale)`), `DrawMLine`, and the placement paths of `DrawSolid(ImageRenderContext, ImageStyle, Solid, Transform?)` and `DrawLeader(ImageRenderContext, ImageStyle, Leader, Transform?)`.
 
 ### 4.2 Block content pairing and recursion
 
-`DrawBlockContents` keeps `Explode()` and ordinal pairing but checks each (original, clone) pair with a compatibility relation before using the original's geometry: same runtime type, or `Circle` original with `Ellipse` clone. On a mismatch it notifies once for that entity (`Warning`, "block entity {i} is a {A} but its exploded clone is a {B}; drawn from the clone") and draws the clone as a plain entity, so a wrong original is never applied. The existing count mismatch warning stays as the package-upgrade tripwire.
+`DrawBlockContents` keeps `Explode()` and ordinal pairing. The compatibility relation it needs already exists as `UsesOriginalGeometry(Entity? original, Entity clone)`, which today requires an identical runtime type and admits TEXT, MTEXT, LEADER and non-world SOLID: extend that one relation with `Hatch` and `Wipeout` rather than adding a second. Add the `Circle` original with `Ellipse` clone case as an explicitly allowed conversion, and make a type mismatch notify once for that entity (`Warning`, "block entity {i} is a {A} but its exploded clone is a {B}; drawn from the clone") instead of returning a silent false, so a wrong original is never applied and the mismatch is visible. The existing count mismatch warning stays as the package-upgrade tripwire.
 
-A recursion guard tracks the `BlockRecord`s currently being drawn (a `HashSet<BlockRecord>` on the dispatcher, cleared in `BeginPage`). Entering a block that is already active notifies (`Warning`, "block {name} references itself; nested reference skipped") and returns. The guard covers ordinary inserts and arrow blocks alike.
+Cycles are caught before `Explode()`, not during drawing. `ScanBlockSubtree` already walks the original block graph and returns a truncation flag when a cycle cut the walk short; `DrawBlockContents` treats a truncated scan as "this block graph is circular", notifies (`Warning`, "block {name} references itself; skipped") and returns without exploding. That is the only point at which a cycle can be stopped, because `Insert.Explode()` deep-clones the block graph and would overflow the stack first. The same pre-check covers an arrow block whose contents lead back to the same arrow block (4.3).
 
 `NormalizeExplodedClone` is removed: hatches are drawn from the original (4.6), so the clone's normal no longer matters.
 
@@ -58,14 +61,14 @@ When `Style.LeaderArrow` is set and `ArrowHeadEnabled`, `DrawLeader` draws the b
 
 ### 4.4 Inverted wipeout clips and clipping state
 
-`WipeoutWorldBoundary` becomes `WipeoutWorldRings(Wipeout, Transform? placement)` and returns zero, one or two world rings:
+`WipeoutWorldBoundary(Wipeout)` becomes `WipeoutWorldRings(Wipeout, Transform? placement)`, returning zero, one or two world rings. It has three consumers today, all of which must be updated together: `DrawWipeout`, `EntityBounds.TryGet` (which bounds a wipeout by the region it actually draws), and `ImagePageRenderer.SelectViewportEntities` through `EntityBounds`. The rings are:
 
 - image hidden (`ShowImage` off): none;
 - clipping off (`ClippingState == false`), whatever `ClipMode` says: the full image frame;
 - clipping on, `ClipMode.Outside`: the clip boundary (a rectangular pair expanded to four corners);
 - clipping on, `ClipMode.Inside`: the full frame and the boundary.
 
-`DrawWipeout` fills one ring with `FillPolygon` and two rings with `FillPath` (even-odd), both with the opaque background colour as today; the NotImplemented notification for inverted clips is removed. The insert point is mapped as a point and U/V as vectors through `placement`, so wipeouts inside blocks are drawn from the original rather than from the clone whose U/V `ApplyTransform` contaminated. `EntityBounds.TryGet` bounds a wipeout by all ring points, so an inverted wipeout frames and culls by its full footprint.
+`DrawWipeout` fills one ring with `FillPolygon` and two rings with `FillPath` (even-odd), both with the opaque background colour as today; the NotImplemented notification for inverted clips is removed. The insert point is mapped as a point and U/V as vectors through `placement`, so wipeouts inside blocks are drawn from the original rather than from the clone whose U/V `ApplyTransform` contaminated. `EntityBounds.TryGet(Entity, out BoundingBox, out Exception?)` bounds a wipeout by all ring points, so an inverted wipeout frames and culls by its full footprint in both the page framer and the viewport culler.
 
 ### 4.5 MLEDIT cut segments
 
@@ -80,7 +83,7 @@ The absolute interpretation is the literal reading of the DXF reference. ezdxf's
 
 ### 4.6 Tilted hatches inside blocks
 
-`DrawHatch` takes a `Transform? placement` and, for block children, is called with the original hatch and the block placement instead of the exploded clone: boundary points and `ExplodePattern()` segments are produced in the hatch's own OCS, mapped with `InsertPlacement.MapOcsPoint(placement, hatch.Normal, hatch.Elevation, p)` and then projected. Pattern expansion happens before placement, so non-uniform scale and mirroring show up in the transformed endpoints instead of being squeezed back into one angle and scale. Top-level hatches take the same path with a null placement, so their output is unchanged.
+`DrawHatch(ImageRenderContext, ImageStyle, Hatch)` gains a `Transform? placement` parameter and, for block children, is called with the original hatch and the block placement instead of the exploded clone: boundary points and `ExplodePattern()` segments are produced in the hatch's own OCS, mapped with `InsertPlacement.MapOcsPoint(placement, hatch.Normal, hatch.Elevation, p)` and then projected. Pattern expansion happens before placement, so non-uniform scale and mirroring show up in the transformed endpoints instead of being squeezed back into one angle and scale. Top-level hatches take the same path with a null placement, so their output is unchanged.
 
 ### 4.7 Multi-line attributes
 

@@ -12,10 +12,7 @@ public sealed class ImagePageTests
 {
     private static T WithHandle<T>(T entity, ulong handle)
         where T : CadObject
-    {
-        typeof(CadObject).GetProperty(nameof(CadObject.Handle))!.SetValue(entity, handle);
-        return entity;
-    }
+        => SyntheticSamples.WithHandle(entity, handle);
 
     [Fact]
     public void AddOrdersEntitiesByHandleNotByInsertionOrder()

@@ -43,6 +43,10 @@ public sealed class EntityGoldenTests
         // [60,100]) where the two overlap, and leaves it visible outside that range. This is the one assertion the
         // SVG cannot make: SVG groups content by layer, so the Line/Wipeout paint order there is the layer-group
         // order, not the entities' own draw order, but the raster canvas paints them in the page's true draw order.
+        // CreatePageContext(surface, ImagePage, …) resolves to PageFrame.Of(page), which is also what
+        // ImagePageRenderer.ResolveFrame returns as long as HasActiveFilters() is false; EntityExporter() sets no
+        // included/hidden layers and leaves LayerVisibility at its default, so the two fits coincide here. A filter
+        // added to the exporter later would desync this reconstructed fit from the one the render actually used.
         ImageRenderContext context = ImageRenderContext.CreatePageContext(new RecordingDrawingSurface(), exporter.Pages[0], exporter.Configuration);
         SurfacePoint covered = context.ToSurfacePoint(new XY(80, 30));
         SurfacePoint exposed = context.ToSurfacePoint(new XY(65, 30));
@@ -96,13 +100,14 @@ public sealed class EntityGoldenTests
         // 4-point (open) polyline. Scoped to its own layer so the leaders' and mline's own polylines cannot count.
         XElement faceGroup = Assert.Single(document.Descendants(Ns + "g"), g => (string?)g.Attribute("data-layer") == "Face");
         XElement facePolyline = Assert.Single(faceGroup.Elements(Ns + "polyline"));
-        // Points are serialised as "x y x y ...", two tokens per point.
-        Assert.Equal(4, ((string?)facePolyline.Attribute("points"))!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length / 2);
+        // Points are serialised as "x y x y ...", two tokens per point: 4 points is exactly 8 tokens.
+        Assert.Equal(8, ((string?)facePolyline.Attribute("points"))!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
 
         // LEADER: both leaders have ArrowHeadEnabled, so each draws one arrowhead polygon; the splined leader's own
         // path is a cubic Bezier chain (a "C" command), the straight leader's a polyline.
         List<XElement> leaderPolygons = document.Descendants(Ns + "polygon").Where(p => (string?)p.Attribute("data-type") == "LEADER").ToList();
         Assert.Equal(2, leaderPolygons.Count);
+        Assert.Contains(document.Descendants(Ns + "polyline"), l => (string?)l.Attribute("data-type") == "LEADER");
         List<XElement> leaderPaths = document.Descendants(Ns + "path").Where(p => (string?)p.Attribute("data-type") == "LEADER").ToList();
         Assert.Single(leaderPaths, p => ((string?)p.Attribute("d"))!.Contains('C'));
 

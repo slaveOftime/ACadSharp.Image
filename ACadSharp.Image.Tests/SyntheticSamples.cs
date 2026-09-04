@@ -194,9 +194,9 @@ internal static class SyntheticSamples
             Layer = wallLayer,
             Vertices =
             {
-                MLineVertex(new XYZ(0, 30, 0), new XYZ(0, 1, 0), [1, 0], [-1, 0]),
-                MLineVertex(new XYZ(40, 30, 0), new XYZ(-1, 1, 0) / diagonal, [diagonal, 0], [-diagonal, 0]),
-                MLineVertex(new XYZ(40, 50, 0), new XYZ(-1, 0, 0), [1, 0], [-1, 0]),
+                MLineVertex(new XYZ(0, 30, 0), new XYZ(1, 0, 0), new XYZ(0, 1, 0), [1, 0], [-1, 0]),
+                MLineVertex(new XYZ(40, 30, 0), new XYZ(0, 1, 0), new XYZ(-1, 1, 0) / diagonal, [diagonal, 0], [-diagonal, 0]),
+                MLineVertex(new XYZ(40, 50, 0), new XYZ(0, 1, 0), new XYZ(-1, 0, 0), [1, 0], [-1, 0]),
             },
         }, 0x13);
         block.Entities.Add(mline);
@@ -229,9 +229,15 @@ internal static class SyntheticSamples
         return block;
     }
 
-    private static MLine.Vertex MLineVertex(XYZ position, XYZ miter, params double[][] parameters)
+    /// <summary>
+    /// Builds one MLINE vertex: <paramref name="direction"/> is the segment direction leaving this vertex (or, at
+    /// the last vertex, the direction of the segment arriving at it) and <paramref name="miter"/> is the vector each
+    /// element's offset (<c>Position + Miter * Parameters[0]</c>) is carried along; <paramref name="parameters"/>
+    /// supplies one segment (with its offset as <c>Parameters[0]</c>) per style element, in element order.
+    /// </summary>
+    private static MLine.Vertex MLineVertex(XYZ position, XYZ direction, XYZ miter, params double[][] parameters)
     {
-        MLine.Vertex vertex = new() { Position = position, Direction = new XYZ(1, 0, 0), Miter = miter };
+        MLine.Vertex vertex = new() { Position = position, Direction = direction, Miter = miter };
         foreach (double[] segment in parameters)
         {
             MLine.Vertex.Segment element = new();
@@ -242,9 +248,12 @@ internal static class SyntheticSamples
         return vertex;
     }
 
-    // ACadSharp.CadObject.Handle has an internal setter in ACadSharp 3.7.1, so a deterministic handle is assigned
-    // via reflection, the same pattern ImagePageTests and EntityRenderDispatcherTests use.
-    private static T WithHandle<T>(T entity, ulong handle)
+    /// <summary>
+    /// Assigns a deterministic handle via reflection: <see cref="CadObject.Handle"/> has an internal setter in
+    /// ACadSharp 3.7.1, so tests that need a specific handle (to pin draw order, for instance) cannot set it directly.
+    /// Shared by <c>ImagePageTests</c> and <c>EntityRenderDispatcherTests</c> as well as this class.
+    /// </summary>
+    internal static T WithHandle<T>(T entity, ulong handle)
         where T : CadObject
     {
         typeof(CadObject).GetProperty(nameof(CadObject.Handle))!.SetValue(entity, handle);

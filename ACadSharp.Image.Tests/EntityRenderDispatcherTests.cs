@@ -23,10 +23,7 @@ public sealed class EntityRenderDispatcherTests
     // that need a deterministic handle assign it via reflection instead.
     private static T WithHandle<T>(T entity, ulong handle)
         where T : CadObject
-    {
-        typeof(CadObject).GetProperty(nameof(CadObject.Handle))!.SetValue(entity, handle);
-        return entity;
-    }
+        => SyntheticSamples.WithHandle(entity, handle);
 
     [Fact]
     public void DrawWrapsEntityInBeginAndEnd()

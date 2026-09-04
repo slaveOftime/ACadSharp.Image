@@ -96,12 +96,14 @@ internal sealed class EntityRenderDispatcher
         this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parent: null);
     }
 
-    // source is the original block entity a TEXT, MTEXT, non-world SOLID or LEADER clone came from, whose geometry is
-    // used instead of the clone's (see UsesOriginalGeometry), and placement is the transform of the insert that
-    // placed it. Both are null outside a block reference, but they do not always travel together inside one: an
-    // MLINE clone is always drawn with placement set and source null (UsesOriginalGeometry never recognises an
-    // MLine original, since the heal already restores the clone's own vertices to local coordinates), and so is a
-    // LEADER clone whose ordinal pairing with the block's original entities failed.
+    // source is the original block entity a TEXT, MTEXT, non-world SOLID, LEADER or HATCH clone came from, whose
+    // geometry is used instead of the clone's (see UsesOriginalGeometry), and placement is the transform of the
+    // insert that placed it. Both are null outside a block reference, but they do not always travel together inside
+    // one: an MLINE clone is always drawn with placement set and source null (UsesOriginalGeometry never recognises
+    // an MLine original, since the heal already restores the clone's own vertices to local coordinates), and so is a
+    // LEADER clone whose ordinal pairing with the block's original entities failed. A HATCH clone has no such
+    // fallback: when its pairing fails it is drawn with neither source nor placement, from its own un-normalised
+    // clone geometry (see the count-mismatch Warning in DrawBlockContents).
     private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? source = null, Transform? placement = null)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
@@ -189,7 +191,7 @@ internal sealed class EntityRenderDispatcher
                     this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
                     break;
                 case Hatch hatch:
-                    this.DrawHatch(context, style, hatch);
+                    this.DrawHatch(context, style, source as Hatch ?? hatch, placement);
                     break;
                 case Insert insert:
                     this.DrawBlockContents(context, insert, layer, resolved);
@@ -832,7 +834,7 @@ internal sealed class EntityRenderDispatcher
             return false;
         }
 
-        if (original is TextEntity or MText or Leader)
+        if (original is TextEntity or MText or Leader or Hatch)
         {
             return true;
         }
@@ -912,7 +914,6 @@ internal sealed class EntityRenderDispatcher
                     }
                 }
 
-                NormalizeExplodedClone(entity);
                 Entity? source = null;
                 Transform? entityPlacement = null;
                 if (UsesOriginalGeometry(original, entity))
@@ -1109,26 +1110,19 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
-    /// Hatch clones from <c>Insert.Explode()</c> carry world boundary points but the transformed normal (a mirrored
-    /// insert gives <c>(0,0,-1)</c>); the renderer would apply that normal again. The points are already world, so
-    /// the clone is marked as lying on the world plane. Clones are transient, so mutating them is safe.
+    /// A solid hatch fills its boundary loops (<c>path.GetPoints</c>) with the even-odd rule; a pattern hatch draws
+    /// each line <c>ExplodePattern()</c> yields, capped at <see cref="ImageConfiguration.MaxHatchLines"/>. Boundary
+    /// and pattern points are drawn from the original block entity in its own OCS (its normal and elevation), then
+    /// mapped through <paramref name="placement"/> (null at top level), never from an exploded clone.
     /// </summary>
-    /// <param name="entity">The exploded clone to normalise.</param>
-    private static void NormalizeExplodedClone(Entity entity)
+    private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch, Transform? placement)
     {
-        if (entity is Hatch hatch && !IsWorldPlane(hatch.Normal))
-        {
-            hatch.Normal = XYZ.AxisZ;
-        }
-    }
-
-    private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch)
-    {
-        // Boundary paths and exploded pattern lines are OCS data; ACadSharp leaves the hatch normal to the caller.
+        // Boundary paths and exploded pattern lines are OCS data; the OCS frame and the entity's own elevation are
+        // applied here and the insert transform after them, because ACadSharp 3.7.1's Hatch.ApplyTransform maps the
+        // raw OCS boundary as if it were world data and never folds the elevation in, so a clone from a block cannot
+        // be trusted for a hatch on a tilted plane.
         OcsTransform? toWorld = IsWorldPlane(hatch.Normal) ? null : OcsTransform.For(hatch.Normal);
-        SurfacePoint ToSurface(XYZ point) => toWorld != null
-            ? context.ToSurfacePoint(toWorld.ToWorldXY(point.X, point.Y, hatch.Elevation))
-            : context.ToSurfacePoint(point);
+        SurfacePoint ToSurface(XYZ point) => context.ToSurfacePoint(InsertPlacement.MapOcsPoint(placement, toWorld, hatch.Elevation, point));
 
         if (hatch.IsSolid || hatch.PatternType == HatchPatternType.SolidFill)
         {

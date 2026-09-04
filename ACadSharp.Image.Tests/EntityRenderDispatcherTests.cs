@@ -363,6 +363,16 @@ public sealed class EntityRenderDispatcherTests
         return hatch;
     }
 
+    private static Hatch.BoundaryPath SquarePath(double x0, double y0, double x1, double y1)
+    {
+        Hatch.BoundaryPath path = new();
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x0, y0), End = new XY(x1, y0) });
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x1, y0), End = new XY(x1, y1) });
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x1, y1), End = new XY(x0, y1) });
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x0, y1), End = new XY(x0, y0) });
+        return path;
+    }
+
     [Fact]
     public void SolidHatchFillsBoundaryRings()
     {
@@ -614,6 +624,75 @@ public sealed class EntityRenderDispatcherTests
             Assert.InRange(l.Start.X, -10.001, 0.001);
             Assert.InRange(l.End.X, -10.001, 0.001);
         });
+    }
+
+    [Fact]
+    public void ATiltedHatchInsideAnInsertIsMappedThroughItsOwnOcsThenTheInsertTransform()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("TILT");
+        Hatch hatch = new() { IsSolid = true, Normal = new XYZ(0, 0, -1), Elevation = 0d };
+        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+        block.Entities.Add(hatch);
+        Insert insert = new(block) { InsertPoint = new XYZ(20, 0, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // Normal (0,0,-1) mirrors X going OCS to world, so the square spans x in [-10,0]; the insert then adds 20.
+        IReadOnlyList<SurfacePoint> ring = Assert.Single(Assert.Single(surface.FillPaths));
+        Assert.Equal(10d, ring.Min(p => p.X), 6);
+        Assert.Equal(20d, ring.Max(p => p.X), 6);
+    }
+
+    [Fact]
+    public void ATiltedHatchAtTopLevelIsUnchanged()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Hatch hatch = new() { IsSolid = true, Normal = new XYZ(0, 0, -1), Elevation = 0d };
+        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), hatch);
+
+        IReadOnlyList<SurfacePoint> ring = Assert.Single(Assert.Single(surface.FillPaths));
+        Assert.Equal(-10d, ring.Min(p => p.X), 6);
+        Assert.Equal(0d, ring.Max(p => p.X), 6);
+    }
+
+    [Fact]
+    public void AHatchInsideAMirroredInsertKeepsItsExtent()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("MIRROR");
+        Hatch hatch = new() { IsSolid = true, Normal = XYZ.AxisZ, Elevation = 0d };
+        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+        block.Entities.Add(hatch);
+        Insert insert = new(block) { InsertPoint = new XYZ(50, 0, 0), XScale = -1 };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        IReadOnlyList<SurfacePoint> ring = Assert.Single(Assert.Single(surface.FillPaths));
+        Assert.Equal(40d, ring.Min(p => p.X), 6);
+        Assert.Equal(50d, ring.Max(p => p.X), 6);
+    }
+
+    [Fact]
+    public void ATiltedHatchWithAnElevationIsPlacedAlongItsOwnNormal()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Hatch hatch = new() { IsSolid = true, Normal = new XYZ(0, 1, 0), Elevation = 5d };
+        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), hatch);
+
+        // Normal (0,1,0): the OCS X axis is world -X and the OCS Y axis is world +Z, so the square's Y collapses to a
+        // constant world Y = +5 (the elevation along the normal); after the surface Y flip (SurfaceHeight - worldY)
+        // that lands at 95, so the elevation reaches the output rather than being dropped as it was for a clone.
+        IReadOnlyList<SurfacePoint> ring = Assert.Single(Assert.Single(surface.FillPaths));
+        Assert.All(ring, p => Assert.Equal(95d, p.Y, 6));
     }
 
     [Fact]

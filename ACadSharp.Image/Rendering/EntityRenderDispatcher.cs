@@ -259,12 +259,61 @@ internal sealed class EntityRenderDispatcher
         context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), context.ToSurfacePixels(radius));
     }
 
+    /// <summary>
+    /// Draws a dimension from the picture block ACadSharp generates for it, generating that block first when the
+    /// drawing did not store one.
+    /// </summary>
+    /// <remarks>
+    /// <c>UpdateBlock()</c> is the second place in the renderer, after <see cref="DrawArrowBlock"/>, that makes
+    /// ACadSharp construct an <c>Insert</c> of a block the caller owns: for a linear or aligned dimension it builds
+    /// one of each of the style's arrow blocks. ACadSharp 3.7.1's <c>Insert(BlockRecord)</c> constructor clones a
+    /// document-owned block's entities, so that call empties the vertex list of any MLINE inside one of them —
+    /// measured at two vertices to none with no renderer involved. This is the top-level dimension path, where
+    /// nothing else takes a snapshot: a dimension reached through a block reference is covered by
+    /// <see cref="DrawBlockContents"/>'s own snapshot and its <c>finally</c> heal, but the entity-type switch in
+    /// <c>Draw</c> routes a top-level dimension straight here. The heal is in a <c>finally</c> for the same reason
+    /// it is there, so a throw while generating the picture cannot leave the caller's document broken. Page framing
+    /// runs ahead of every draw and does not get there first: <c>Dimension.GetBoundingBox()</c> was probed to leave
+    /// <c>Block</c> null, so <see cref="EntityBounds"/> never reaches the constructor.
+    /// <para>
+    /// The cycle pre-check is not symmetry: the clone that constructor performs is the same deep clone
+    /// <c>Explode()</c> performs, so an arrow block reachable from itself exhausts the stack inside ACadSharp before
+    /// <c>UpdateBlock()</c> returns, and a <c>StackOverflowException</c> cannot be caught. The dimension's own
+    /// picture block is not among the blocks checked, because this branch only runs when there is not one yet.
+    /// </para>
+    /// </remarks>
     private void DrawDimension(ImageRenderContext context, Dimension dimension, Layer? layer, ResolvedStyle parent)
     {
+        string handle = dimension.Handle.ToString("X", CultureInfo.InvariantCulture);
         BlockRecord? block = dimension.Block;
         if (block == null)
         {
-            dimension.UpdateBlock();
+            Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
+            Dictionary<Leader, List<XYZ>> leaderVertices = new();
+            HashSet<BlockRecord> collected = new();
+            foreach (BlockRecord referenced in ReferencedBlocks(dimension))
+            {
+                if (BlockGraphIsCircular(referenced))
+                {
+                    this._configuration.Notify($"[{dimension.SubclassMarker}] Handle {handle}: block '{referenced.Name}' references itself; dimension skipped.", NotificationType.Warning);
+                    return;
+                }
+
+                if (this.BlockSubtreeNeedsHeal(referenced, new HashSet<BlockRecord>()))
+                {
+                    CollectSharedVertexLists(referenced, mlineVertices, leaderVertices, collected);
+                }
+            }
+
+            try
+            {
+                dimension.UpdateBlock();
+            }
+            finally
+            {
+                Heal(mlineVertices, leaderVertices);
+            }
+
             block = dimension.Block;
         }
 
@@ -1196,8 +1245,10 @@ internal sealed class EntityRenderDispatcher
         // moment it is cloned along the way; a nested LEADER's list, by contrast, is overwritten only when the
         // insert that directly contains it is the one exploded, so a deeply nested LEADER survives an ancestor's
         // Explode() unharmed and its snapshot below is a defensive backstop, not a load-bearing fix.
-        // CollectSharedVertexLists walks the whole subtree (following nested Insert.Block references, not yet
-        // cloned at this point) to snapshot every MLINE and LEADER before Explode() runs, and Heal repairs them
+        // CollectSharedVertexLists walks the whole subtree, following every edge ReferencedBlocks reports — nested
+        // Insert.Block references, a DIMENSION's own picture block, and the four arrowhead blocks of a LEADER's or a
+        // DIMENSION's style, none of them cloned at this point — to snapshot every MLINE and LEADER before
+        // Explode() runs, and Heal repairs them
         // immediately after and again in `finally`. The repair is always in place (Clear + AddRange into the
         // *existing* list, never a reassignment): because a clone shares the very same list object as its source at
         // every depth, one in-place heal fixes the original and every clone below it at once; reassigning would
@@ -1334,17 +1385,24 @@ internal sealed class EntityRenderDispatcher
             yield break;
         }
 
-        if (entity is Dimension picture && picture.Block != null)
+        DimensionStyle? style;
+        if (entity is Dimension dimension)
         {
-            yield return picture.Block;
-        }
+            if (dimension.Block != null)
+            {
+                yield return dimension.Block;
+            }
 
-        DimensionStyle? style = entity switch
+            style = dimension.Style;
+        }
+        else if (entity is Leader leader)
         {
-            Leader leader => leader.Style,
-            Dimension dimension => dimension.Style,
-            _ => null,
-        };
+            style = leader.Style;
+        }
+        else
+        {
+            yield break;
+        }
 
         if (style == null)
         {

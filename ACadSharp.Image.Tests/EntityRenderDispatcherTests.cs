@@ -2648,4 +2648,98 @@ public sealed class EntityRenderDispatcherTests
 
         Assert.Contains(notifications, n => n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void DrawingATopLevelDimensionLeavesAnMLineInsideItsArrowBlockIntact()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(-1, 0, [0.5, 0], [-0.5, 0]), VertexAt(0, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        arrow.Entities.Add(mline);
+        document.BlockRecords.Add(arrow);
+        DimensionLinear dimension = new()
+        {
+            FirstPoint = new XYZ(10, 10, 0),
+            SecondPoint = new XYZ(30, 10, 0),
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, SeparateArrowBlocks = true, DimArrow1 = arrow, DimArrow2 = arrow },
+        };
+        document.Entities.Add(dimension);
+        Assert.Equal(2, mline.Vertices.Count);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), dimension);
+
+        // Nothing exploded this dimension: DrawDimension calls UpdateBlock() to generate the picture, and that
+        // builds Inserts of the caller's own DimArrow1/DimArrow2 blocks, whose constructor empties an MLINE inside
+        // them. The snapshot around that call is the only thing standing between it and the caller's document.
+        Assert.Equal(2, mline.Vertices.Count);
+    }
+
+    [Fact]
+    public void ATopLevelDimensionWhoseArrowBlockPlacesItselfIsSkippedWithAWarning()
+    {
+        // UpdateBlock() builds an Insert of each of the style's arrow blocks, and that constructor performs the same
+        // deep clone Explode() does, so an arrow block reachable from itself exhausts the stack inside ACadSharp
+        // before UpdateBlock() returns. The pre-check in DrawDimension is what stops that.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        // Built before the cycle is closed, so the constructor's own clone terminates.
+        arrow.Entities.Add(new Insert(arrow));
+        document.BlockRecords.Add(arrow);
+        DimensionLinear dimension = new()
+        {
+            FirstPoint = new XYZ(10, 10, 0),
+            SecondPoint = new XYZ(30, 10, 0),
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, SeparateArrowBlocks = true, DimArrow1 = arrow },
+        };
+        document.Entities.Add(dimension);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), dimension);
+
+        Assert.Contains(notifications, n => n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void RenderingADimensionThroughTheExporterLeavesAnMLineInsideItsArrowBlockIntact()
+    {
+        // The dispatcher-level test above covers DrawDimension. This one covers the whole public path, which runs
+        // EntityBounds.TryGet over every entity for page framing before anything is drawn: if ACadSharp's
+        // Dimension.GetBoundingBox() generated the picture itself, the arrow blocks would be cloned before
+        // DrawDimension's snapshot could be taken and the heal would arrive too late.
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(-1, 0, [0.5, 0], [-0.5, 0]), VertexAt(0, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        arrow.Entities.Add(mline);
+        document.BlockRecords.Add(arrow);
+        DimensionLinear dimension = new()
+        {
+            FirstPoint = new XYZ(10, 10, 0),
+            SecondPoint = new XYZ(30, 10, 0),
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, SeparateArrowBlocks = true, DimArrow1 = arrow, DimArrow2 = arrow },
+        };
+        document.Entities.Add(dimension);
+        ImageExporter exporter = new();
+        exporter.AddModelSpace(document);
+        Assert.Equal(2, mline.Vertices.Count);
+
+        foreach (RenderedPage page in exporter.Render())
+        {
+            page.Dispose();
+        }
+
+        Assert.Equal(2, mline.Vertices.Count);
+    }
 }

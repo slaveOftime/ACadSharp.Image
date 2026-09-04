@@ -1438,4 +1438,20 @@ public sealed class EntityRenderDispatcherTests
 
         Assert.Contains("non-finite", Assert.Single(RenderWithNonFiniteEntity(wipeout)).Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void InsertWithoutABlockIsSkippedWithAWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        Insert insert = new(new BlockRecord("GONE"));
+        typeof(Insert).GetProperty(nameof(Insert.Block))!.SetValue(insert, null);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("Draw", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("no block", StringComparison.OrdinalIgnoreCase));
+    }
 }

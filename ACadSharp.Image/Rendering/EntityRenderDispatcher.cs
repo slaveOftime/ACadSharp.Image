@@ -694,6 +694,23 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
+        IReadOnlyList<XYZ> boundary = WipeoutWorldBoundary(wipeout);
+        SurfacePoint[] points = boundary.Select(context.ToSurfacePoint).ToArray();
+        context.Surface.FillPolygon(style with { StrokeColor = background, Opacity = 1f, DashPattern = null }, points);
+    }
+
+    /// <summary>
+    /// The world polygon a wipeout masks: its clip boundary (a rectangular pair expanded to four corners) or the whole
+    /// image frame when clipping is off, mapped through <see cref="WipeoutPixelToWorld"/>. Empty when the wipeout
+    /// would draw nothing (image hidden or an inverted clip).
+    /// </summary>
+    internal static IReadOnlyList<XYZ> WipeoutWorldBoundary(Wipeout wipeout)
+    {
+        if (!wipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage) || wipeout.ClipMode == ClipMode.Inside)
+        {
+            return [];
+        }
+
         List<XY> pixels;
         if (wipeout.ClippingState && wipeout.ClipBoundaryVertices.Count >= 2)
         {
@@ -713,8 +730,7 @@ internal sealed class EntityRenderDispatcher
             pixels = [new XY(-0.5, -0.5), new XY(wipeout.Size.X - 0.5, -0.5), new XY(wipeout.Size.X - 0.5, wipeout.Size.Y - 0.5), new XY(-0.5, wipeout.Size.Y - 0.5)];
         }
 
-        SurfacePoint[] points = pixels.Select(p => context.ToSurfacePoint(WipeoutPixelToWorld(wipeout, p))).ToArray();
-        context.Surface.FillPolygon(style with { StrokeColor = background, Opacity = 1f, DashPattern = null }, points);
+        return pixels.Select(p => WipeoutPixelToWorld(wipeout, p)).ToList();
     }
 
     /// <summary>
@@ -727,13 +743,19 @@ internal sealed class EntityRenderDispatcher
 
     private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
     {
+        if (insert.Block == null)
+        {
+            this._configuration.Notify($"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block reference has no block; skipped.", NotificationType.Warning);
+            return;
+        }
+
         // The exploded clones carry the block entities' own attributes but no owner or document; ByBlock and
         // layer-0 inheritance, and the header's LTSCALE, come from the insert's resolved style and effective layer.
         // ACadSharp 3.7.1's Explode() yields one clone per block entity, in order. Text geometry comes from the
         // original entity placed through the insert's transform, because the clones' alignment points and MTEXT
         // X axes are never transformed and mirrored inserts hand back world points with a flipped normal.
         Transform transform = insert.GetTransform();
-        IReadOnlyList<Entity> originals = insert.Block?.Entities.ToList() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
+        IReadOnlyList<Entity> originals = insert.Block.Entities.ToList();
 
         // ACadSharp 3.7.1's MLine.Clone() empties the vertex list an MLine shares with its source (by
         // MemberwiseClone), and Insert.Clone() deep-clones its entire block subtree. So exploding this insert
@@ -789,7 +811,7 @@ internal sealed class EntityRenderDispatcher
                     entityPlacement = transform;
                 }
 
-                this.Draw(context, entity, layer, insert.Handle, insert.Block?.Name, parent, source, entityPlacement);
+                this.Draw(context, entity, layer, insert.Handle, insert.Block.Name, parent, source, entityPlacement);
             }
         }
         finally
@@ -800,7 +822,7 @@ internal sealed class EntityRenderDispatcher
         if (index != originals.Count)
         {
             this._configuration.Notify(
-                $"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block '{insert.Block?.Name}' exploded into {index} entities but holds {originals.Count}; text inside it may be misplaced.",
+                $"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block '{insert.Block.Name}' exploded into {index} entities but holds {originals.Count}; text inside it may be misplaced.",
                 NotificationType.Warning);
         }
 

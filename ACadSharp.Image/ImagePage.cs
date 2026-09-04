@@ -193,14 +193,8 @@ public sealed class ImagePage
                 continue;
             }
 
-            BoundingBox boundingBox;
-            try
+            if (!EntityBounds.TryGet(entity, out BoundingBox boundingBox))
             {
-                boundingBox = entity.GetBoundingBox();
-            }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
-            {
-                // ACadSharp throws for some malformed geometry (e.g. a bulge between coincident vertices); such an entity cannot contribute to the frame.
                 continue;
             }
 

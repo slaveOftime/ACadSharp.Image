@@ -250,6 +250,14 @@ internal sealed class ImagePageRenderer
         BoundingBox box = viewport.GetModelBoundingBox();
         foreach (Entity entity in viewport.Document.ModelSpace.GetSortedEntities())
         {
+            if (entity is Insert { Block: null })
+            {
+                // Insert.GetBoundingBox() dereferences Block unguarded in ACadSharp 3.7.1 and would otherwise throw
+                // NullReferenceException here, outside the catch below.
+                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: block reference has no block; skipped.", NotificationType.Warning);
+                continue;
+            }
+
             BoundingBox bounds;
             try
             {

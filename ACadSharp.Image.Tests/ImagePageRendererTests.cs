@@ -1,3 +1,4 @@
+using System.Reflection;
 using ACadSharp.Entities;
 using ACadSharp.Header;
 using ACadSharp.Image.Rendering;
@@ -164,5 +165,32 @@ public sealed class ImagePageRendererTests
 
         Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
         Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("bounds", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ModelEntityWithAnUnresolvedBlockDoesNotAbortViewportRendering()
+    {
+        // SelectViewportEntities culls model space by GetBoundingBox(); an Insert whose Block reference could not be
+        // resolved makes ACadSharp's Insert.GetBoundingBox() throw NullReferenceException unguarded, which must not
+        // abort the rest of the viewport, the way the malformed-geometry case above does not.
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        Insert orphan = new(new BlockRecord("GONE")) { InsertPoint = new XYZ(5, 5, 0) };
+        typeof(Insert).GetProperty(nameof(Insert.Block))!.SetValue(orphan, null);
+        document.Entities.Add(orphan);
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(5, 2), ViewHeight = 20 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("no block", StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -112,11 +112,39 @@ public sealed class InsertPlacementTests
     }
 
     [Fact]
-    public void ANonUniformScaleUnderRotationIsNotASimilarityEvenWhenTheAxesMatchInLength()
+    public void ANonUniformScaleUnderRotationIsRejectedOnAxisLength()
     {
-        // A 3:1 scale turned 45 degrees leaves both mapped axes the same length but no longer at right angles, so a
-        // check that only compared lengths would wrongly call this a similarity.
+        // Insert.GetTransform() scales in local axes and then applies a pure rotation, which always keeps two
+        // originally-orthogonal axes orthogonal: turning a 3:1 scale 45 degrees gives mapped axis lengths 3 and 1
+        // (unequal), not equal-length-but-skewed axes. This is caught by the length check, not the orthogonality
+        // check; see AShearedPlacementWithEqualLengthAxesIsNotASimilarity for a case that reaches the latter.
         Transform placement = PlacementOf(XYZ.Zero, Math.PI / 4, 3, 1);
+
+        Assert.False(InsertPlacement.TryGetPlanarSimilarity(placement, out _, out _, out _));
+    }
+
+    [Fact]
+    public void AShearedPlacementWithEqualLengthAxesIsNotASimilarity()
+    {
+        // A placement built from Insert.GetTransform() can never produce equal-length, non-orthogonal mapped axes
+        // (see ANonUniformScaleUnderRotationIsRejectedOnAxisLength), so the orthogonality branch of
+        // TryGetPlanarSimilarity is unreached by any placement the renderer builds today; it exists for the
+        // arrow-block task, which composes placements, and a composition of two rotate+scale maps can shear. This
+        // test drives that branch directly with a hand-built shear: X maps to (1,0,0) and Y maps to (cos 60, sin
+        // 60, 0), both unit length with a 60 degree angle between them, so the rejection can only come from the
+        // orthogonality term.
+        Matrix4 matrix = new(
+            1d, Math.Cos(Math.PI / 3d), 0d, 0d,
+            0d, Math.Sin(Math.PI / 3d), 0d, 0d,
+            0d, 0d, 1d, 0d,
+            0d, 0d, 0d, 1d);
+        Transform placement = new(matrix);
+
+        // Guard the test's own premise so it can never silently degrade into exercising the length check instead.
+        XYZ ex = InsertPlacement.MapVector(placement, XYZ.AxisX);
+        XYZ ey = InsertPlacement.MapVector(placement, XYZ.AxisY);
+        Assert.Equal(new XY(ex.X, ex.Y).GetLength(), new XY(ey.X, ey.Y).GetLength(), 9);
+        Assert.NotEqual(0d, (ex.X * ey.X) + (ex.Y * ey.Y), 6);
 
         Assert.False(InsertPlacement.TryGetPlanarSimilarity(placement, out _, out _, out _));
     }

@@ -262,4 +262,91 @@ public sealed class TextRendererTests
         dispatcher.Draw(context, new MText { Value = "\\U+00D8\\P\\U+2205", InsertPoint = new XYZ(0, 0, 0), Height = 2 });
         Assert.Equal("Ø\n∅", Assert.Single(surface.Texts).Text);
     }
+
+    [Fact]
+    public void AMultiLineAttributeIsDrawnFromItsEmbeddedMTextNotItsSingleLineValue()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        AttributeEntity attribute = new()
+        {
+            Tag = "ROOM",
+            Value = "WRONG",
+            AttributeType = AttributeType.MultiLine,
+            InsertPoint = new XYZ(0, 0, 0),
+            Height = 3,
+            MText = new MText { Value = "Line1\\PLine2", InsertPoint = new XYZ(10, 20, 0), Height = 4, RectangleWidth = 30 },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(EntityRenderDispatcherTests.CreateContext(surface, configuration), attribute);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Contains("Line1", run.Text);
+        Assert.Contains("Line2", run.Text);
+        Assert.DoesNotContain("WRONG", run.Text);
+        Assert.Equal(4d, run.Height, 9);
+        Assert.Equal(30d, run.WrappingWidth, 9);
+        Assert.Equal(new SurfacePoint(10, 80), run.Origin);
+    }
+
+    [Fact]
+    public void AMultiLineAttributeKeepsTheAttributeAsTheObservableEntity()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        AttributeEntity attribute = new()
+        {
+            Tag = "ROOM",
+            Value = "WRONG",
+            AttributeType = AttributeType.MultiLine,
+            MText = new MText { Value = "A", InsertPoint = new XYZ(1, 1, 0), Height = 2 },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(EntityRenderDispatcherTests.CreateContext(surface, configuration), attribute);
+
+        Assert.Equal("ATTRIB", Assert.Single(surface.Entities).EntityType);
+    }
+
+    [Fact]
+    public void AMultiLineAttributeWithoutAnEmbeddedMTextFallsBackToItsValueWithAWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        AttributeEntity attribute = new()
+        {
+            Tag = "ROOM",
+            Value = "FALLBACK",
+            AttributeType = AttributeType.MultiLine,
+            InsertPoint = new XYZ(5, 5, 0),
+            Height = 2,
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(EntityRenderDispatcherTests.CreateContext(surface, configuration), attribute);
+
+        Assert.Equal("FALLBACK", Assert.Single(surface.Texts).Text);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("multi-line layout", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ASingleLineAttributeStillTakesTheTextPath()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        AttributeEntity attribute = new()
+        {
+            Tag = "ROOM",
+            Value = "A-101",
+            InsertPoint = new XYZ(2, 2, 0),
+            Height = 2,
+            MText = new MText { Value = "IGNORED", InsertPoint = new XYZ(50, 50, 0), Height = 9 },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(EntityRenderDispatcherTests.CreateContext(surface, configuration), attribute);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Equal("A-101", run.Text);
+        Assert.Equal(2d, run.Height, 9);
+    }
 }

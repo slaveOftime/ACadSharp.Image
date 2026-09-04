@@ -176,6 +176,9 @@ internal sealed class EntityRenderDispatcher
                 case Spline spline:
                     this._splineRenderer.Draw(context, style, spline);
                     break;
+                case AttributeBase attribute when attribute.AttributeType is AttributeType.MultiLine or AttributeType.ConstantMultiLine:
+                    this._textRenderer.DrawAttribute(context, style, source as AttributeBase ?? attribute, placement);
+                    break;
                 case MText mtext:
                     this._textRenderer.Draw(context, style, source as MText ?? mtext, placement);
                     break;
@@ -1068,8 +1071,7 @@ internal sealed class EntityRenderDispatcher
 
     /// <summary>
     /// ATTRIB entities store absolute coordinates in their own OCS (the insert's transform is already applied by
-    /// the writer), so they go through the TEXT pipeline with no placement. Multi-line attributes are drawn from
-    /// their single-line value.
+    /// the writer), so they go through the TEXT (or, for a multi-line attribute, MTEXT) pipeline with no placement.
     /// </summary>
     private void DrawAttributes(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
     {

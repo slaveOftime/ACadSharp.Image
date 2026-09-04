@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using ACadSharp.Entities;
 using ACadSharp.IO;
@@ -61,6 +62,36 @@ internal sealed class TextRenderer
             WidthScale: p.WidthScale / p.Scale);
 
         context.Surface.DrawText(style, run);
+    }
+
+    /// <summary>
+    /// Draws an attribute whose layout comes from an embedded <see cref="MText"/>. AutoCAD stores a multi-line
+    /// attribute's real layout there, and leaves the single-line <c>Value</c> as a flattened copy, so the embedded
+    /// object is the authority for everything geometric: the text, its rectangle width, height, rotation and
+    /// attachment point. The attribute itself stays the observable entity, so layer, colour, handle and parent
+    /// metadata are unchanged.
+    /// </summary>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="style">The resolved style for the attribute.</param>
+    /// <param name="attribute">The multi-line attribute or attribute definition.</param>
+    /// <param name="placement">The transform of the insert that placed the entity, or null at top level.</param>
+    /// <remarks>
+    /// When the embedded object is missing the single-line value is drawn instead, with a warning: ACadSharp 3.7.1's
+    /// DWG reader only reads the attribute type for R2018 and later files, so an older drawing reports every
+    /// attribute as single-line and never populates the embedded object.
+    /// </remarks>
+    public void DrawAttribute(ImageRenderContext context, ImageStyle style, AttributeBase attribute, Transform? placement)
+    {
+        if (attribute.MText == null)
+        {
+            context.Configuration.Notify(
+                $"[{attribute.SubclassMarker}] Handle {attribute.Handle.ToString("X", CultureInfo.InvariantCulture)}: multi-line layout is not available; the single-line value was drawn.",
+                NotificationType.Warning);
+            this.Draw(context, style, (TextEntity)attribute, placement);
+            return;
+        }
+
+        this.Draw(context, style, attribute.MText, placement);
     }
 
     /// <summary>

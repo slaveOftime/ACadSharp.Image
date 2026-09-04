@@ -865,29 +865,17 @@ public sealed class EntityRenderDispatcherTests
         BlockRecord block = new("CONST");
         block.Entities.Add(new AttributeDefinition { Tag = "MAKER", Value = "ACME", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant });
         Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
-
-        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
-
-        Assert.Single(surface.Texts, t => t.Text == "ACME");
-    }
-
-    [Fact]
-    public void ConstantAttributeDefinitionIsDrawnOnceWhenTheInsertCarriesNoAttrib()
-    {
-        RecordingDrawingSurface surface = new();
-        ImageConfiguration configuration = new();
-        BlockRecord block = new("CONST2");
-        block.Entities.Add(new AttributeDefinition { Tag = "MAKER", Value = "ACME2", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant });
         // Insert has no parameterless constructor and Block has no public setter in ACadSharp 3.7.1 (verified by
-        // probe), so an insert with no ATTRIB is built via Insert(BlockRecord) and then Attributes.Clear(),
-        // reproducing a file where a constant attribute was never persisted as an ATTRIB.
-        Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
+        // probe), so an insert with no ATTRIB is built via Insert(BlockRecord) and then Attributes.Clear(), reproducing
+        // a file where a constant attribute was never persisted as an ATTRIB. Without the Clear(), Insert(BlockRecord)
+        // would already have created an AttributeEntity for the constant ATTDEF, and the assertion below would pass
+        // even if the explode-time fallback that reads the value from the ATTDEF itself were broken.
         insert.Attributes.Clear();
         Assert.Empty(insert.Attributes);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
-        Assert.Single(surface.Texts, t => t.Text == "ACME2");
+        Assert.Single(surface.Texts, t => t.Text == "ACME");
     }
 
     [Theory]
@@ -1619,8 +1607,13 @@ public sealed class EntityRenderDispatcherTests
         mline.Vertices[1].Position = new XYZ(double.NaN, 0, 0);
 
         // ImageSharp's fill throws ArithmeticException on a NaN vertex, which is neither an ArgumentException nor an
-        // InvalidOperationException: unguarded, one malformed multiline takes the whole page down.
-        Assert.Contains("non-finite", Assert.Single(RenderWithNonFiniteEntity(mline)).Message, StringComparison.Ordinal);
+        // InvalidOperationException: unguarded, one malformed multiline takes the whole page down. A non-finite
+        // vertex position fails HasFiniteGeometry before drawing is attempted at all, so the message is the
+        // dispatcher's own, not the raster backend's ArithmeticException backstop (which must never be reached: it
+        // would mean the dispatcher's own check let a NaN vertex through to ImageSharp's fill).
+        List<NotificationEventArgs> warnings = RenderWithNonFiniteEntity(mline);
+        Assert.Contains("geometry contains non-finite values; entity skipped", Assert.Single(warnings).Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(warnings, w => w.Message.Contains("Raster:", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1629,7 +1622,11 @@ public sealed class EntityRenderDispatcherTests
         Wipeout wipeout = UnitWipeout();
         wipeout.UVector = new XYZ(double.NaN, 0, 0);
 
-        Assert.Contains("non-finite", Assert.Single(RenderWithNonFiniteEntity(wipeout)).Message, StringComparison.Ordinal);
+        // As above: a non-finite UVector fails HasFiniteGeometry before drawing is attempted, so the message is the
+        // dispatcher's own and the raster backend's non-finite backstop must never fire.
+        List<NotificationEventArgs> warnings = RenderWithNonFiniteEntity(wipeout);
+        Assert.Contains("geometry contains non-finite values; entity skipped", Assert.Single(warnings).Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(warnings, w => w.Message.Contains("Raster:", StringComparison.Ordinal));
     }
 
     [Fact]

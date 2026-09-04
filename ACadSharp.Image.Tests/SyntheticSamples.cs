@@ -131,4 +131,123 @@ internal static class SyntheticSamples
         path.Edges.Add(polyline);
         return path;
     }
+
+    /// <summary>
+    /// One block exercising the entities added after the feature goldens were written: a 3DFACE with one hidden edge,
+    /// a straight and a splined LEADER (both with arrowheads), a filled two-element MLINE turning a right-angle corner,
+    /// an opaque WIPEOUT masking part of a line, and an INSERT whose ATTRIB carries a room number. Handles are
+    /// assigned explicitly so the draw order (and so the wipeout's occlusion of the line beneath it) does not depend
+    /// on <see cref="BlockRecord.GetSortedEntities"/>'s tie-breaking for entities that would otherwise all share handle 0.
+    /// </summary>
+    public static BlockRecord EntityBlock()
+    {
+        BlockRecord block = new("entities");
+        Layer faceLayer = new("Face") { Color = new Color(2) };
+        Layer leaderLayer = new("Leader") { Color = new Color(4) };
+        Layer wallLayer = new("Wall") { Color = new Color(6) };
+        Layer underLayer = new("Under") { Color = new Color(1) };
+        Layer coverLayer = new("Cover") { Color = new Color(8) };
+        Layer roomsLayer = new("Rooms") { Color = new Color(9) };
+
+        Face3D face = WithHandle(new Face3D
+        {
+            FirstCorner = new XYZ(0, 0, 0),
+            SecondCorner = new XYZ(20, 0, 0),
+            ThirdCorner = new XYZ(20, 15, 0),
+            FourthCorner = new XYZ(0, 15, 0),
+            Flags = InvisibleEdgeFlags.Third,
+            Layer = faceLayer,
+        }, 0x10);
+        block.Entities.Add(face);
+
+        DimensionStyle leaderStyle = new("ENTITIES") { ArrowSize = 2 };
+        Leader straight = WithHandle(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Style = leaderStyle,
+            Layer = leaderLayer,
+            Vertices = { new XYZ(30, 0, 0), new XYZ(45, 10, 0), new XYZ(60, 10, 0) },
+        }, 0x11);
+        block.Entities.Add(straight);
+
+        Leader spline = WithHandle(new Leader
+        {
+            ArrowHeadEnabled = true,
+            PathType = LeaderPathType.Spline,
+            Style = leaderStyle,
+            Layer = leaderLayer,
+            Vertices = { new XYZ(70, 0, 0), new XYZ(80, 10, 0), new XYZ(90, 0, 0), new XYZ(100, 10, 0) },
+        }, 0x12);
+        block.Entities.Add(spline);
+
+        MLineStyle mlineStyle = new("ENTITIES") { Flags = MLineStyleFlags.FillOn, FillColor = new Color(3) };
+        mlineStyle.AddElement(new MLineStyle.Element { Offset = 1, Color = new Color(1) });
+        mlineStyle.AddElement(new MLineStyle.Element { Offset = -1, Color = new Color(5) });
+
+        // The corner vertex's miter bisects the right-angle turn from +X to +Y; at offset +-1 the element points lie
+        // sqrt(2) along it, not 1 (Position + Miter * along, so a non-unit "along" is what carries the offset across
+        // the corner without narrowing the wall).
+        double diagonal = Math.Sqrt(2);
+        MLine mline = WithHandle(new MLine
+        {
+            Style = mlineStyle,
+            Layer = wallLayer,
+            Vertices =
+            {
+                MLineVertex(new XYZ(0, 30, 0), new XYZ(0, 1, 0), [1, 0], [-1, 0]),
+                MLineVertex(new XYZ(40, 30, 0), new XYZ(-1, 1, 0) / diagonal, [diagonal, 0], [-diagonal, 0]),
+                MLineVertex(new XYZ(40, 50, 0), new XYZ(-1, 0, 0), [1, 0], [-1, 0]),
+            },
+        }, 0x13);
+        block.Entities.Add(mline);
+
+        Line under = WithHandle(new Line(new XYZ(60, 30, 0), new XYZ(100, 30, 0)) { Layer = underLayer }, 0x14);
+        block.Entities.Add(under);
+
+        Wipeout wipeout = WithHandle(new Wipeout
+        {
+            InsertPoint = new XYZ(70, 25, 0),
+            UVector = new XYZ(20, 0, 0),
+            VVector = new XYZ(0, 10, 0),
+            Size = new XY(1, 1),
+            ClippingState = true,
+            Layer = coverLayer,
+        }, 0x15);
+        wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
+        block.Entities.Add(wipeout);
+
+        BlockRecord room = new("ROOM");
+        room.Entities.Add(new AttributeDefinition { Tag = "ROOM", Value = "DEFAULT", InsertPoint = XYZ.Zero, Height = 3 });
+        // Insert(BlockRecord) creates one AttributeEntity per ATTDEF at the identity transform; place it explicitly.
+        Insert insert = WithHandle(new Insert(room) { InsertPoint = new XYZ(60, 45, 0), Layer = roomsLayer }, 0x16);
+        AttributeEntity attribute = insert.Attributes.Single();
+        attribute.Value = "A-101";
+        attribute.InsertPoint = new XYZ(60, 45, 0);
+        attribute.Height = 3;
+        block.Entities.Add(insert);
+
+        return block;
+    }
+
+    private static MLine.Vertex MLineVertex(XYZ position, XYZ miter, params double[][] parameters)
+    {
+        MLine.Vertex vertex = new() { Position = position, Direction = new XYZ(1, 0, 0), Miter = miter };
+        foreach (double[] segment in parameters)
+        {
+            MLine.Vertex.Segment element = new();
+            element.Parameters.AddRange(segment);
+            vertex.Segments.Add(element);
+        }
+
+        return vertex;
+    }
+
+    // ACadSharp.CadObject.Handle has an internal setter in ACadSharp 3.7.1, so a deterministic handle is assigned
+    // via reflection, the same pattern ImagePageTests and EntityRenderDispatcherTests use.
+    private static T WithHandle<T>(T entity, ulong handle)
+        where T : CadObject
+    {
+        typeof(CadObject).GetProperty(nameof(CadObject.Handle))!.SetValue(entity, handle);
+        return entity;
+    }
 }

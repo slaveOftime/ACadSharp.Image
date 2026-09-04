@@ -33,6 +33,23 @@ public sealed class ImagePageTests
     }
 
     [Fact]
+    public void AddHonoursTheDrawOrderTable()
+    {
+        BlockRecord block = new("ORDER");
+        Line low = WithHandle(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)), 0x10);
+        Line high = WithHandle(new Line(new XYZ(0, 0, 0), new XYZ(0, 1, 0)), 0x20);
+        block.Entities.Add(low);
+        block.Entities.Add(high);
+        block.CreateSortEntitiesTable();
+        block.SortEntitiesTable!.Add(low, 0x30); // the low-handle entity is sorted last
+
+        ImagePage page = new();
+        page.Add(block, resizeLayout: false);
+
+        Assert.Equal([0x20UL, 0x10UL], page.Entities.Select(e => e.Handle));
+    }
+
+    [Fact]
     public void AddWithFilterKeepsTheSortedOrder()
     {
         BlockRecord block = new("ORDER");

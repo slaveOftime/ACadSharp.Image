@@ -1462,10 +1462,12 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
-    public void MLineWithANonFiniteStyleOffsetStrokesWithoutFilling()
+    public void MLineWithANonFiniteStyleOffsetIsSkippedWithAWarning()
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
         MLineStyle style = new("BROKEN") { Flags = MLineStyleFlags.FillOn, FillColor = new ACadSharp.Color(3) };
         style.AddElement(new MLineStyle.Element { Offset = 0.5, Color = ACadSharp.Color.ByLayer });
         style.AddElement(new MLineStyle.Element { Offset = double.NaN, Color = ACadSharp.Color.ByLayer });
@@ -1474,10 +1476,60 @@ public sealed class EntityRenderDispatcherTests
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
 
-        // Enumerable.Min returns NaN where Max skips it, so the inner element is never found and the ring is dropped:
-        // both elements are still stroked, and no fill is attempted.
-        Assert.Equal(2, surface.Polylines.Count);
+        // A NaN scaled offset used to slip past Enumerable.Min (which, unlike Max, does not skip NaN), silently
+        // dropping the fill ring while still stroking both elements; it is now caught before any drawing and the
+        // whole entity is skipped with a warning instead.
+        Assert.Empty(surface.Polylines);
         Assert.Empty(surface.Polygons);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("non-finite", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void MLineFallbackUnderANegativeScaleAnchorsTheGeometricTopElement()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLine mline = new() { Style = TwoElementStyle(0.5), ScaleFactor = -2, Justification = MLineJustification.Top, Vertices = { VertexAt(0, 10), VertexAt(20, 10) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        // Scaled offsets are -1 (element 0) and +1 (element 1); Top puts the +1 element on the vertex line and element 0 two units below it.
+        Assert.Equal([new SurfacePoint(0, 92), new SurfacePoint(20, 92)], surface.Polylines[0]);
+        Assert.Equal([new SurfacePoint(0, 90), new SurfacePoint(20, 90)], surface.Polylines[1]);
+    }
+
+    [Fact]
+    public void MLineElementWithByLayerLinetypeInheritsTheEntityDashes()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLineStyle style = new("DASHED");
+        style.AddElement(new MLineStyle.Element { Offset = 0.5, LineType = new LineType(LineType.ByLayerName) });
+        style.AddElement(new MLineStyle.Element { Offset = -0.5 });
+        LineType dashed = new("DASHED2");
+        dashed.AddSegment(new LineType.Segment { Length = 2 });
+        dashed.AddSegment(new LineType.Segment { Length = -1 });
+        MLine mline = new() { Style = style, LineType = dashed, Vertices = { VertexAt(0, 10, [0.5, 0], [-0.5, 0]), VertexAt(20, 10, [0.5, 0], [-0.5, 0]) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        Assert.NotNull(surface.Styles[0].DashPattern);
+        Assert.Equal(surface.Styles[1].DashPattern, surface.Styles[0].DashPattern);
+    }
+
+    [Fact]
+    public void MLineWithANonFiniteScaleIsSkippedWithAWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        MLine mline = new() { Style = TwoElementStyle(0.5), ScaleFactor = double.NaN, Vertices = { VertexAt(0, 10), VertexAt(20, 10) } };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        Assert.Empty(surface.Polylines);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("non-finite", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

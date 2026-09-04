@@ -35,6 +35,12 @@ internal sealed class EntityRenderDispatcher
     private readonly TextRenderer _textRenderer;
     private readonly EntityVisibilityFilter _visibilityFilter;
 
+    /// <summary>
+    /// Per-block cache of <see cref="BlockSubtreeNeedsHeal"/>, so repeated inserts of the same block scan its
+    /// subtree for MLINEs and LEADERs at most once per page. Cleared by <see cref="BeginPage"/>.
+    /// </summary>
+    private readonly Dictionary<BlockRecord, bool> _blocksNeedingHeal = new();
+
     public EntityRenderDispatcher(ImageConfiguration configuration)
     {
         this._configuration = configuration;
@@ -42,6 +48,17 @@ internal sealed class EntityRenderDispatcher
         this._styleResolver = new ImageStyleResolver();
         this._textRenderer = new TextRenderer();
         this._visibilityFilter = new EntityVisibilityFilter(configuration);
+    }
+
+    /// <summary>
+    /// Clears the per-block MLINE/LEADER subtree cache used by <see cref="DrawBlockContents"/>. The dispatcher
+    /// belongs to an <see cref="ImagePageRenderer"/>, which can render several pages (and the same document can be
+    /// edited between them), so a cached result from an earlier page must not be trusted for a later one; call this
+    /// once at the start of every page render.
+    /// </summary>
+    internal void BeginPage()
+    {
+        this._blocksNeedingHeal.Clear();
     }
 
     /// <summary>
@@ -591,12 +608,23 @@ internal sealed class EntityRenderDispatcher
 
         bool closed = mline.Flags.HasFlag(MLineFlags.Closed);
         double scale = mline.ScaleFactor == 0d ? 1d : mline.ScaleFactor;
-        double maxOffset = elements.Max(e => e.Offset);
-        double minOffset = elements.Min(e => e.Offset);
+        // Offsets are scaled before the extrema are taken: under a negative ScaleFactor, scaling flips which element
+        // is geometrically outermost, so choosing extrema from the raw (unscaled) offsets would anchor Top/Bottom
+        // justification (and pick the fill ring) at the wrong element.
+        double[] scaled = elements.Select(e => e.Offset * scale).ToArray();
+        string handle = mline.Handle.ToString("X", CultureInfo.InvariantCulture);
+        if (!double.IsFinite(scale) || scaled.Any(v => !double.IsFinite(v)))
+        {
+            this._configuration.Notify($"[{mline.SubclassMarker}] Handle {handle}: multiline style has non-finite offsets or scale; entity skipped.", NotificationType.Warning);
+            return;
+        }
+
+        double maxOffset = scaled.Max();
+        double minOffset = scaled.Min();
         double shift = mline.Justification switch
         {
-            MLineJustification.Top => -maxOffset * scale,
-            MLineJustification.Bottom => -minOffset * scale,
+            MLineJustification.Top => -maxOffset,
+            MLineJustification.Bottom => -minOffset,
             _ => 0d,
         };
 
@@ -617,7 +645,7 @@ internal sealed class EntityRenderDispatcher
                 }
                 else
                 {
-                    along = (elements[j].Offset * scale) + shift;
+                    along = scaled[j] + shift;
                     fallback = true;
                 }
 
@@ -626,7 +654,6 @@ internal sealed class EntityRenderDispatcher
             }
         }
 
-        string handle = mline.Handle.ToString("X", CultureInfo.InvariantCulture);
         if (fallback)
         {
             this._configuration.Notify($"[{mline.SubclassMarker}] Handle {handle}: vertex parameters are missing; element offsets were computed from the style.", NotificationType.Warning);
@@ -638,10 +665,11 @@ internal sealed class EntityRenderDispatcher
         }
 
         ImageColor foreground = context.Configuration.ResolveForegroundColor();
-        // A NaN element offset makes Enumerable.Min return NaN (unlike Max, it does not skip NaN), so FindIndex can
-        // come back -1 for inner while outer stays valid; both indices are checked before they are used.
-        int outer = Array.FindIndex(elements, e => e.Offset == maxOffset);
-        int inner = Array.FindIndex(elements, e => e.Offset == minOffset);
+        // scaled is already known finite (the non-finite check above returned early otherwise), so maxOffset and
+        // minOffset, both drawn from it, are always found here; outer/inner are picked from the scaled offsets so
+        // they name the geometrically outermost/innermost element even under a negative ScaleFactor.
+        int outer = Array.FindIndex(scaled, v => v == maxOffset);
+        int inner = Array.FindIndex(scaled, v => v == minOffset);
         bool hasRing = outer >= 0 && inner >= 0 && outer != inner;
         if (mline.Style.Flags.HasFlag(MLineStyleFlags.FillOn) && hasRing)
         {
@@ -659,9 +687,15 @@ internal sealed class EntityRenderDispatcher
 
         for (int j = 0; j < elements.Length; j++)
         {
-            float[]? dashes = elements[j].LineType == null
+            // An element linetype named ByLayer/ByBlock is not itself a drawable pattern: it means the element
+            // inherits the entity's own resolved dashes, same as a null element linetype, rather than being handed
+            // to the resolver, which would otherwise treat the placeholder name as an unknown (solid) linetype.
+            LineType? elementType = elements[j].LineType;
+            float[]? dashes = elementType == null
+                || ImageStyleResolver.IsNamed(elementType, LineType.ByLayerName)
+                || ImageStyleResolver.IsNamed(elementType, LineType.ByBlockName)
                 ? style.DashPattern
-                : LineTypeDashResolver.Resolve(elements[j].LineType, resolved.Header, resolved.LineTypeScale, context, style.StrokeWidth);
+                : LineTypeDashResolver.Resolve(elementType, resolved.Header, resolved.LineTypeScale, context, style.StrokeWidth);
             ImageStyle elementStyle = style with { StrokeColor = ElementColor(elements[j].Color), DashPattern = dashes };
             context.Surface.DrawPolyline(elementStyle, lines[j], closed);
         }
@@ -824,7 +858,14 @@ internal sealed class EntityRenderDispatcher
         // healed MLINE's or LEADER's points, because Explode()'s own ApplyTransform ran against the pre-heal list.
         Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
         Dictionary<Leader, List<XYZ>> leaderVertices = new();
-        CollectSharedVertexLists(insert.Block, mlineVertices, leaderVertices, new HashSet<BlockRecord>());
+        // Walking the whole subtree just to find out there is nothing to snapshot is wasted work on every insert of
+        // an MLINE/LEADER-free block; BlockSubtreeNeedsHeal answers that cheaply (memoised per block), so the actual
+        // walk only runs when it can find something.
+        if (this.BlockSubtreeNeedsHeal(insert.Block, new HashSet<BlockRecord>()))
+        {
+            CollectSharedVertexLists(insert.Block, mlineVertices, leaderVertices, new HashSet<BlockRecord>());
+        }
+
         int index = 0;
         try
         {
@@ -935,6 +976,55 @@ internal sealed class EntityRenderDispatcher
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// True when <paramref name="block"/>, or any block reachable from it through a nested <see cref="Insert.Block"/>,
+    /// contains an MLINE or a LEADER — the entities <see cref="CollectSharedVertexLists"/> exists to snapshot.
+    /// Answers are memoised per block in <see cref="_blocksNeedingHeal"/>, so an insert of a block already proven
+    /// clean (or already proven to need healing) elsewhere on the page costs a dictionary lookup instead of a walk.
+    /// </summary>
+    /// <param name="block">The block to check, or null.</param>
+    /// <param name="visited">Blocks already walked in this call, so a circular or diamond hierarchy is walked once.</param>
+    /// <returns>True when the subtree contains an MLINE or a LEADER.</returns>
+    private bool BlockSubtreeNeedsHeal(BlockRecord? block, HashSet<BlockRecord> visited)
+    {
+        if (block == null)
+        {
+            return false;
+        }
+
+        if (this._blocksNeedingHeal.TryGetValue(block, out bool cached))
+        {
+            return cached;
+        }
+
+        if (!visited.Add(block))
+        {
+            // A block reachable from itself: treat the cyclic branch as clean rather than recurse forever. Any
+            // MLINE/LEADER elsewhere in the subtree is still found through the other entities in this loop, and
+            // nothing is cached here, so a later, non-cyclic call for this same block still computes the real answer.
+            return false;
+        }
+
+        bool needsHeal = false;
+        foreach (Entity entity in block.Entities)
+        {
+            if (entity is MLine or Leader)
+            {
+                needsHeal = true;
+                break;
+            }
+
+            if (entity is Insert nestedInsert && this.BlockSubtreeNeedsHeal(nestedInsert.Block, visited))
+            {
+                needsHeal = true;
+                break;
+            }
+        }
+
+        this._blocksNeedingHeal[block] = needsHeal;
+        return needsHeal;
     }
 
     /// <summary>

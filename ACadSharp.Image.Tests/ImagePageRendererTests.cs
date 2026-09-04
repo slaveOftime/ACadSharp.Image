@@ -327,4 +327,84 @@ public sealed class ImagePageRendererTests
 
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void AddingAnMLineToAPreviouslyCleanBlockIsPickedUpByTheNextRenderOnTheSameRenderer()
+    {
+        // The dispatcher caches, per block, whether its subtree holds anything that needs MLINE/LEADER healing
+        // before Explode() runs (see EntityRenderDispatcher.BlockSubtreeNeedsHeal). The renderer outlives a single
+        // render, so a block found clean on one render must not stay cached as clean once an MLINE is added to it.
+        BlockRecord wall = new("WALL");
+        wall.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        BlockRecord plan = new("PLAN");
+        plan.Entities.Add(new Insert(wall));
+
+        ImageExporter exporter = new();
+        exporter.Add(plan);
+        ImagePage page = Assert.Single(exporter.Pages);
+        ImagePageRenderer renderer = new(exporter.Configuration);
+
+        renderer.RenderTo(new RecordingDrawingSurface(), page);
+
+        MLineStyle style = new("PLAN");
+        style.AddElement(new MLineStyle.Element { Offset = 0.5 });
+        style.AddElement(new MLineStyle.Element { Offset = -0.5 });
+        MLine mline = new()
+        {
+            Style = style,
+            Vertices =
+            {
+                MLineVertexAt(0, 0, [0.5, 0], [-0.5, 0]),
+                MLineVertexAt(10, 0, [0.5, 0], [-0.5, 0]),
+            },
+        };
+        wall.Entities.Add(mline);
+
+        RecordingDrawingSurface surface = new();
+        renderer.RenderTo(surface, page);
+
+        Assert.Equal(2, mline.Vertices.Count);
+        Assert.Equal(2, surface.Polylines.Count);
+    }
+
+    [Fact]
+    public void AddingALeaderToAPreviouslyCleanBlockIsPickedUpByTheNextRenderOnTheSameRenderer()
+    {
+        // Same staleness hazard as the MLINE case above, for a LEADER: Insert.Clone() shares a LEADER's vertex list
+        // with its source too (see EntityRenderDispatcher remarks on DrawBlockContents), so it must be found by the
+        // same cached subtree scan and must not be missed once it is added after the block was first seen clean.
+        BlockRecord wall = new("WALLL");
+        wall.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        BlockRecord plan = new("PLANL");
+        plan.Entities.Add(new Insert(wall));
+
+        ImageExporter exporter = new();
+        exporter.Add(plan);
+        ImagePage page = Assert.Single(exporter.Pages);
+        ImagePageRenderer renderer = new(exporter.Configuration);
+
+        renderer.RenderTo(new RecordingDrawingSurface(), page);
+
+        Leader leader = new() { Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) } };
+        wall.Entities.Add(leader);
+
+        RecordingDrawingSurface surface = new();
+        renderer.RenderTo(surface, page);
+
+        Assert.Equal([new XYZ(0, 0, 0), new XYZ(10, 0, 0)], leader.Vertices);
+        Assert.Single(surface.Polylines);
+    }
+
+    private static MLine.Vertex MLineVertexAt(double x, double y, params double[][] parameters)
+    {
+        MLine.Vertex vertex = new() { Position = new XYZ(x, y, 0), Direction = new XYZ(1, 0, 0), Miter = new XYZ(0, 1, 0) };
+        foreach (double[] segment in parameters)
+        {
+            MLine.Vertex.Segment element = new();
+            element.Parameters.AddRange(segment);
+            vertex.Segments.Add(element);
+        }
+
+        return vertex;
+    }
 }

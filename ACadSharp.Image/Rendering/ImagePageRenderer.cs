@@ -135,6 +135,11 @@ internal sealed class ImagePageRenderer
     /// </remarks>
     private void RenderTo(ImageRenderContext context, ImagePage page)
     {
+        // The dispatcher outlives a single page render (this renderer can render several pages, see the class
+        // remarks), so its per-block MLINE/LEADER subtree cache must not carry a result computed for a different
+        // page — or an earlier render of this same page, whose document may have been edited since — into this one.
+        this._dispatcher.BeginPage();
+
         // Viewport does not override Equals, so the default comparer is reference equality: the set answers
         // "did this very viewport come through AddViewport?", not "is there an equal-looking one".
         HashSet<Viewport> windows = new(page.Viewports);

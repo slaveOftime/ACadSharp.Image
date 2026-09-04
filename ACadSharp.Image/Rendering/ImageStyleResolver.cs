@@ -140,7 +140,14 @@ internal sealed class ImageStyleResolver
         return Math.Clamp(1f - (transparency.Value / 100f), 0f, 1f);
     }
 
-    private static bool IsNamed(LineType? lineType, string name)
+    /// <summary>
+    /// True when <paramref name="lineType"/> is not null and its name matches <paramref name="name"/> case-insensitively,
+    /// as used to recognise the synthetic "ByLayer"/"ByBlock" linetypes.
+    /// </summary>
+    /// <param name="lineType">The linetype to check, or null.</param>
+    /// <param name="name">The name to compare against, typically <see cref="LineType.ByLayerName"/> or <see cref="LineType.ByBlockName"/>.</param>
+    /// <returns>True when <paramref name="lineType"/> is named <paramref name="name"/>.</returns>
+    internal static bool IsNamed(LineType? lineType, string name)
     {
         return lineType != null && string.Equals(lineType.Name, name, StringComparison.OrdinalIgnoreCase);
     }

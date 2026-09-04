@@ -534,11 +534,15 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal(1d, Math.Sin(text.Rotation), 6);
         Assert.Equal(2d, text.Height, 6);
         Assert.Equal(SurfaceTextAnchor.Start, text.Anchor);
+        // A uniform insert scale (XScale == YScale) must leave WidthScale at 1: the reading-axis and up-axis
+        // lengths the insert transform produces are equal, so p.WidthScale / p.Scale reduces to 1.
+        Assert.Equal(1d, text.WidthScale, 9);
 
         SurfaceText mtext = surface.Texts[1];
         Assert.Equal(0d, Math.Cos(mtext.Rotation), 6);
         Assert.Equal(1d, Math.Sin(mtext.Rotation), 6);
         Assert.Equal(2d, mtext.Height, 6);
+        Assert.Equal(1d, mtext.WidthScale, 9);
     }
 
     [Fact]

@@ -233,7 +233,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
         IPathCollection glyphs = TextBuilder.GenerateGlyphs(text.Text, options);
         DrawingOptions drawingOptions = new();
-        bool stretched = Math.Abs(text.WidthScale - 1d) > double.Epsilon;
+        bool stretched = Math.Abs(text.WidthScale - 1d) > 1e-9;
         bool rotated = Math.Abs(text.Rotation) > double.Epsilon;
         if (stretched || rotated)
         {

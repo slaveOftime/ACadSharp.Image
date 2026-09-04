@@ -378,7 +378,7 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             return;
         }
 
-        if (!IsFinite(text.Origin) || !IsFinite(text.Height) || !IsFinite(text.Rotation) || !IsFinite(text.FixedLength) || !IsFinite(text.LineSpacingFactor) || !IsFinite(text.WidthScale))
+        if (!IsFinite(text.Origin) || !IsFinite(text.Height) || !IsFinite(text.Rotation) || !IsFinite(text.FixedLength) || !IsFinite(text.LineSpacingFactor) || !IsFinite(text.WidthScale) || text.WidthScale <= 0)
         {
             this.NotifyNonFinite();
             return;
@@ -410,12 +410,15 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
         string? rotate = Math.Abs(text.Rotation) > 1e-12
             ? $"rotate({this.A(-text.Rotation * 180d / Math.PI)} {this.N(text.Origin.X)} {this.N(text.Origin.Y)})"
             : null;
+        // WidthScale is a dimensionless ratio, not a coordinate, so it is formatted at style precision (at least 3
+        // decimals): the adaptive coordinate formatter drops to 0 decimals on a large-viewBox drawing, which would
+        // round an ordinary stretch to an integer or, worse, to a 0 that erases the text.
         string? stretch = Math.Abs(text.WidthScale - 1d) > 1e-9
-            ? $"translate({this.N(text.Origin.X)} {this.N(text.Origin.Y)}) scale({this.N(text.WidthScale)} 1) translate({this.N(-text.Origin.X)} {this.N(-text.Origin.Y)})"
+            ? $"translate({this.N(text.Origin.X)} {this.N(text.Origin.Y)}) scale({this.S(text.WidthScale)} 1) translate({this.N(-text.Origin.X)} {this.N(-text.Origin.Y)})"
             : null;
         if (rotate != null || stretch != null)
         {
-            element.Add(new XAttribute("transform", string.Join(' ', new[] { rotate, stretch }.Where(part => part != null))));
+            element.Add(new XAttribute("transform", string.Join(' ', new string?[] { rotate, stretch }.Where(part => part != null))));
         }
 
         if (text.FixedLength > 0)

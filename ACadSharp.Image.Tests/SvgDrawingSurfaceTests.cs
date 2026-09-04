@@ -367,6 +367,23 @@ public sealed class SvgDrawingSurfaceTests
     }
 
     [Fact]
+    public void WidthScaleUsesStylePrecisionNotCoordinatePrecision()
+    {
+        // A drawing whose viewBox drives the adaptive coordinate formatter to 0 decimals (or an explicit
+        // Svg.Precision of 0) must not round a fractional WidthScale away to an integer, or to 0, which would
+        // erase the text: the stretch factor is a dimensionless ratio, formatted at style precision instead.
+        using SvgDrawingSurface surface = CreateSurface(c => c.Svg.Precision = 0);
+        SurfaceText run = new("AB", new SurfacePoint(10, 20), 4, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, -1, WidthScale: 1.5);
+
+        surface.DrawText(new ImageStyle(Color.Black, 1f), run);
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        string? transform = (string?)text.Attribute("transform");
+        Assert.NotNull(transform);
+        Assert.Contains("scale(1.5 1)", transform, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MultiLineTextUsesTspans()
     {
         using SvgDrawingSurface surface = CreateSurface();

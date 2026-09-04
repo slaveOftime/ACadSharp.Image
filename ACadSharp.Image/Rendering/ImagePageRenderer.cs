@@ -233,11 +233,13 @@ internal sealed class ImagePageRenderer
     }
 
     /// <summary>
-    /// The model-space entities a viewport shows, in the drawing's draw order: those whose bounding box lies in or
-    /// crosses the view box (what <c>Viewport.SelectEntities</c> does), using the same bounds
-    /// <see cref="EntityBounds"/> gives the page framer (so a wipeout or an OCS solid is culled by the region it
-    /// actually draws, not ACadSharp's raw <c>GetBoundingBox</c>) and skipping, with a warning instead of aborting
-    /// the page, an entity <see cref="EntityBounds"/> cannot bound at all.
+    /// The model-space entities a viewport shows, in the drawing's draw order: those whose bounds
+    /// (<see cref="EntityBounds"/>, the same bounds the page framer uses, so a wipeout or an OCS solid is culled by
+    /// the region it actually draws, not ACadSharp's raw <c>GetBoundingBox</c>) overlap or touch the view box in the
+    /// XY plane (<see cref="OverlapsInPlane"/>), including an entity that encloses the view box or crosses it
+    /// without either endpoint inside it. This does not mirror <c>Viewport.SelectEntities</c>, whose corner-based
+    /// <c>BoundingBox.IsIn</c> check culls both of those cases; an entity <see cref="EntityBounds"/> cannot bound at
+    /// all is skipped with a warning instead of aborting the page.
     /// </summary>
     /// <param name="viewport">The viewport to select the contents of.</param>
     /// <returns>The model-space entities to draw inside the viewport.</returns>
@@ -273,10 +275,24 @@ internal sealed class ImagePageRenderer
                 continue;
             }
 
-            if (box.IsIn(bounds, out bool partial) || partial)
+            if (OverlapsInPlane(box, bounds))
             {
                 yield return entity;
             }
         }
+    }
+
+    /// <summary>
+    /// True when two bounds overlap or touch in the XY plane (Z ignored), by axis-aligned interval overlap on X and
+    /// Y independently. Unlike <c>BoundingBox.IsIn</c>, this also keeps an entity whose bounds enclose
+    /// <paramref name="window"/> entirely, or cross it without either bound's own corner lying inside the other.
+    /// </summary>
+    /// <param name="window">The viewport's model-space view box.</param>
+    /// <param name="bounds">The candidate entity's bounds.</param>
+    /// <returns>True when the two bounds overlap or touch on both axes.</returns>
+    private static bool OverlapsInPlane(BoundingBox window, BoundingBox bounds)
+    {
+        return bounds.Min.X <= window.Max.X && bounds.Max.X >= window.Min.X
+            && bounds.Min.Y <= window.Max.Y && bounds.Max.Y >= window.Min.Y;
     }
 }

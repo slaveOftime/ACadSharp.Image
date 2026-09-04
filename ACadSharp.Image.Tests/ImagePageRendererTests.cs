@@ -263,4 +263,68 @@ public sealed class ImagePageRendererTests
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.Warning);
     }
+
+    [Fact]
+    public void ALineCrossingTheViewportWithBothEndpointsOutsideItIsDrawn()
+    {
+        // BoundingBox.IsIn (what Viewport.SelectEntities itself uses) only keeps an entity when one of its bounds'
+        // own corners lies inside the window; a line's degenerate bounding box has no corner inside a window it
+        // merely passes through, so IsIn/partial both come back false for a line like this one even though it is
+        // squarely visible in the viewport. The XY overlap test used instead must still select it.
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(-10, 0, 0), new XYZ(10, 0, 0)));
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        // Model window x in [-5,5], y in [-5,5] (ViewCenter +/- ViewHeight/2 on a square viewport).
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(0, 0), ViewHeight = 10 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AnEntityWhoseBoundsEncloseTheViewportIsDrawn()
+    {
+        // Same IsIn limitation as above, the other way round: none of a large solid's four corners lie inside a
+        // small window it entirely encloses, so IsIn/partial both come back false even though the solid covers the
+        // whole viewport. The XY overlap test must still select it.
+        CadDocument document = new();
+        document.Entities.Add(new Solid { FirstCorner = new XYZ(-20, -20, 0), SecondCorner = new XYZ(20, -20, 0), ThirdCorner = new XYZ(-20, 20, 0), FourthCorner = new XYZ(20, 20, 0) });
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(0, 0), ViewHeight = 10 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AnEntityStrictlyOutsideTheViewportIsStillCulled()
+    {
+        // The XY overlap test must not turn into "draw everything": an entity whose bounds do not overlap the
+        // window at all on either axis stays excluded.
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(100, 100, 0), new XYZ(110, 110, 0)));
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(0, 0), ViewHeight = 10 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+    }
 }

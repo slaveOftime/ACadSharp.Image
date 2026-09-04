@@ -818,11 +818,14 @@ internal sealed class EntityRenderDispatcher
     /// placed through the insert's transform, instead of the clone's own points: a TEXT or MTEXT (their alignment
     /// point and, for MTEXT, X axis are never transformed by <c>Explode()</c>), a LEADER (once healed, the clone
     /// shares the same local vertex list as the original, so either would draw identically; the original is used
-    /// for consistency with TEXT, MTEXT and SOLID, not because it carries anything the clone lacks), or a SOLID
-    /// whose normal is not the world Z axis (its OCS corners must be brought into world space before the insert
-    /// transform, not after). The pairing requires <paramref name="original"/> to be the block entity at the
-    /// clone's own index and of the same runtime type, since a mismatched index (an ATTDEF the clone stream
-    /// skipped, for example) would pair the wrong entity.
+    /// for consistency with TEXT, MTEXT and SOLID, not because it carries anything the clone lacks), a SOLID whose
+    /// normal is not the world Z axis (its OCS corners must be brought into world space before the insert
+    /// transform, not after), or a HATCH (its boundary and pattern are OCS data too, and <c>Hatch.ApplyTransform</c>
+    /// maps the raw OCS boundary as if it were world data and never folds in <c>Elevation</c>, so the clone can
+    /// never be trusted; only the original, drawn through its own OCS frame and then the placement, is correct).
+    /// The pairing requires <paramref name="original"/> to be the block entity at the clone's own index and of the
+    /// same runtime type, since a mismatched index (an ATTDEF the clone stream skipped, for example) would pair the
+    /// wrong entity.
     /// </summary>
     /// <param name="original">The block entity at the same index as <paramref name="clone"/>, or null past the end of the block's own entities.</param>
     /// <param name="clone">The entity <c>Explode()</c> produced.</param>
@@ -1113,7 +1116,9 @@ internal sealed class EntityRenderDispatcher
     /// A solid hatch fills its boundary loops (<c>path.GetPoints</c>) with the even-odd rule; a pattern hatch draws
     /// each line <c>ExplodePattern()</c> yields, capped at <see cref="ImageConfiguration.MaxHatchLines"/>. Boundary
     /// and pattern points are drawn from the original block entity in its own OCS (its normal and elevation), then
-    /// mapped through <paramref name="placement"/> (null at top level), never from an exploded clone.
+    /// mapped through <paramref name="placement"/> (null at top level), never from an exploded clone — except when
+    /// ordinal pairing fails, in which case <paramref name="hatch"/> is the clone itself and <paramref name="placement"/>
+    /// is null (see <see cref="UsesOriginalGeometry"/> and the count-mismatch Warning in <c>DrawBlockContents</c>).
     /// </summary>
     private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch, Transform? placement)
     {

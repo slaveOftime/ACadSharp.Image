@@ -565,10 +565,43 @@ public sealed class EntityRenderDispatcherTests
 
         dispatcher.Draw(CreateContext(surface, configuration), insert);
 
-        // The clone's points are already world: the 0..10 square mirrored about x = 10 spans 0..10 again.
+        // This hatch's normal is the world Z axis, so it is drawn from the original's own boundary points (already
+        // world) mapped straight through the insert's placement: the 0..10 square mirrored about x = 10 spans 0..10
+        // again. The expectation is invariant across both the exploded-clone path and the current original-entity
+        // path, which is why this test alone would not have caught the pattern-angle mirroring bug the clone path
+        // had — see APatternHatchInsideAMirroredInsertMirrorsItsPatternAngle below for that.
         IReadOnlyList<SurfacePoint> ring = Assert.Single(Assert.Single(surface.FillPaths));
         Assert.Equal(0d, ring.Min(p => p.X), 6);
         Assert.Equal(10d, ring.Max(p => p.X), 6);
+    }
+
+    [Fact]
+    public void APatternHatchInsideAMirroredInsertMirrorsItsPatternAngle()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("PATTERN");
+        Hatch hatch = SquareHatch(solid: false);
+        block.Entities.Add(hatch);
+        Insert insert = new(block) { XScale = -1 };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // SquareHatch's pattern line runs at Angle = Math.PI/4 (45 degrees) in the hatch's own space, direction
+        // (cos45, sin45) = (a, a). Drawing from the original means ExplodePattern() sees that unmirrored angle and
+        // the mirror (XScale = -1) is applied afterwards, through the placement, negating only X: (-a, a), a
+        // world-space slope of a / -a = -1 (the old exploded-clone path left Pattern.Angle unmirrored at 0.7854 and
+        // so drew the unmirrored +1 slope instead — the bug this task fixes for pattern hatches). The renderer's Y
+        // flip (ImageRenderContext.ToSurfacePoint: surfaceY = SurfaceHeight - worldY) negates the Y delta again
+        // without touching X, so on the surface — what surface.Lines records — every drawn segment has slope +1.
+        Assert.NotEmpty(surface.Lines);
+        Assert.All(surface.Lines, l =>
+        {
+            double dx = l.End.X - l.Start.X;
+            double dy = l.End.Y - l.Start.Y;
+            Assert.True(Math.Abs(dx) > 1e-6, "pattern line unexpectedly vertical in surface space");
+            Assert.Equal(1d, dy / dx, 6);
+        });
     }
 
     [Fact]

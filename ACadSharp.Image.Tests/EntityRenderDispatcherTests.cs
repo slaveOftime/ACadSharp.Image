@@ -2578,4 +2578,74 @@ public sealed class EntityRenderDispatcherTests
         // blocks the same way. A block holding only a dimension must therefore still be scanned and snapshotted.
         Assert.Equal(2, mline.Vertices.Count);
     }
+
+    [Fact]
+    public void DrawingABlockWhoseDimensionPictureHoldsAnMLineLeavesItIntact()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord picture = new("*D1");
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(0, 0, [0.5, 0], [-0.5, 0]), VertexAt(10, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        picture.Entities.Add(mline);
+        document.BlockRecords.Add(picture);
+        BlockRecord note = new("NOTE");
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0) };
+        note.Entities.Add(new DimensionLinear
+        {
+            FirstPoint = new XYZ(0, 0, 0),
+            SecondPoint = new XYZ(10, 0, 0),
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1 },
+            Block = picture,
+        });
+        document.BlockRecords.Add(note);
+        document.Entities.Add(insert);
+        Assert.Equal(2, mline.Vertices.Count);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // Dimension.Clone() deep-clones the picture block that holds the dimension's own generated geometry, not
+        // just the arrowhead blocks its style points at, so that block is a fifth edge the snapshot has to follow.
+        // Unlike the arrowheads it is on the ordinary render path: DrawDimension draws through it.
+        Assert.Equal(2, mline.Vertices.Count);
+    }
+
+    [Fact]
+    public void ABlockWhoseDimensionPicturePlacesItAgainIsSkippedWithAWarning()
+    {
+        // Dimension.Clone() deep-clones the picture block, so a picture that places the block holding the dimension
+        // makes Explode() recurse until the stack dies, uncatchably. The cycle walk therefore follows the picture
+        // edge as well. Refusing here cannot cost a legitimate drawing: a picture block is geometry ACadSharp
+        // generates from the dimension's own definition points and never places the dimension's container in it.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord note = new("NOTE");
+        // Both inserts are built while NOTE is still empty, so ACadSharp's Insert(BlockRecord) constructor has
+        // nothing to clone yet and the cycle is assembled without tripping it during construction.
+        Insert outer = new(note) { InsertPoint = new XYZ(10, 10, 0) };
+        BlockRecord picture = new("*D1");
+        picture.Entities.Add(new Insert(note));
+        // Adding the picture registers NOTE with the document too, through the insert it holds, so NOTE is never
+        // added by name a second time.
+        document.BlockRecords.Add(picture);
+        note.Entities.Add(new DimensionLinear
+        {
+            FirstPoint = new XYZ(0, 0, 0),
+            SecondPoint = new XYZ(10, 0, 0),
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1 },
+            Block = picture,
+        });
+        document.Entities.Add(outer);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), outer);
+
+        Assert.Contains(notifications, n => n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+    }
 }

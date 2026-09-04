@@ -1296,15 +1296,29 @@ internal sealed class EntityRenderDispatcher
 
     /// <summary>
     /// The blocks <paramref name="entity"/> reaches when it is cloned, and the only edges the block-graph walks
-    /// below follow: a block reference's own <see cref="Insert.Block"/>, and every non-null block-valued property of
-    /// a LEADER's or a DIMENSION's dimension style — <c>ArrowBlock</c> (DIMBLK), <c>DimArrow1</c> (DIMBLK1),
-    /// <c>DimArrow2</c> (DIMBLK2) and <c>LeaderArrow</c> (DIMLDRBLK). ACadSharp 3.7.1's <c>DimensionStyle.Clone()</c>
-    /// deep-clones all four, and <c>Leader</c> and <c>Dimension</c> both clone their style, so an MLINE inside any of
-    /// those blocks is emptied by a clone that never names it — whether or not the renderer ever draws that
-    /// particular arrowhead, since only <c>LeaderArrow</c> is drawn. The same four edges are ones a cycle can run
-    /// through, which is why the cycle walk consumes this enumerator too. One block can be reached twice (the same
-    /// record set as two arrowheads); de-duplication is left to the callers, which all track the blocks they have
-    /// already walked.
+    /// below follow:
+    /// <list type="bullet">
+    /// <item>a block reference's own <see cref="Insert.Block"/>;</item>
+    /// <item>a DIMENSION's <see cref="Dimension.Block"/>, the anonymous block holding the picture ACadSharp
+    /// generates for it — its lines, arrowheads and measurement text. <c>Dimension.Clone()</c> deep-clones it
+    /// (probed on 3.7.1: an MLINE inside a picture block goes from two vertices to none across a single
+    /// <c>Clone()</c>, and the clone's block is a different instance), so it corrupts a source document exactly as
+    /// the arrowhead edges do. It differs from them in being on the ordinary render path — <c>DrawDimension</c>
+    /// draws through it — rather than reachable only from an exotic file, and in being generated geometry rather
+    /// than something the drawing's author named. When it is still null the dimension has not been generated yet
+    /// and there is nothing to clone or to walk;</item>
+    /// <item>every non-null block-valued property of a LEADER's or a DIMENSION's dimension style —
+    /// <c>ArrowBlock</c> (DIMBLK), <c>DimArrow1</c> (DIMBLK1), <c>DimArrow2</c> (DIMBLK2) and <c>LeaderArrow</c>
+    /// (DIMLDRBLK). ACadSharp 3.7.1's <c>DimensionStyle.Clone()</c> deep-clones all four, and <c>Leader</c> and
+    /// <c>Dimension</c> both clone their style, so an MLINE inside any of them is emptied by a clone that never
+    /// names it — whether or not the renderer ever draws that particular arrowhead, since only <c>LeaderArrow</c>
+    /// is drawn.</item>
+    /// </list>
+    /// Every one of these edges is also one a cycle can run through, which is why the cycle walk consumes this
+    /// enumerator too: each is followed by a deep clone that recurses, and a cycle through any of them exhausts the
+    /// stack inside ACadSharp uncatchably. One block can be reached twice (the same record set as two arrowheads, or
+    /// as both a nested insert and a dimension picture); de-duplication is left to the callers, which all track the
+    /// blocks they have already walked.
     /// </summary>
     /// <param name="entity">The entity whose outgoing block references are wanted.</param>
     /// <returns>Each referenced block, possibly yielding the same block more than once.</returns>
@@ -1318,6 +1332,11 @@ internal sealed class EntityRenderDispatcher
             }
 
             yield break;
+        }
+
+        if (entity is Dimension picture && picture.Block != null)
+        {
+            yield return picture.Block;
         }
 
         DimensionStyle? style = entity switch
@@ -1362,12 +1381,13 @@ internal sealed class EntityRenderDispatcher
     /// its list is emptied the moment it is cloned; a nested LEADER's list, by contrast, is only overwritten when
     /// the insert that directly contains it is the one exploded, so snapshotting it here is a defensive backstop
     /// rather than the fix MLINE needs. Cloning a LEADER or a DIMENSION also clones its dimension style, and that
-    /// clones all four of the style's arrowhead blocks, which is how an MLINE inside a custom arrowhead is reached
-    /// by a clone that never names it. This has to run, and capture the whole subtree, before the clone that
+    /// clones all four of the style's arrowhead blocks, and cloning a DIMENSION clones its picture block too, which
+    /// is how an MLINE inside a custom arrowhead — or inside a dimension's own generated geometry — is reached by a
+    /// clone that never names it. This has to run, and capture the whole subtree, before the clone that
     /// corrupts those lists — the explode itself, or, for a document-owned block, the <c>Insert(BlockRecord)</c>
     /// constructor.
     /// </summary>
-    /// <param name="block">The block whose entities, nested blocks and dimension-style arrowhead blocks are searched.</param>
+    /// <param name="block">The block whose entities, nested blocks, dimension pictures and dimension-style arrowhead blocks are searched.</param>
     /// <param name="mlineSnapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
     /// <param name="leaderSnapshot">Receives one entry per LEADER found, keyed by the LEADER itself.</param>
     /// <param name="visited">Blocks already walked, so a circular or diamond hierarchy is walked once.</param>
@@ -1401,7 +1421,8 @@ internal sealed class EntityRenderDispatcher
     /// True when <paramref name="block"/>, or any block reachable from it through the edges
     /// <see cref="ReferencedBlocks"/> reports, contains an MLINE, a LEADER or a DIMENSION. The first two are the
     /// entities <see cref="CollectSharedVertexLists"/> exists to snapshot; a DIMENSION carries none of its own but
-    /// reaches an arrowhead block that may hold one, so it has to answer yes here or that walk would never be run.
+    /// reaches its picture block and its style's arrowhead blocks, either of which may hold one, so it has to answer
+    /// yes here or that walk would never be run.
     /// A LEADER answers yes for the same reason as well as for its own vertices. Over-approximating costs one
     /// wasted subtree walk and cannot lose a snapshot.
     /// Answers are memoised per block in <see cref="_blocksNeedingHeal"/>, so an insert of a block already proven
@@ -1449,8 +1470,9 @@ internal sealed class EntityRenderDispatcher
         bool truncated = false;
         foreach (Entity entity in block.Entities)
         {
-            // A DIMENSION is included even though it holds no vertex list of its own: it reaches arrowhead blocks
-            // that may hold an MLINE, and a "clean" answer here means no snapshot is ever taken.
+            // A DIMENSION is included even though it holds no vertex list of its own: it reaches its own picture
+            // block and its style's arrowhead blocks, either of which may hold an MLINE, and a "clean" answer here
+            // means no snapshot is ever taken.
             if (entity is MLine or Leader or Dimension)
             {
                 needsHeal = true;
@@ -1497,10 +1519,15 @@ internal sealed class EntityRenderDispatcher
     /// ancestor from one path cannot reach one from another — if it could, that ancestor would be reachable from it
     /// and the first walk would already have come back to the block itself. It is scoped to the one call rather than
     /// held in a field, because the caller's document may change between renders.
-    /// The edges followed are the ones <see cref="ReferencedBlocks"/> reports: a nested <c>Insert</c>, and all four
-    /// arrowhead blocks of a LEADER's or a DIMENSION's dimension style, since cloning either entity deep-clones its
-    /// style and with it those blocks, so a leader inside its own arrowhead block exhausts the stack in exactly the
-    /// same way a self-referencing insert does.
+    /// The edges followed are the ones <see cref="ReferencedBlocks"/> reports: a nested <c>Insert</c>, a DIMENSION's
+    /// own picture block, and all four arrowhead blocks of a LEADER's or a DIMENSION's dimension style. Cloning
+    /// either entity deep-clones its style and with it those blocks, and cloning a DIMENSION deep-clones its
+    /// picture, so a leader inside its own arrowhead block — or a dimension whose picture places the block that
+    /// holds the dimension — exhausts the stack in exactly the same way a self-referencing insert does. Refusing on
+    /// the picture edge cannot cost a legitimate drawing: a picture block is geometry ACadSharp generates from the
+    /// dimension's own definition points and never places the dimension's container in it, so a cycle there means a
+    /// file that would otherwise take the process down. A picture block shared by two dimensions is a diamond, not
+    /// a cycle, and the on-path set already tells the two apart.
     /// <para>
     /// It has to be answered before <c>Insert.Explode()</c> is called, not while drawing: exploding deep-clones the
     /// whole block graph, so a cycle exhausts the stack inside ACadSharp before the renderer sees a single entity,

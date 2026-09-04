@@ -491,9 +491,11 @@ In `EntityRenderDispatcher.Draw`, immediately **before** `case MText mtext:`, ad
 
 ```csharp
                 case AttributeBase attribute when attribute.AttributeType is AttributeType.MultiLine or AttributeType.ConstantMultiLine:
-                    this._textRenderer.DrawAttribute(context, style, attribute, placement);
+                    this._textRenderer.DrawAttribute(context, style, source as AttributeBase ?? attribute, placement);
                     break;
 ```
+
+**Scope ruling, carried from the plan's design.** An attribute that belongs to an insert nested inside another block is out of scope for this task and stays as it is. `DrawAttributes` passes no placement, and an exploded clone's embedded `MText` is never transformed by ACadSharp, so such an attribute is laid out in block-local coordinates. No sample and no available drawing contains one. Do not attempt to thread a placement through `DrawAttributes` here — that touches the attribute path for every insert and belongs in its own change. Instead record the limitation: add to the spec sentence below "An attribute belonging to an insert nested inside another block is laid out in that block's own coordinates; only top-level attributes are placed." and add the same sentence to the README known limitations.
 
 - [ ] **Step 5: Run the tests and the suite**
 
@@ -657,6 +659,8 @@ Update the switch arm to `case Hatch hatch: this.DrawHatch(context, style, sourc
 
 Delete the `NormalizeExplodedClone` method and its single call in `DrawBlockContents`. It existed only to hide the clone's wrong normal for hatches, which no longer reach the drawing path.
 
+One consequence to record rather than fix: when ordinal pairing fails — the count mismatch the existing Warning reports — a hatch falls back to its exploded clone, and that clone no longer has its normal normalised, so a mirrored hatch would be drawn from a flipped normal. Pairing failure already means the block's text may be misplaced too, and the Warning says so. Note it in your report; do not add a second normalisation path for it.
+
 - [ ] **Step 6: Run the tests and the suite**
 
 Run: `dotnet test ACadSharp.Image.sln --configuration Release -warnaserror`
@@ -689,7 +693,7 @@ git commit -m "Draw hatches from the original entity in its own OCS through the 
 
 **Interfaces:**
 - Consumes: the existing `private (bool NeedsHeal, bool Truncated) ScanBlockSubtree(BlockRecord? block, HashSet<BlockRecord> visited)` and `private bool BlockSubtreeNeedsHeal(BlockRecord? block, HashSet<BlockRecord> visited)`.
-- Produces: `private bool BlockGraphIsCircular(BlockRecord block)` used by `DrawBlockContents`, and the guard Task 5 relies on for an arrow block that leads back to itself.
+- Produces: `internal static bool BlockGraphIsCircular(BlockRecord? block)` on `EntityRenderDispatcher`, used by `DrawBlockContents`, by `EntityBounds.TryGet`, and by Task 5 for an arrow block that leads back to itself.
 
 A block that contains an insert of itself makes `Insert.Explode()` deep-clone the graph until the stack overflows, inside ACadSharp, before the renderer draws anything. A guard at draw time cannot help: nested inserts hold deep-cloned block records, so identity is a different key at every level, and the overflow happens first. The scan that already walks the **original** graph before `Explode()` is the only place that can see it, and it already reports truncation on a cycle.
 
@@ -723,6 +727,28 @@ Add to `ACadSharp.Image.Tests/EntityRenderDispatcherTests.cs`:
     }
 
     [Fact]
+    public void ACircularBlockGraphDoesNotKillTheExporterWhileFramingThePage()
+    {
+        // Framing runs before rendering and recurses through the same graph, so this is the call that dies first if
+        // only the draw path is guarded. A stack overflow cannot be caught, so a regression here takes the whole
+        // test process down rather than failing this test: run it on its own when it is new.
+        CadDocument document = new();
+        BlockRecord outer = new("OUTER");
+        BlockRecord inner = new("INNER");
+        document.BlockRecords.Add(outer);
+        document.BlockRecords.Add(inner);
+        outer.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)));
+        outer.Entities.Add(new Insert(inner));
+        inner.Entities.Add(new Insert(outer));
+        document.Entities.Add(new Insert(outer));
+        ImageExporter exporter = new(new ImageConfiguration());
+
+        exporter.Add(document.ModelSpace);
+
+        Assert.NotNull(exporter.Pages);
+    }
+
+    [Fact]
     public void AnOrdinaryNestedBlockStillDraws()
     {
         RecordingDrawingSurface surface = new();
@@ -748,51 +774,105 @@ Expected: the test process dies with a stack overflow, or the test fails with no
 
 - [ ] **Step 3: Add the guard**
 
-Add beside `BlockSubtreeNeedsHeal`:
+`ScanBlockSubtree` cannot answer this question. It stops as soon as it finds an MLINE or a LEADER, and it returns early on a cache hit, so a block whose entities are `[MLine, Insert(B)]` with B pointing back never walks B and never reports the cycle. It also caches, and a cached answer carries no truncation flag. Write a dedicated detector instead, with no cache and no short-circuit:
 
 ```csharp
     /// <summary>
-    /// Whether the block's own graph contains a cycle, which makes it impossible to explode.
+    /// Whether a block's own graph contains a cycle, so that a reference to it cannot be exploded.
     /// </summary>
     /// <param name="block">The block a reference points at.</param>
-    /// <returns>True when walking the block's nested references reaches the block again.</returns>
+    /// <returns>True when walking the block's nested references reaches a block already on the walk.</returns>
     /// <remarks>
-    /// This has to be answered before <c>Insert.Explode()</c> is called, not while drawing: exploding deep-clones the
-    /// whole block graph, so a cycle overflows the stack inside ACadSharp before the renderer sees a single entity,
-    /// and a draw-time guard keyed on the block record cannot recognise a nested level anyway, because the inserts
-    /// reached down there hold deep-cloned records with a different identity at every level.
+    /// This walks the whole graph without caching or stopping early, unlike the heal scan: a cycle can hide behind
+    /// any branch, and an answer that stopped at the first interesting entity would miss it. Blocks are tracked on
+    /// the current path rather than globally, so a diamond — two references to the same block from different places —
+    /// is not mistaken for a cycle.
+    /// <para>
+    /// It has to be answered before <c>Insert.Explode()</c> is called, not while drawing: exploding deep-clones the
+    /// whole block graph, so a cycle exhausts the stack inside ACadSharp before the renderer sees a single entity,
+    /// and a <c>StackOverflowException</c> cannot be caught in .NET — the process dies. A draw-time guard keyed on
+    /// the block record could not recognise a nested level anyway, because the inserts reached down there hold
+    /// deep-cloned records with a different identity at every level.
+    /// </para>
     /// </remarks>
-    private bool BlockGraphIsCircular(BlockRecord block) => this.ScanBlockSubtree(block, new HashSet<BlockRecord>()).Truncated;
+    internal static bool BlockGraphIsCircular(BlockRecord? block)
+    {
+        return block != null && Walk(block, new HashSet<BlockRecord>());
+
+        static bool Walk(BlockRecord block, HashSet<BlockRecord> onPath)
+        {
+            if (!onPath.Add(block))
+            {
+                return true;
+            }
+
+            try
+            {
+                foreach (Entity entity in block.Entities)
+                {
+                    if (entity is Insert nested && nested.Block != null && Walk(nested.Block, onPath))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            finally
+            {
+                onPath.Remove(block);
+            }
+        }
+    }
 ```
 
 In `DrawBlockContents`, immediately after the null-block guard, add:
 
 ```csharp
-        if (this.BlockGraphIsCircular(insert.Block))
+        if (BlockGraphIsCircular(insert.Block))
         {
             this._configuration.Notify($"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block '{insert.Block.Name}' references itself; skipped.", NotificationType.Warning);
             return;
         }
 ```
 
-- [ ] **Step 4: Run the tests and the suite**
+- [ ] **Step 4: Guard the bounds path too**
+
+Drawing is not the first thing that touches a block reference. `ImageExporter.Add` frames the page through `EntityBounds.TryGet`, which calls ACadSharp's `Insert.GetBoundingBox()`, and that recurses through the same block graph. A cycle kills the process there, before any guard in `DrawBlockContents` runs, so the public entry point must be guarded as well.
+
+In `EntityBounds.TryGet`, extend the existing `case Insert insert when insert.Block == null` arm into a pair:
+
+```csharp
+            case Insert insert when insert.Block == null:
+                bounds = default;
+                error = null;
+                return false;
+            case Insert insert when EntityRenderDispatcher.BlockGraphIsCircular(insert.Block):
+                bounds = default;
+                error = new InvalidOperationException($"block '{insert.Block!.Name}' references itself");
+                return false;
+```
+
+Match the arm's real shape in the file — read it first, keep whatever the existing null-block arm does with `bounds` and `error`, and give the circular arm a non-null `error` so the viewport culler warns about it rather than dropping it silently.
+
+- [ ] **Step 5: Run the tests and the suite**
 
 Run: `dotnet test ACadSharp.Image.sln --configuration Release -warnaserror`
 Expected: all pass, baselines byte-identical.
 
-- [ ] **Step 5: Docs**
+- [ ] **Step 6: Docs**
 
 In spec 4.6, add to the block-contents bullet:
 
 ```
-A block whose graph references itself is skipped with a Warning before it is exploded, because `Insert.Explode()` deep-clones the whole graph and would exhaust the stack first.
+A block whose graph references itself is skipped with a Warning before it is exploded, and is refused by `EntityBounds` too, because `Insert.Explode()` and `Insert.GetBoundingBox()` both recurse through the graph and a stack overflow cannot be caught.
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add ACadSharp.Image/Rendering/EntityRenderDispatcher.cs ACadSharp.Image.Tests/EntityRenderDispatcherTests.cs docs/superpowers/specs/2026-09-02-layers-and-svg-design.md
-git commit -m "Skip a circular block graph before exploding it"
+git add ACadSharp.Image/Rendering/EntityRenderDispatcher.cs ACadSharp.Image/Rendering/EntityBounds.cs ACadSharp.Image.Tests/EntityRenderDispatcherTests.cs ACadSharp.Image.Tests/ImagePageTests.cs docs/superpowers/specs/2026-09-02-layers-and-svg-design.md
+git commit -m "Refuse a circular block graph before exploding or bounding it"
 ```
 
 ---
@@ -960,6 +1040,35 @@ Add to `ACadSharp.Image.Tests/EntityRenderDispatcherTests.cs`:
     }
 
     [Fact]
+    public void ACustomArrowUnderARotatedNonUniformInsertFallsBackEvenThoughTheAxesMatchInLength()
+    {
+        // A 3:1 scale turned 45 degrees maps both unit axes to the same length, so a similarity test that compared
+        // only lengths would accept this and build an Insert that cannot express the shear.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        document.BlockRecords.Add(note);
+        note.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(10, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        });
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0), XScale = 3, YScale = 1, ZScale = 1, Rotation = Math.PI / 4 };
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(notifications, n => n.Message.Contains("cannot be placed", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(surface.Polygons);
+    }
+
+    [Fact]
     public void ARecursiveArrowBlockFallsBackToTheDefaultTriangle()
     {
         RecordingDrawingSurface surface = new();
@@ -1076,20 +1185,27 @@ Add to `EntityRenderDispatcher.cs`:
             return InsertPlacement.MapPoint(placement, new XYZ(placed.X, placed.Y, z + ((p.Z - basePoint.Z) * size)));
         }
 
-        XYZ origin = Arrow(basePoint);
-        XYZ ex = Arrow(basePoint + XYZ.AxisX) - origin;
-        XYZ ey = Arrow(basePoint + XYZ.AxisY) - origin;
-        XYZ ez = Arrow(basePoint + XYZ.AxisZ) - origin;
-        double scale = new XY(ex.X, ex.Y).GetLength();
-        double across2 = new XY(ey.X, ey.Y).GetLength();
-        if (!double.IsFinite(scale) || scale < 1e-12 || Math.Abs(scale - across2) > 1e-9 * scale)
+        // The arrow's own map is a rotation and one uniform scale, so the composition is a similarity exactly when
+        // the outer placement is one. Testing the outer placement directly also catches the case a length-only check
+        // misses: a non-uniform scale turned 45 degrees leaves both axes the same length but not at right angles.
+        if (!InsertPlacement.TryGetPlanarSimilarity(placement, out double outerScale, out _, out _))
         {
             this._configuration.Notify($"[{leader.SubclassMarker}] Handle {handle}: arrowhead block '{arrow.Name}' cannot be placed under a non-uniform transform; the default closed arrow is drawn instead.", NotificationType.Warning);
             return false;
         }
 
+        XYZ origin = Arrow(basePoint);
+        XYZ ex = Arrow(basePoint + XYZ.AxisX) - origin;
+        XYZ ey = Arrow(basePoint + XYZ.AxisY) - origin;
+        double scale = size * outerScale;
         bool mirrored = (ex.X * ey.Y) - (ex.Y * ey.X) < 0d;
         double rotation = Math.Atan2(ex.Y, ex.X);
+        if (!double.IsFinite(scale) || scale < 1e-12 || !double.IsFinite(rotation))
+        {
+            this._configuration.Notify($"[{leader.SubclassMarker}] Handle {handle}: arrowhead block '{arrow.Name}' has a degenerate size; the default closed arrow is drawn instead.", NotificationType.Warning);
+            return false;
+        }
+
         // A reflection is expressed as a negative X scale, which turns the mapped X axis around, so the rotation is
         // taken half a turn further to bring it back.
         Insert transient = new(arrow)
@@ -1098,12 +1214,16 @@ Add to `EntityRenderDispatcher.cs`:
             XScale = mirrored ? -scale : scale,
             YScale = scale,
             ZScale = scale,
+            InsertPoint = origin,
         };
         transient.Attributes.Clear();
 
-        // ACadSharp translates by InsertPoint - BasePoint, so the insertion point has to carry the base point back.
-        XYZ linearBase = (ex * basePoint.X) + (ey * basePoint.Y) + (ez * basePoint.Z);
-        transient.InsertPoint = origin - linearBase + basePoint;
+        // Where the block's base point actually lands under the insert as built, corrected by the difference. The
+        // translation ACadSharp derives from the insertion point is affine in it, so one correction lands the base
+        // point on the tip whichever formula the package uses — which keeps this right if a later ACadSharp fixes
+        // its own divergence from AutoCAD's documented insert semantics.
+        XYZ landed = transient.GetTransform().ApplyTransform(basePoint);
+        transient.InsertPoint = origin + (origin - landed);
         this.DrawBlockContents(context, transient, layer, parent);
         return true;
     }
@@ -1133,6 +1253,8 @@ with:
 ```
 
 and delete the now-duplicated `double z = leader.Vertices[0].Z;` line further down, using `tipZ` in the three arrow corners instead.
+
+The arrow block's children are drawn through the transient insert, so their `data-parent` in the SVG carries that insert's handle, which is zero. Give `DrawBlockContents` an optional trailing `ulong? parentHandleOverride = null` parameter, pass the leader's handle from `DrawArrowBlock`, and use it in place of `insert.Handle` for the `EntityRenderInfo` of the children, so an arrow's parts point at the leader they belong to rather than at a handle that exists nowhere. Add an assertion to `ALeaderWithACustomArrowBlockDrawsTheBlockAndNotifiesNothing` that the drawn entities record the leader's handle as their parent, using whatever member `RecordingDrawingSurface` records `BeginEntity` under.
 
 - [ ] **Step 4: Run the tests and the suite**
 
@@ -1586,6 +1708,12 @@ Add to `EntityRenderDispatcher.cs`:
     /// same array as relative dash and gap lengths, and neither ezdxf nor LibreDWG draws cuts at all, so no
     /// implementation settles it; the two readings agree only on a single cut. This is the interpretation the
     /// renderer implements and the README records it as unconfirmed.
+    /// <para>
+    /// <c>p[1]</c>, the offset from the miter intersection to the element's actual start, is not applied: runs are
+    /// measured from the intersection, which is where the renderer already starts every element. Real values are a
+    /// small fraction of a unit, so applying it would move existing output for no visible gain; it is recorded here
+    /// so a later change is a deliberate one.
+    /// </para>
     /// </remarks>
     internal static IReadOnlyList<(double Start, double End)> VisibleRuns(IReadOnlyList<double> parameters, double length)
     {
@@ -1696,7 +1824,9 @@ Replace the existing element-drawing loop with:
             double segmentLength = (world[element][to] - world[element][from]).GetLength();
             if (segmentLength <= 0d || !double.IsFinite(segmentLength))
             {
-                return [];
+                // A zero-length segment (coincident vertices) has nothing to cut: report one full run so the element
+                // is not pushed onto the per-run path, where it would lose its linetype phase for no reason.
+                return [(0d, 1d)];
             }
 
             IReadOnlyList<double> parameters = element < vertices[from].Segments.Count ? vertices[from].Segments[element].Parameters : [];
@@ -1873,16 +2003,103 @@ Add to `SyntheticSamples.cs`, following the shape of the existing `EntityBlock()
 
 - [ ] **Step 2: Write the golden tests**
 
-Create `ACadSharp.Image.Tests/FidelityGoldenTests.cs` mirroring `EntityGoldenTests`: an exporter factory (800 by 500, padding 10, DejaVu Sans), `FidelityPngMatchesBaseline` calling `GoldenAssert.Png("fidelity.model.01", ...)`, and `FidelitySvgMatchesGoldenAndContainsEveryFeature` calling `GoldenAssert.Svg("fidelity.model.01", ...)` and then asserting, scoped to the relevant `data-layer` group each time:
+Create `ACadSharp.Image.Tests/FidelityGoldenTests.cs`, modelled on `EntityGoldenTests` (read that file first and follow its structure, its `Ns` constant and its occlusion-sampling helper):
 
-- the attribute is one `<text>` with two `<tspan>` children whose values are `Room 1` and `Level 2`, and `data-type="ATTRIB"`;
-- the tilted hatch is one `<path>` whose points lie in the x range the OCS mirror plus the insert produces (compute it and assert the min and max x within 1e-6);
-- the arrow is at least one `<polygon>` with `data-type="SOLID"` inside the leader's layer group, and no `<polygon>` matching the default triangle's three-point shape;
-- the inverted wipeout is one `<path>` with two rings filled `#ffffff`;
-- the MLINE contributes four `<line>` or `<polyline>` elements (two runs for each of two elements);
-- no notification of type `NotImplemented` is raised, and the only `Warning` is none.
+```csharp
+using System.Xml.Linq;
+using ACadSharp.Image.Rendering;
+using ACadSharp.Image.Rendering.Svg;
+using CSMath;
+using SixLabors.Fonts;
+using SixLabors.ImageSharp.PixelFormats;
 
-Add a raster occlusion assertion to the PNG test in the style `EntityGoldenTests` uses: a pixel on the `Under` line inside the wipeout's masked region is white, and one inside the boundary hole is not, with both positions derived from the exporter's fit rather than hard-coded.
+namespace ACadSharp.Image.Tests;
+
+/// <summary>
+/// Renders <see cref="SyntheticSamples.FidelityBlock"/> — a multi-line attribute, a hatch on a tilted plane inside a
+/// block, a leader with a custom arrowhead block, an inverted wipeout over a line, and an MLINE with a cut in both
+/// elements — through both real backends and compares the results with their baselines. Mirrors
+/// <see cref="EntityGoldenTests"/>.
+/// </summary>
+public sealed class FidelityGoldenTests
+{
+    private const string FontFamily = "DejaVu Sans";
+    private static readonly XNamespace Ns = SvgDrawingSurface.Ns;
+
+    private static ImageExporter FidelityExporter()
+    {
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 800;
+        exporter.Configuration.Height = 500;
+        exporter.Configuration.SetPadding(10);
+        exporter.Configuration.FontFamilyName = FontFamily;
+        exporter.Add(SyntheticSamples.FidelityBlock());
+        return exporter;
+    }
+
+    [Fact]
+    public void FidelityPngMatchesBaseline()
+    {
+        Assert.True(SystemFonts.TryGet(FontFamily, out _), $"Font '{FontFamily}' must be installed for parity tests.");
+        ImageExporter exporter = FidelityExporter();
+
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
+
+        GoldenAssert.Png("fidelity.model.01", page.Canvas);
+
+        // The inverted wipeout masks the whole image frame EXCEPT its boundary, so the "Under" line at y = 20
+        // survives only inside the boundary (world x in [80,90]) and is masked outside it. This is the assertion
+        // the SVG cannot make: SVG groups by layer, so the line and the mask are not in draw order there.
+        ImageRenderContext context = ImageRenderContext.CreatePageContext(new RecordingDrawingSurface(), exporter.Pages[0], exporter.Configuration);
+        SurfacePoint inside = context.ToSurfacePoint(new XY(85, 20));
+        SurfacePoint outside = context.ToSurfacePoint(new XY(65, 20));
+        Rgba32 white = new(255, 255, 255, 255);
+        Assert.NotEqual(white, DarkestPixelNear(page.Canvas, inside));
+        Assert.Equal(white, DarkestPixelNear(page.Canvas, outside));
+    }
+
+    [Fact]
+    public void FidelitySvgMatchesGoldenAndContainsEveryFeature()
+    {
+        ImageExporter exporter = FidelityExporter();
+
+        RenderedSvgPage page = Assert.IsType<RenderedSvgPage>(Assert.Single(exporter.RenderSvg()));
+
+        GoldenAssert.Svg("fidelity.model.01", page.Content);
+
+        XDocument document = XDocument.Parse(page.Content);
+        XElement InLayer(string layer) => document.Descendants(Ns + "g").Single(g => (string?)g.Attribute("data-layer") == layer);
+
+        // Multi-line attribute: two lines from the embedded MText, and the single-line value nowhere in the file.
+        XElement text = Assert.Single(InLayer("Rooms").Descendants(Ns + "text"));
+        Assert.Equal("ATTRIB", (string?)text.Attribute("data-type"));
+        Assert.Equal(["Room 1", "Level 2"], text.Descendants(Ns + "tspan").Select(s => s.Value).ToArray());
+        Assert.DoesNotContain("FLAT", page.Content, StringComparison.Ordinal);
+
+        // Tilted hatch inside a block: normal (0,0,-1) mirrors X, the insert then moves it to x in [60,80].
+        XElement hatch = Assert.Single(InLayer("Tilted").Descendants(Ns + "path"));
+        double[] xs = PointsOf(hatch).Select(p => p.X).ToArray();
+        Assert.Equal(60d, xs.Min(), 3);
+        Assert.Equal(80d, xs.Max(), 3);
+
+        // Custom arrowhead: the block's own filled solid, not the built-in triangle.
+        Assert.Contains(InLayer("Leader").Descendants(Ns + "polygon"), p => (string?)p.Attribute("data-type") == "SOLID");
+
+        // Inverted wipeout: one even-odd path with two rings, filled with the page background.
+        XElement mask = Assert.Single(InLayer("Cover").Descendants(Ns + "path"));
+        Assert.Equal("#ffffff", (string?)mask.Attribute("fill"));
+        Assert.Equal("evenodd", (string?)mask.Attribute("fill-rule"));
+        Assert.Equal(2, RingCountOf(mask));
+
+        // Cut MLINE: two elements, each broken into two runs.
+        Assert.Equal(4, InLayer("Wall").Descendants().Count(e => e.Name == Ns + "line" || e.Name == Ns + "polyline"));
+    }
+}
+```
+
+`PointsOf`, `RingCountOf` and `DarkestPixelNear` are helpers you write in this file: `PointsOf` parses an SVG path or polygon into surface points, `RingCountOf` counts the `M` commands in a path's `d`, and `DarkestPixelNear` is the sampling helper `EntityGoldenTests` already has — if it is private there, move it to a shared internal test helper and have both files call it rather than writing a second copy. Adjust `ImageRenderContext.CreatePageContext`'s argument list and `exporter.Pages`' shape to what those members actually are; read them before writing the call.
+
+Verify the two expected hatch x values by hand before running, from the block's own insert point and the OCS mirror, and say in your report what you computed. If the SVG's element or attribute names differ from what is written above, change the assertion to match the real output, never the output to match the assertion.
 
 - [ ] **Step 3: Create the baselines**
 

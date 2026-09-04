@@ -392,10 +392,18 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
         XElement element = new(Ns + "text",
             new XAttribute("x", this.N(text.Origin.X)),
             new XAttribute("y", this.N(firstLineY)),
-            new XAttribute("font-size", this.N(emSize)),
+            new XAttribute("font-size", this.N(emSize)));
+
+        if (lines.Count == 1)
+        {
             // Repeated spaces are meaningful CAD content (alignment, tabular labels); SVG collapses runs of
             // whitespace by default, so xml:space keeps what the wrapper already preserved in the source text.
-            new XAttribute(XNamespace.Xml + "space", "preserve"));
+            // A single-line <text> element's only child is the direct text node below, so this is safe here.
+            // The multi-line case below instead puts xml:space on each <tspan>: putting it on <text> too would
+            // also preserve the newline and indentation XDocument.Save's pretty-printing adds between <tspan>
+            // elements, which would then be drawn as extra space at the end of the preceding line.
+            element.Add(new XAttribute(XNamespace.Xml + "space", "preserve"));
+        }
 
         if (text.Anchor != SurfaceTextAnchor.Start)
         {
@@ -437,7 +445,13 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
         {
             for (int i = 0; i < lines.Count; i++)
             {
-                XElement span = new(Ns + "tspan", new XAttribute("x", this.N(text.Origin.X)), lines[i]);
+                XElement span = new(Ns + "tspan",
+                    new XAttribute("x", this.N(text.Origin.X)),
+                    // A <tspan> holding only a direct text node is not itself indented by XDocument.Save, so
+                    // preserving whitespace here keeps runs inside the line without pulling in the inter-tspan
+                    // indentation (see the single-line comment above).
+                    new XAttribute(XNamespace.Xml + "space", "preserve"),
+                    lines[i]);
                 if (i > 0)
                 {
                     span.Add(new XAttribute("dy", this.N(lineHeight)));

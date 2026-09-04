@@ -578,13 +578,57 @@ public sealed class SvgDrawingSurfaceTests
     [Fact]
     public void TextElementsPreserveRepeatedWhitespace()
     {
+        // Asserted against the serialized string, not ToDocument()'s in-memory tree: XDocument.Save's
+        // pretty-printing is what can turn xml:space="preserve" into drawn indentation (see the multi-line
+        // test below), and only re-parsing the actual output can catch that.
         using SvgDrawingSurface surface = CreateSurface();
         surface.BeginEntity(Entity("Anno", "TEXT"), Layer("Anno"));
         surface.DrawText(new ImageStyle(Color.Black, 1f), new SurfaceText("A  B", new SurfacePoint(0, 0), 3, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, 0));
         surface.EndEntity();
 
-        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        XDocument document = XDocument.Parse(surface.ToSvgString(), LoadOptions.PreserveWhitespace);
+        XElement text = Assert.Single(document.Descendants(Ns + "text"));
         Assert.Equal("preserve", (string?)text.Attribute(XNamespace.Xml + "space"));
+        Assert.Equal("A  B", text.Value);
+    }
+
+    [Fact]
+    public void MultiLineTextCarriesNoXmlSpaceOfItsOwnAndEachTspanPreservesItsRun()
+    {
+        // XDocument.Save's default pretty-printing indents each <tspan> with a newline plus spaces; those
+        // indentation characters end up as direct-child text nodes of <text> regardless of any attribute (an
+        // XmlWriter formatting fact, verified against the serialized string below), so they cannot be asserted
+        // away without disabling indentation for the whole document. What actually matters is which xml:space
+        // value governs them: xml:space is inherited, so if <text> carried "preserve" those indentation nodes
+        // would inherit it and be drawn (SVG 1.1 assigns the whitespace after a </tspan> to the *preceding* text
+        // chunk, visibly shifting a middle-anchored line — this was the bug). <text> must therefore carry no
+        // xml:space of its own here, leaving its direct-child whitespace nodes under the ordinary default
+        // (collapsing) rule, while each <tspan> carries its own explicit xml:space="preserve" so the repeated
+        // spaces *inside* its line survive.
+        using SvgDrawingSurface surface = CreateSurface();
+        ImageStyle style = new(Color.Black, 1f);
+        surface.BeginEntity(Entity("Anno", "MTEXT"), Layer("Anno"));
+        surface.DrawText(style, new SurfaceText("a  b\nc  d", new SurfacePoint(10, 50), 3, 0, SurfaceTextAnchor.Middle, SurfaceTextBaseline.Alphabetic, -1, 1, 0));
+        surface.EndEntity();
+
+        XDocument document = XDocument.Parse(surface.ToSvgString(), LoadOptions.PreserveWhitespace);
+        XElement text = Assert.Single(document.Descendants(Ns + "text"));
+
+        Assert.Null(text.Attribute(XNamespace.Xml + "space"));
+        // Any direct text child of <text> here is pretty-print indentation, never drawable glyph content: the
+        // wrapper never hands DrawText a paragraph containing only whitespace.
+        Assert.All(text.Nodes().OfType<XText>(), node => Assert.True(string.IsNullOrWhiteSpace(node.Value)));
+
+        List<XElement> tspans = text.Elements(Ns + "tspan").ToList();
+        Assert.Equal(2, tspans.Count);
+        foreach (XElement tspan in tspans)
+        {
+            Assert.Equal("preserve", (string?)tspan.Attribute(XNamespace.Xml + "space"));
+            Assert.Empty(tspan.Elements());
+        }
+
+        Assert.Equal("a  b", tspans[0].Value);
+        Assert.Equal("c  d", tspans[1].Value);
     }
 
     [Fact]

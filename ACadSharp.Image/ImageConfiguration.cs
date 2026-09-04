@@ -213,10 +213,9 @@ public sealed class ImageConfiguration
     /// Gets or sets the font family name used for rendering text entities.
     /// </summary>
     /// <remarks>
-    /// If the family is not installed, the first installed family of the fallback chain
-    /// <see cref="ACadSharp.Image.Rendering.FontResolver.Fallbacks"/> (Liberation Sans, DejaVu Sans, Arial, Helvetica,
-    /// Noto Sans, Segoe UI) is used, then the first installed family; when no font is installed, raster text is
-    /// skipped with a warning and SVG text is emitted unwrapped.
+    /// If the family is not installed, the first installed family of the fallback chain <c>FontResolver.Fallbacks</c>
+    /// (Liberation Sans, DejaVu Sans, Arial, Helvetica, Noto Sans, Segoe UI) is used, then the first installed
+    /// family; when no font is installed, raster text is skipped with a warning and SVG text is emitted unwrapped.
     /// Default is "Arial".
     /// </remarks>
     public string FontFamilyName { get; set; } = "Arial";

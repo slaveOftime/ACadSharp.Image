@@ -296,12 +296,11 @@ public sealed class ImagePageRendererTests
     }
 
     [Fact]
-    public void InvertedClipModelSpaceWipeoutInAViewportRaisesTheSameNotImplementedAsThePageLevelDrawWipeout()
+    public void InvertedClipModelSpaceWipeoutInAViewportMasksTheSameAsThePageLevelDrawWipeout()
     {
-        // DrawWipeout raises NotImplemented for ClipMode.Inside at the page level, but EntityBounds.TryGet returns
-        // false with a null error for it (nothing computed wrong; it simply draws nothing), the same as a
-        // ShowImage-off wipeout above. SelectViewportEntities must not let that null error swallow the
-        // NotImplemented a page-level render would have given.
+        // An inverted wipeout now masks the frame minus its boundary instead of being skipped: its bounds
+        // (EntityBounds.TryGet, via WipeoutWorldRings) are the whole footprint, so SelectViewportEntities selects it
+        // like any other entity and Draw fills it with an even-odd FillPath the same way the page level does.
         CadDocument document = new();
         Wipeout inverted = new()
         {
@@ -328,7 +327,8 @@ public sealed class ImagePageRendererTests
         RenderThrough(exporter, surface);
 
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
-        Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("inverted clip", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(surface.Calls, c => c.StartsWith("FillPath", StringComparison.Ordinal));
+        Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented);
     }
 
     [Fact]

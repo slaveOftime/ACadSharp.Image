@@ -1514,8 +1514,8 @@ public sealed class EntityRenderDispatcherTests
     {
         Wipeout wipeout = UnitWipeout();
 
-        Assert.Equal(new XYZ(10, 15, 0), EntityRenderDispatcher.WipeoutPixelToWorld(wipeout, new XY(-0.5, -0.5)));
-        Assert.Equal(new XYZ(15, 10, 0), EntityRenderDispatcher.WipeoutPixelToWorld(wipeout, new XY(0.5, 0.5)));
+        Assert.Equal(new XYZ(10, 15, 0), EntityRenderDispatcher.WipeoutPixelToWorld(wipeout, new XY(-0.5, -0.5), null));
+        Assert.Equal(new XYZ(15, 10, 0), EntityRenderDispatcher.WipeoutPixelToWorld(wipeout, new XY(0.5, 0.5), null));
     }
 
     [Fact]
@@ -1581,23 +1581,80 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
-    public void InvertedAndHiddenWipeoutsDrawNothing()
+    public void AnInvertedWipeoutMasksTheFrameMinusItsBoundary()
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
-        List<NotificationEventArgs> notifications = new();
-        configuration.OnNotification += (_, e) => notifications.Add(e);
-        Wipeout inverted = UnitWipeout();
-        inverted.ClipMode = ClipMode.Inside;
-        Wipeout hidden = UnitWipeout();
-        hidden.Flags = ImageDisplayFlags.None;
-        EntityRenderDispatcher dispatcher = new(configuration);
+        Wipeout wipeout = UnitWipeout();
+        // A boundary is what makes "inside" vs "outside" meaningful; UnitWipeout() alone carries none.
+        wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
+        wipeout.ClipMode = ClipMode.Inside;
 
-        dispatcher.Draw(CreateContext(surface, configuration), inverted);
-        dispatcher.Draw(CreateContext(surface, configuration), hidden);
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
+
+        IReadOnlyList<IReadOnlyList<SurfacePoint>> rings = Assert.Single(surface.FillPaths);
+        Assert.Equal(2, rings.Count);
+        Assert.Empty(surface.Polygons);
+    }
+
+    [Fact]
+    public void AWipeoutWithClippingOffFillsTheWholeFrameEvenWhenItsModeIsInverted()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Wipeout wipeout = UnitWipeout();
+        wipeout.ClipMode = ClipMode.Inside;
+        wipeout.ClippingState = false;
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
+
+        Assert.Single(surface.Polygons);
+        Assert.Empty(surface.FillPaths);
+    }
+
+    [Fact]
+    public void AnOrdinaryWipeoutStillFillsOnePolygon()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), UnitWipeout());
+
+        Assert.Single(surface.Polygons);
+        Assert.Empty(surface.FillPaths);
+    }
+
+    [Fact]
+    public void AWipeoutInsideAnInsertIsMappedFromTheOriginalSoItsUAndVStayDirections()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("MASK");
+        block.Entities.Add(UnitWipeout());
+        Insert insert = new(block) { InsertPoint = new XYZ(50, 0, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        IReadOnlyList<SurfacePoint> polygon = Assert.Single(surface.Polygons);
+        // UnitWipeout covers x in [10,15]; the insert translates the insertion point by (50,0,0) to [60,65]. A U
+        // vector contaminated by that translation (as ACadSharp 3.7.1's Wipeout.ApplyTransform would produce) would
+        // stretch it to [60,115] instead.
+        Assert.Equal(60d, polygon.Min(p => p.X), 6);
+        Assert.Equal(65d, polygon.Max(p => p.X), 6);
+    }
+
+    [Fact]
+    public void AHiddenWipeoutDrawsNothing()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Wipeout wipeout = UnitWipeout();
+        wipeout.Flags = 0;
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
 
         Assert.Empty(surface.Polygons);
-        Assert.Single(notifications, n => n.NotificationType == NotificationType.NotImplemented);
+        Assert.Empty(surface.FillPaths);
     }
 
     [Fact]

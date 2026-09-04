@@ -267,21 +267,11 @@ internal sealed class ImagePageRenderer
                 continue;
             }
 
-            if (entity is Wipeout { ClipMode: ClipMode.Inside } insideWipeout && insideWipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage))
-            {
-                // EntityBounds.TryGet returns false with a null error for this case (nothing is wrong with the
-                // wipeout, it simply draws nothing), the same as a ShowImage-off one below; but at the page level
-                // DrawWipeout still raises this exact NotImplemented for an inverted clip, so viewport content must
-                // match it instead of silently dropping the notification a page-level render would have given.
-                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: inverted clip boundaries are not rendered.", NotificationType.NotImplemented);
-                continue;
-            }
-
             if (!EntityBounds.TryGet(entity, out BoundingBox bounds, out Exception? error))
             {
                 // error is null when the entity has no bounds for a reason that is not a computation failure (a
-                // wipeout that would draw nothing because ShowImage is off; the ClipMode.Inside case is handled,
-                // with its own notification, above): nothing is wrong with it, so it is skipped without a Warning.
+                // wipeout that would draw nothing because ShowImage is off): nothing is wrong with it, so it is
+                // skipped without a Warning.
                 if (error != null)
                 {
                     this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: bounds could not be computed ({error.Message}); entity skipped in viewport.", NotificationType.Warning, error);

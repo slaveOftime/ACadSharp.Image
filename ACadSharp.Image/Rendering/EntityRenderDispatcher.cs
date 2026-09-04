@@ -96,14 +96,14 @@ internal sealed class EntityRenderDispatcher
         this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parent: null);
     }
 
-    // source is the original block entity a TEXT, MTEXT, non-world SOLID, LEADER or HATCH clone came from, whose
-    // geometry is used instead of the clone's (see UsesOriginalGeometry), and placement is the transform of the
+    // source is the original block entity a TEXT, MTEXT, non-world SOLID, LEADER, HATCH or WIPEOUT clone came from,
+    // whose geometry is used instead of the clone's (see UsesOriginalGeometry), and placement is the transform of the
     // insert that placed it. Both are null outside a block reference, but they do not always travel together inside
     // one: an MLINE clone is always drawn with placement set and source null (UsesOriginalGeometry never recognises
     // an MLine original, since the heal already restores the clone's own vertices to local coordinates), and so is a
-    // LEADER clone whose ordinal pairing with the block's original entities failed. A HATCH clone has no such
-    // fallback: when its pairing fails it is drawn with neither source nor placement, from its own un-normalised
-    // clone geometry (see the count-mismatch Warning in DrawBlockContents).
+    // LEADER clone whose ordinal pairing with the block's original entities failed. A HATCH or WIPEOUT clone has no
+    // such fallback: when its pairing fails it is drawn with neither source nor placement, from its own
+    // un-normalised clone geometry (see the count-mismatch Warning in DrawBlockContents).
     private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? source = null, Transform? placement = null)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
@@ -200,7 +200,7 @@ internal sealed class EntityRenderDispatcher
                     this.DrawMLine(context, style, resolved, mline, placement);
                     break;
                 case Wipeout wipeout:
-                    this.DrawWipeout(context, style, wipeout);
+                    this.DrawWipeout(context, style, source as Wipeout ?? wipeout, placement);
                     break;
                 default:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Drawing not implemented.", NotificationType.NotImplemented);
@@ -867,25 +867,17 @@ internal sealed class EntityRenderDispatcher
     /// <summary>
     /// A wipeout masks whatever was drawn before it: its clip boundary (or the whole image frame when clipping is
     /// off) is filled with the page background at full opacity, so the page must be drawn in the drawing's order.
-    /// The frame is never stroked. An inverted clip (everything outside the boundary masked) and a background that is
-    /// anything short of opaque cannot be honoured and are skipped with a notification.
+    /// The frame is never stroked. An inverted clip masks the frame minus the boundary as a single even-odd path. A
+    /// background that is anything short of opaque cannot be honoured and is skipped with a notification.
     /// </summary>
-    private void DrawWipeout(ImageRenderContext context, ImageStyle style, Wipeout wipeout)
+    private void DrawWipeout(ImageRenderContext context, ImageStyle style, Wipeout wipeout, Transform? placement)
     {
-        // ShowImage and ClipMode.Inside are re-checked in WipeoutWorldBoundary (so it draws nothing when called
-        // standalone from EntityBounds); a future skip condition belongs in both places, or the two can desync.
         if (!wipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage))
         {
             return;
         }
 
         string handle = wipeout.Handle.ToString("X", CultureInfo.InvariantCulture);
-        if (wipeout.ClipMode == ClipMode.Inside)
-        {
-            this._configuration.Notify($"[{wipeout.SubclassMarker}] Handle {handle}: inverted clip boundaries are not rendered.", NotificationType.NotImplemented);
-            return;
-        }
-
         ImageColor background = this._configuration.BackgroundColor;
         if (background.ToPixel<Rgba32>().A < 255)
         {
@@ -895,52 +887,89 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        IReadOnlyList<XYZ> boundary = WipeoutWorldBoundary(wipeout);
-        SurfacePoint[] points = boundary.Select(context.ToSurfacePoint).ToArray();
-        context.Surface.FillPolygon(style with { StrokeColor = background, Opacity = 1f, DashPattern = null }, points);
+        IReadOnlyList<IReadOnlyList<XYZ>> rings = WipeoutWorldRings(wipeout, placement);
+        if (rings.Count == 0)
+        {
+            return;
+        }
+
+        ImageStyle maskStyle = style with { StrokeColor = background, Opacity = 1f, DashPattern = null };
+        if (rings.Count == 1)
+        {
+            context.Surface.FillPolygon(maskStyle, rings[0].Select(context.ToSurfacePoint).ToArray());
+            return;
+        }
+
+        // An inverted clip masks everything except the boundary, which is the frame with the boundary as a hole: an
+        // even-odd fill over both rings.
+        context.Surface.FillPath(maskStyle, rings.Select(ring => (IReadOnlyList<SurfacePoint>)ring.Select(context.ToSurfacePoint).ToArray()).ToList());
     }
 
     /// <summary>
-    /// The world polygon a wipeout masks: its clip boundary (a rectangular pair expanded to four corners) or the whole
-    /// image frame when clipping is off, mapped through <see cref="WipeoutPixelToWorld"/>. Empty when the wipeout
-    /// would draw nothing (image hidden or an inverted clip).
+    /// The world rings a wipeout masks: none when the image is hidden, one when it masks a single region, and two —
+    /// the whole image frame and the boundary inside it — for an inverted clip, which masks everything except the
+    /// boundary. Clipping that is switched off masks the whole frame whatever the clip mode says.
     /// </summary>
-    internal static IReadOnlyList<XYZ> WipeoutWorldBoundary(Wipeout wipeout)
+    /// <param name="wipeout">The wipeout entity.</param>
+    /// <param name="placement">The transform of the insert that placed it, or null at top level.</param>
+    /// <returns>Zero, one or two rings of world points.</returns>
+    /// <remarks>
+    /// The insertion point is mapped as a point and the U and V vectors as directions, from the original entity:
+    /// ACadSharp 3.7.1's <c>Wipeout.ApplyTransform</c> maps U and V as points, so a translated clone's vectors carry
+    /// the translation and the mask is stretched across the drawing.
+    /// </remarks>
+    internal static IReadOnlyList<IReadOnlyList<XYZ>> WipeoutWorldRings(Wipeout wipeout, Transform? placement)
     {
-        if (!wipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage) || wipeout.ClipMode == ClipMode.Inside)
+        if (!wipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage))
         {
             return [];
         }
 
-        List<XY> pixels;
-        if (wipeout.ClippingState && wipeout.ClipBoundaryVertices.Count >= 2)
+        List<XY> frame =
+        [
+            new XY(-0.5, -0.5),
+            new XY(wipeout.Size.X - 0.5, -0.5),
+            new XY(wipeout.Size.X - 0.5, wipeout.Size.Y - 0.5),
+            new XY(-0.5, wipeout.Size.Y - 0.5),
+        ];
+
+        if (!wipeout.ClippingState || wipeout.ClipBoundaryVertices.Count < 2)
         {
-            if (wipeout.ClipType == ClipType.Rectangular || wipeout.ClipBoundaryVertices.Count == 2)
-            {
-                XY a = wipeout.ClipBoundaryVertices[0];
-                XY b = wipeout.ClipBoundaryVertices[1];
-                pixels = [a, new XY(b.X, a.Y), b, new XY(a.X, b.Y)];
-            }
-            else
-            {
-                pixels = wipeout.ClipBoundaryVertices.ToList();
-            }
+            return [Map(frame)];
+        }
+
+        List<XY> boundary;
+        if (wipeout.ClipType == ClipType.Rectangular || wipeout.ClipBoundaryVertices.Count == 2)
+        {
+            XY a = wipeout.ClipBoundaryVertices[0];
+            XY b = wipeout.ClipBoundaryVertices[1];
+            boundary = [a, new XY(b.X, a.Y), b, new XY(a.X, b.Y)];
         }
         else
         {
-            pixels = [new XY(-0.5, -0.5), new XY(wipeout.Size.X - 0.5, -0.5), new XY(wipeout.Size.X - 0.5, wipeout.Size.Y - 0.5), new XY(-0.5, wipeout.Size.Y - 0.5)];
+            boundary = wipeout.ClipBoundaryVertices.ToList();
         }
 
-        return pixels.Select(p => WipeoutPixelToWorld(wipeout, p)).ToList();
+        return wipeout.ClipMode == ClipMode.Inside
+            ? [Map(frame), Map(boundary)]
+            : [Map(boundary)];
+
+        IReadOnlyList<XYZ> Map(IEnumerable<XY> pixels) => pixels.Select(p => WipeoutPixelToWorld(wipeout, p, placement)).ToList();
     }
 
     /// <summary>
     /// Maps an image-space boundary vertex to world coordinates. Pixel (0,0) is the top-left pixel and Y grows
     /// downwards; <c>UVector</c> runs along the visual bottom and <c>VVector</c> up the visual left side, each one
-    /// pixel long. The documented default boundary (-0.5,-0.5)..(Size-0.5) therefore covers exactly the image.
+    /// pixel long. The documented default boundary (-0.5,-0.5)..(Size-0.5) therefore covers exactly the image. The
+    /// insertion point is mapped as a point and the two vectors as directions.
     /// </summary>
-    internal static XYZ WipeoutPixelToWorld(CadWipeoutBase image, XY pixel)
-        => image.InsertPoint + (image.UVector * (pixel.X + 0.5)) + (image.VVector * (image.Size.Y - pixel.Y - 0.5));
+    internal static XYZ WipeoutPixelToWorld(CadWipeoutBase image, XY pixel, Transform? placement)
+    {
+        XYZ insertPoint = InsertPlacement.MapPoint(placement, image.InsertPoint);
+        XYZ u = InsertPlacement.MapVector(placement, image.UVector);
+        XYZ v = InsertPlacement.MapVector(placement, image.VVector);
+        return insertPoint + (u * (pixel.X + 0.5)) + (v * (image.Size.Y - pixel.Y - 0.5));
+    }
 
     /// <summary>
     /// True when an exploded <paramref name="clone"/> should be drawn from <paramref name="original"/>'s geometry,
@@ -949,9 +978,12 @@ internal sealed class EntityRenderDispatcher
     /// shares the same local vertex list as the original, so either would draw identically; the original is used
     /// for consistency with TEXT, MTEXT and SOLID, not because it carries anything the clone lacks), a SOLID whose
     /// normal is not the world Z axis (its OCS corners must be brought into world space before the insert
-    /// transform, not after), or a HATCH (its boundary and pattern are OCS data too, and <c>Hatch.ApplyTransform</c>
+    /// transform, not after), a HATCH (its boundary and pattern are OCS data too, and <c>Hatch.ApplyTransform</c>
     /// maps the raw OCS boundary as if it were world data and never folds in <c>Elevation</c>, so the clone can
-    /// never be trusted; only the original, drawn through its own OCS frame and then the placement, is correct).
+    /// never be trusted; only the original, drawn through its own OCS frame and then the placement, is correct), or
+    /// a WIPEOUT (<c>Wipeout.ApplyTransform</c> maps its U and V vectors as points, so a translated clone's vectors
+    /// carry the translation; only the original, mapped through <see cref="InsertPlacement.MapVector"/>, keeps them
+    /// as directions).
     /// The pairing requires <paramref name="original"/> to be the block entity at the clone's own index and of the
     /// same runtime type, since a mismatched index (an ATTDEF the clone stream skipped, for example) would pair the
     /// wrong entity.
@@ -966,7 +998,7 @@ internal sealed class EntityRenderDispatcher
             return false;
         }
 
-        if (original is TextEntity or MText or Leader or Hatch)
+        if (original is TextEntity or MText or Leader or Hatch or Wipeout)
         {
             return true;
         }

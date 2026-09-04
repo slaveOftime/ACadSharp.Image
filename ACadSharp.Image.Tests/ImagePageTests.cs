@@ -153,4 +153,28 @@ public sealed class ImagePageTests
 
         Assert.Equal(10d, frame.PaperWidth, 6);
     }
+
+    [Fact]
+    public void TheFrameOfAnInvertedWipeoutIsItsWholeImageFootprint()
+    {
+        ImagePage page = new();
+        Wipeout wipeout = new()
+        {
+            InsertPoint = new XYZ(0, 0, 0),
+            UVector = new XYZ(20, 0, 0),
+            VVector = new XYZ(0, 10, 0),
+            Size = new XY(1, 1),
+            ClippingState = true,
+            ClipType = ClipType.Rectangular,
+            ClipMode = ClipMode.Inside,
+        };
+        wipeout.ClipBoundaryVertices.Add(new XY(-0.25, -0.25));
+        wipeout.ClipBoundaryVertices.Add(new XY(0.25, 0.25));
+        page.AddEntity(wipeout);
+
+        PageFrame frame = Assert.NotNull(page.ComputeFrame(null));
+
+        Assert.Equal(20d, frame.PaperWidth, 6);
+        Assert.Equal(10d, frame.PaperHeight, 6);
+    }
 }

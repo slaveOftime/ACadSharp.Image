@@ -40,7 +40,7 @@ internal static class EntityBounds
                 error = new InvalidOperationException($"block '{insert.Block!.Name}' references itself");
                 return false;
             case Wipeout wipeout:
-                return TryFromPoints(EntityRenderDispatcher.WipeoutWorldBoundary(wipeout), out bounds);
+                return TryFromPoints(EntityRenderDispatcher.WipeoutWorldRings(wipeout, null).SelectMany(ring => ring).ToList(), out bounds);
             case Solid solid when !OcsTransform.IsWorldPlane(solid.Normal):
                 OcsTransform toWorld = OcsTransform.For(solid.Normal);
                 return TryFromPoints([ToWorld(toWorld, solid.FirstCorner), ToWorld(toWorld, solid.SecondCorner), ToWorld(toWorld, solid.ThirdCorner), ToWorld(toWorld, solid.FourthCorner)], out bounds);

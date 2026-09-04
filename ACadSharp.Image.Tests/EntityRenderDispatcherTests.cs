@@ -1509,12 +1509,33 @@ public sealed class EntityRenderDispatcherTests
         LineType dashed = new("DASHED2");
         dashed.AddSegment(new LineType.Segment { Length = 2 });
         dashed.AddSegment(new LineType.Segment { Length = -1 });
-        MLine mline = new() { Style = style, LineType = dashed, Vertices = { VertexAt(0, 10, [0.5, 0], [-0.5, 0]), VertexAt(20, 10, [0.5, 0], [-0.5, 0]) } };
+        // A third element carries its own genuinely named linetype, distinct from both the ByLayer placeholder and
+        // the entity's own "DASHED2": it must still resolve through LineTypeDashResolver instead of falling into
+        // the ByLayer/ByBlock inheritance path, so a regression that made every element inherit the entity's dashes
+        // would leave this element's pattern indistinguishable from the other two and be caught here.
+        // Lengths chosen well above ImageConfiguration.MinimumDashPixels' default (2), so the pattern resolves to
+        // an actual dash array rather than collapsing to solid (null) for being too short to render.
+        LineType dotted = new("DOTTED2");
+        dotted.AddSegment(new LineType.Segment { Length = 3 });
+        dotted.AddSegment(new LineType.Segment { Length = -2 });
+        style.AddElement(new MLineStyle.Element { Offset = 0, LineType = dotted });
+        MLine mline = new()
+        {
+            Style = style,
+            LineType = dashed,
+            Vertices =
+            {
+                VertexAt(0, 10, [0.5, 0], [-0.5, 0], [0, 0]),
+                VertexAt(20, 10, [0.5, 0], [-0.5, 0], [0, 0]),
+            },
+        };
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
 
         Assert.NotNull(surface.Styles[0].DashPattern);
         Assert.Equal(surface.Styles[1].DashPattern, surface.Styles[0].DashPattern);
+        Assert.NotNull(surface.Styles[2].DashPattern);
+        Assert.NotEqual(surface.Styles[0].DashPattern, surface.Styles[2].DashPattern);
     }
 
     [Fact]

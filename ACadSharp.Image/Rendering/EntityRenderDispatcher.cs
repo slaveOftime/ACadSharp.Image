@@ -39,6 +39,12 @@ internal sealed class EntityRenderDispatcher
     /// Per-block cache of <see cref="BlockSubtreeNeedsHeal"/>, so repeated inserts of the same block scan its
     /// subtree for MLINEs and LEADERs at most once per page. Cleared by <see cref="BeginPage"/>.
     /// </summary>
+    /// <remarks>
+    /// Keyed on <see cref="BlockRecord"/> identity, so this only pays off for repeated top-level inserts of the
+    /// same block within one page: a nested <see cref="Insert"/> reached while exploding an outer one holds a
+    /// deep-cloned block record (per <see cref="Insert.Clone"/> in ACadSharp 3.7.1), a different key every time, so
+    /// it misses the cache on every call regardless of how many times the same source block appears nested.
+    /// </remarks>
     private readonly Dictionary<BlockRecord, bool> _blocksNeedingHeal = new();
 
     public EntityRenderDispatcher(ImageConfiguration configuration)
@@ -989,25 +995,41 @@ internal sealed class EntityRenderDispatcher
     /// <returns>True when the subtree contains an MLINE or a LEADER.</returns>
     private bool BlockSubtreeNeedsHeal(BlockRecord? block, HashSet<BlockRecord> visited)
     {
+        return this.ScanBlockSubtree(block, visited).NeedsHeal;
+    }
+
+    /// <summary>
+    /// The recursive core of <see cref="BlockSubtreeNeedsHeal"/>. Besides the answer, it reports whether the walk
+    /// was cut short by a cycle: a truncated walk saw only part of the subtree, so its "clean" verdict must not be
+    /// cached under <paramref name="block"/> — doing so would poison every future insert of this block with an
+    /// answer taken from an incomplete scan. A "needs healing" verdict is always safe to cache, truncated or not:
+    /// finding one MLINE/LEADER is a fact no missed branch can undo.
+    /// </summary>
+    /// <param name="block">The block to check, or null.</param>
+    /// <param name="visited">Blocks already walked in this call, so a circular or diamond hierarchy is walked once.</param>
+    /// <returns>Whether the subtree contains an MLINE or a LEADER, and whether a cycle cut the walk short.</returns>
+    private (bool NeedsHeal, bool Truncated) ScanBlockSubtree(BlockRecord? block, HashSet<BlockRecord> visited)
+    {
         if (block == null)
         {
-            return false;
+            return (false, false);
         }
 
         if (this._blocksNeedingHeal.TryGetValue(block, out bool cached))
         {
-            return cached;
+            return (cached, false);
         }
 
         if (!visited.Add(block))
         {
-            // A block reachable from itself: treat the cyclic branch as clean rather than recurse forever. Any
-            // MLINE/LEADER elsewhere in the subtree is still found through the other entities in this loop, and
-            // nothing is cached here, so a later, non-cyclic call for this same block still computes the real answer.
-            return false;
+            // A block reachable from itself: treat the cyclic branch as clean rather than recurse forever, and tell
+            // the caller this branch was truncated so it knows not to trust — or cache — a "clean" verdict built on
+            // top of it.
+            return (false, true);
         }
 
         bool needsHeal = false;
+        bool truncated = false;
         foreach (Entity entity in block.Entities)
         {
             if (entity is MLine or Leader)
@@ -1016,15 +1038,24 @@ internal sealed class EntityRenderDispatcher
                 break;
             }
 
-            if (entity is Insert nestedInsert && this.BlockSubtreeNeedsHeal(nestedInsert.Block, visited))
+            if (entity is Insert nestedInsert)
             {
-                needsHeal = true;
-                break;
+                (bool nestedNeedsHeal, bool nestedTruncated) = this.ScanBlockSubtree(nestedInsert.Block, visited);
+                truncated |= nestedTruncated;
+                if (nestedNeedsHeal)
+                {
+                    needsHeal = true;
+                    break;
+                }
             }
         }
 
-        this._blocksNeedingHeal[block] = needsHeal;
-        return needsHeal;
+        if (needsHeal || !truncated)
+        {
+            this._blocksNeedingHeal[block] = needsHeal;
+        }
+
+        return (needsHeal, truncated);
     }
 
     /// <summary>

@@ -373,10 +373,15 @@ public sealed class ImagePageRendererTests
         // Same staleness hazard as the MLINE case above, for a LEADER: Insert.Clone() shares a LEADER's vertex list
         // with its source too (see EntityRenderDispatcher remarks on DrawBlockContents), so it must be found by the
         // same cached subtree scan and must not be missed once it is added after the block was first seen clean.
+        // The insert carries a non-zero placement deliberately: a LEADER's shared list is not emptied by Clone() the
+        // way an MLINE's is, it is overwritten in place by Explode()'s ApplyTransform, so under an identity
+        // placement that in-place write puts back the very same coordinates and the assertions below would hold
+        // whether or not the stale-cache bug is present. A real translation makes the un-healed path write world
+        // coordinates into the shared list instead, so both assertions genuinely discriminate.
         BlockRecord wall = new("WALLL");
         wall.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
         BlockRecord plan = new("PLANL");
-        plan.Entities.Add(new Insert(wall));
+        plan.Entities.Add(new Insert(wall) { InsertPoint = new XYZ(5, 20, 0) });
 
         ImageExporter exporter = new();
         exporter.Add(plan);
@@ -391,8 +396,21 @@ public sealed class ImagePageRendererTests
         RecordingDrawingSurface surface = new();
         renderer.RenderTo(surface, page);
 
+        // The original LEADER must still hold its own local coordinates: an un-healed render would have the
+        // in-place ApplyTransform bake world coordinates into the shared list instead, and leave them there because
+        // no snapshot was taken to restore from.
         Assert.Equal([new XYZ(0, 0, 0), new XYZ(10, 0, 0)], leader.Vertices);
-        Assert.Single(surface.Polylines);
+
+        // The drawn polyline must carry the insert's translation exactly once, the way a healthy (never-stale)
+        // render of the very same final page state would draw it — comparing against a fresh renderer's output
+        // sidesteps hand-computing the page's auto-sized frame while still catching the double-transform an
+        // un-healed draw would otherwise produce (Draw() re-applies the insert's transform on top of vertices
+        // ApplyTransform already moved into world space in place).
+        RecordingDrawingSurface reference = new();
+        new ImagePageRenderer(exporter.Configuration).RenderTo(reference, page);
+        IReadOnlyList<SurfacePoint> expected = Assert.Single(reference.Polylines);
+        IReadOnlyList<SurfacePoint> actual = Assert.Single(surface.Polylines);
+        Assert.Equal(expected, actual);
     }
 
     private static MLine.Vertex MLineVertexAt(double x, double y, params double[][] parameters)

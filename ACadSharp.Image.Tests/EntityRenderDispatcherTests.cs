@@ -1866,6 +1866,85 @@ public sealed class EntityRenderDispatcherTests
         Assert.Single(surface.Lines);
     }
 
+    [Fact]
+    public void ABlockCycleHiddenBehindAnMLineIsStillDetected()
+    {
+        // ScanBlockSubtree (used for the MLINE/LEADER heal scan) stops at the first MLINE or LEADER it finds and
+        // never looks past it. BlockGraphIsCircular must not share that shortcut: the cycle-closing Insert here sits
+        // behind an MLine as the block's first entity, so a regression that delegated cycle detection back to
+        // ScanBlockSubtree-style logic would never reach it and would pass every other cycle test in this file.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord outer = new("OUTER");
+        BlockRecord inner = new("INNER");
+        document.BlockRecords.Add(outer);
+        document.BlockRecords.Add(inner);
+        outer.Entities.Add(new MLine());
+        // See the construction-order comments on the other cycle tests above: the insert under test is built while
+        // outer's graph is still acyclic (only the MLine is there), and the cycle is closed afterward.
+        Insert insert = new(outer);
+        document.Entities.Add(insert);
+        outer.Entities.Add(new Insert(inner));
+        inner.Entities.Add(new Insert(outer));
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("Draw", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ADirectSelfReferencingBlockIsDetected()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        BlockRecord self = new("SELF");
+        // Constructed while `self` is still empty, so ACadSharp's own Insert(BlockRecord) constructor - which
+        // itself recurses through the block, the same recursion Explode() performs - does not yet see a cycle. The
+        // self-reference is closed afterward purely through List<Entity>.Add, and this very same Insert instance
+        // (not a freshly constructed one) is what gets drawn, so no later Insert(self) call ever runs against an
+        // already-cyclic block.
+        Insert insert = new(self);
+        self.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("Draw", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ADiamondSharedBlockIsNotMistakenForACycle()
+    {
+        // Two different paths (A -> B -> D and A -> C -> D) reach the same block D. Path-scoped cycle tracking must
+        // tell this apart from a real cycle: only a globally shared "visited" set would wrongly flag D the second
+        // time it is reached, which would silently refuse to draw any drawing that reuses a block from two places.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        BlockRecord a = new("A");
+        BlockRecord b = new("B");
+        BlockRecord c = new("C");
+        BlockRecord d = new("D");
+        d.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)));
+        b.Entities.Add(new Insert(d));
+        c.Entities.Add(new Insert(d));
+        a.Entities.Add(new Insert(b));
+        a.Entities.Add(new Insert(c));
+        Insert insert = new(a);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(2, surface.Lines.Count);
+    }
+
     /// <summary>Whether two surface points agree to within a rounding tolerance.</summary>
     private static bool Close(SurfacePoint actual, SurfacePoint expected)
         => Math.Abs(actual.X - expected.X) < 1e-9 && Math.Abs(actual.Y - expected.Y) < 1e-9;

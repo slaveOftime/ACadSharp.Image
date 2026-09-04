@@ -696,6 +696,22 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
+    public void OcsSolidInsideAnInsertAppliesTheNormalBeforeTheInsertTransform()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("PLATE");
+        block.Entities.Add(new Solid { FirstCorner = new XYZ(0, 0, 0), SecondCorner = new XYZ(10, 0, 0), ThirdCorner = new XYZ(0, 5, 0), FourthCorner = new XYZ(10, 5, 0), Normal = new XYZ(0, 0, -1) });
+        Insert insert = new(block) { InsertPoint = new XYZ(20, 0, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // Normal (0,0,-1) mirrors X in OCS→world: corners x in [-10,0]; then the insert moves them by +20: x in [10,20].
+        IReadOnlyList<SurfacePoint> polygon = Assert.Single(surface.Polygons);
+        Assert.Equal(new HashSet<SurfacePoint> { new(20, 100), new(10, 100), new(10, 95), new(20, 95) }, polygon.ToHashSet());
+    }
+
+    [Fact]
     public void MalformedPolylineIsSkippedWithWarningAndSubsequentEntitiesStillDraw()
     {
         // Two coincident vertices joined by a bulge make ACadSharp's tessellating GetPoints throw.
@@ -1088,6 +1104,30 @@ public sealed class EntityRenderDispatcherTests
         Assert.Single(surface.Polylines);
         Assert.Empty(surface.Polygons);
         Assert.Empty(notifications);
+    }
+
+    [Fact]
+    public void LeaderArrowInsideAScaledInsertScalesWithIt()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("NOTE");
+        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) }, Style = new DimensionStyle("ARROW") { ArrowSize = 3, ScaleFactor = 1 } };
+        block.Entities.Add(leader);
+        Insert insert = new(block) { InsertPoint = new XYZ(5, 5, 0), XScale = 2, YScale = 2 };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        IReadOnlyList<SurfacePoint> arrow = Assert.Single(surface.Polygons);
+        Assert.Equal(new SurfacePoint(5, 95), arrow[0]);
+        // Source-space base at x=3 with half-width 0.5, scaled by 2 and moved by (5,5): x=11, y=5±1.
+        Assert.Contains(arrow, p => Math.Abs(p.X - 11) < 1e-9 && Math.Abs(p.Y - 94) < 1e-9);
+        Assert.Contains(arrow, p => Math.Abs(p.X - 11) < 1e-9 && Math.Abs(p.Y - 96) < 1e-9);
+        Assert.Equal([new SurfacePoint(5, 95), new SurfacePoint(25, 95)], Assert.Single(surface.Polylines));
+
+        // Insert.Explode()'s clone shares the leader's vertex list (a Leader.Clone() quirk like MLine.Clone()'s), so
+        // ApplyTransform would otherwise leave the block's own LEADER holding world coordinates after this call.
+        Assert.Equal([new XYZ(0, 0, 0), new XYZ(10, 0, 0)], leader.Vertices);
     }
 
     private static MLineStyle TwoElementStyle(double outer, MLineStyleFlags flags = MLineStyleFlags.None)

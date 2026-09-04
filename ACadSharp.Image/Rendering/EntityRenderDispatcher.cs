@@ -68,10 +68,10 @@ internal sealed class EntityRenderDispatcher
         this.Draw(context, entity, parentLayer: null, parentHandle: null, blockName: null, parent: null);
     }
 
-    // textSource is the original block entity a TEXT or MTEXT clone came from, whose geometry is used instead of the
-    // clone's; placement is the transform of the insert that placed a block TEXT, MTEXT or MLINE; both are null
+    // source is the original block entity a TEXT, MTEXT, non-world SOLID or LEADER clone came from, whose geometry is
+    // used instead of the clone's, and placement is the transform of the insert that placed it; both are null
     // outside a block reference.
-    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? textSource = null, Transform? placement = null)
+    private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? source = null, Transform? placement = null)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
         Layer? layer = GetEffectiveLayer(entity, parentLayer);
@@ -125,10 +125,10 @@ internal sealed class EntityRenderDispatcher
                     this.DrawDimension(context, dimension, layer, resolved);
                     break;
                 case Leader leader:
-                    this.DrawLeader(context, style, leader);
+                    this.DrawLeader(context, style, source as Leader ?? leader, placement);
                     break;
                 case Solid solid:
-                    DrawSolid(context, style, solid);
+                    DrawSolid(context, style, source as Solid ?? solid, placement);
                     break;
                 case Face3D face:
                     DrawFace3D(context, style, face);
@@ -146,10 +146,10 @@ internal sealed class EntityRenderDispatcher
                     this._splineRenderer.Draw(context, style, spline);
                     break;
                 case MText mtext:
-                    this._textRenderer.Draw(context, style, textSource as MText ?? mtext, placement);
+                    this._textRenderer.Draw(context, style, source as MText ?? mtext, placement);
                     break;
                 case TextEntity textEntity:
-                    this._textRenderer.Draw(context, style, textSource as TextEntity ?? textEntity, placement);
+                    this._textRenderer.Draw(context, style, source as TextEntity ?? textEntity, placement);
                     break;
                 case IText text:
                     this._configuration.Notify($"[{entity.SubclassMarker}] Text rendering is not implemented yet.", NotificationType.NotImplemented);
@@ -250,15 +250,19 @@ internal sealed class EntityRenderDispatcher
 
     /// <summary>
     /// Fills a solid's four corners. The corners are OCS coordinates (ACadSharp leaves the normal to the caller), so a
-    /// non-world normal is applied first, with each corner's Z as its elevation. DXF SOLID stores corners in a Z
-    /// pattern (first edge 1-2, opposite edge 3-4), so they are filled in order 1-2-4-3, not 1-2-3-4.
+    /// non-world normal is applied first, with each corner's Z as its elevation, and only then the insert transform
+    /// that placed it (null at top level, since <c>Explode()</c> already transformed a world-plane clone). DXF SOLID
+    /// stores corners in a Z pattern (first edge 1-2, opposite edge 3-4), so they are filled in order 1-2-4-3, not
+    /// 1-2-3-4.
     /// </summary>
-    private static void DrawSolid(ImageRenderContext context, ImageStyle style, Solid solid)
+    private static void DrawSolid(ImageRenderContext context, ImageStyle style, Solid solid, Transform? placement)
     {
         OcsTransform? toWorld = IsWorldPlane(solid.Normal) ? null : OcsTransform.For(solid.Normal);
-        SurfacePoint ToSurface(XYZ corner) => toWorld != null
-            ? context.ToSurfacePoint(toWorld.ToWorldXY(corner.X, corner.Y, corner.Z))
-            : context.ToSurfacePoint(corner);
+        SurfacePoint ToSurface(XYZ corner)
+        {
+            XYZ world = toWorld != null ? toWorld.ToWorld(corner.X, corner.Y, corner.Z) : corner;
+            return context.ToSurfacePoint(placement == null ? world : placement.ApplyTransform(world));
+        }
 
         SurfacePoint[] points =
         [
@@ -475,18 +479,25 @@ internal sealed class EntityRenderDispatcher
     /// A leader is its stored path (the hookline is already the last vertex; the annotation is a separate entity)
     /// plus, when enabled, AutoCAD's default closed filled arrowhead at the first vertex: an isosceles triangle
     /// DIMASZ x DIMSCALE long and a third of that wide. A splined leader runs a Catmull-Rom curve through its
-    /// vertices. Custom arrowhead blocks fall back to the default triangle with a notification.
+    /// vertices. Custom arrowhead blocks fall back to the default triangle with a notification. Path and arrowhead
+    /// are built in the leader's own coordinates and mapped through <paramref name="placement"/> (null at top level)
+    /// last, so a leader inside a scaled or rotated insert scales and rotates with it.
     /// </summary>
-    private void DrawLeader(ImageRenderContext context, ImageStyle style, Leader leader)
+    private void DrawLeader(ImageRenderContext context, ImageStyle style, Leader leader, Transform? placement)
     {
         if (leader.Vertices.Count < 2)
         {
             return;
         }
 
-        SurfacePoint[] points = leader.Vertices.Select(context.ToSurfacePoint).ToArray();
+        SurfacePoint Map(XYZ p) => context.ToSurfacePoint(placement == null ? p : placement.ApplyTransform(p));
+
+        SurfacePoint[] points = leader.Vertices.Select(Map).ToArray();
         if (leader.PathType == LeaderPathType.Spline && points.Length > 2)
         {
+            // Catmull-Rom control points are affine combinations of the input points, so mapping the vertices first
+            // and building the curve from the mapped points gives the same result as building it in source space and
+            // mapping every control point afterward.
             context.Surface.DrawCubicBezier(style, CatmullRomToBezier(points), false);
         }
         else
@@ -519,7 +530,9 @@ internal sealed class EntityRenderDispatcher
         direction /= length;
         XY baseCenter = tip - (direction * size);
         XY half = new XY(-direction.Y, direction.X) * (size / 6d);
-        context.Surface.FillPolygon(style, [context.ToSurfacePoint(tip), context.ToSurfacePoint(baseCenter + half), context.ToSurfacePoint(baseCenter - half)]);
+        XY baseLeft = baseCenter + half;
+        XY baseRight = baseCenter - half;
+        context.Surface.FillPolygon(style, [Map(new XYZ(tip.X, tip.Y, 0d)), Map(new XYZ(baseLeft.X, baseLeft.Y, 0d)), Map(new XYZ(baseRight.X, baseRight.Y, 0d))]);
     }
 
     /// <summary>
@@ -743,6 +756,35 @@ internal sealed class EntityRenderDispatcher
     internal static XYZ WipeoutPixelToWorld(CadWipeoutBase image, XY pixel)
         => image.InsertPoint + (image.UVector * (pixel.X + 0.5)) + (image.VVector * (image.Size.Y - pixel.Y - 0.5));
 
+    /// <summary>
+    /// True when an exploded <paramref name="clone"/> should be drawn from <paramref name="original"/>'s geometry,
+    /// placed through the insert's transform, instead of the clone's own points: a TEXT or MTEXT (their alignment
+    /// point and, for MTEXT, X axis are never transformed by <c>Explode()</c>), a LEADER (its clone shares the
+    /// source's vertex list and both are healed back to local coordinates, so drawing from the original and mapping
+    /// through the insert's transform keeps the arrowhead's size and orientation correct instead of picking them up
+    /// from an already-placed point), or a SOLID whose normal is not the world Z axis (its OCS corners must be
+    /// brought into world space before the insert transform, not after). The pairing requires
+    /// <paramref name="original"/> to be the block entity at the clone's own index and of the same runtime type,
+    /// since a mismatched index (an ATTDEF the clone stream skipped, for example) would pair the wrong entity.
+    /// </summary>
+    /// <param name="original">The block entity at the same index as <paramref name="clone"/>, or null past the end of the block's own entities.</param>
+    /// <param name="clone">The entity <c>Explode()</c> produced.</param>
+    /// <returns>True when <paramref name="clone"/> should be drawn from <paramref name="original"/> instead.</returns>
+    private static bool UsesOriginalGeometry(Entity? original, Entity clone)
+    {
+        if (original == null || original.GetType() != clone.GetType())
+        {
+            return false;
+        }
+
+        if (original is TextEntity or MText or Leader)
+        {
+            return true;
+        }
+
+        return original is Solid solid && !IsWorldPlane(solid.Normal);
+    }
+
     private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
     {
         if (insert.Block == null)
@@ -760,27 +802,32 @@ internal sealed class EntityRenderDispatcher
         IReadOnlyList<Entity> originals = insert.Block.Entities.ToList();
 
         // ACadSharp 3.7.1's MLine.Clone() empties the vertex list an MLine shares with its source (by
-        // MemberwiseClone), and Insert.Clone() deep-clones its entire block subtree. So exploding this insert
-        // destroys every MLINE reachable through it, including ones nested inside a block placed inside this one,
+        // MemberwiseClone), and Leader.Clone() shares its vertex list the same way but Explode()'s ApplyTransform
+        // overwrites that shared list's contents (world coordinates) in place instead of emptying it; either way the
+        // source document is left corrupted once Explode() runs, because the clone and its source are the very same
+        // List object. Insert.Clone() deep-clones its entire block subtree, so exploding this insert destroys every
+        // MLINE and LEADER reachable through it, including ones nested inside a block placed inside this one,
         // several levels below anything Explode() itself returns: cloning the nested Insert clones its block along
-        // the way. CollectMLines walks the whole subtree (following nested Insert.Block references, not yet cloned
-        // at this point) to snapshot every one of them before Explode() runs, and Heal repairs them immediately
-        // after and again in `finally`. The repair is always in place (Clear + AddRange into the *existing* list,
-        // never a reassignment): because a clone shares the very same List<Vertex> object as its source at every
-        // depth, one in-place heal fixes the original and every clone below it at once; reassigning would leave an
-        // outer level's shared list emptied. The insert's transform still has to be applied manually to a healed
-        // MLINE's vertices, because Explode()'s own ApplyTransform ran while the list was still empty.
+        // the way. CollectSharedVertexLists walks the whole subtree (following nested Insert.Block references, not
+        // yet cloned at this point) to snapshot every one of them before Explode() runs, and Heal repairs them
+        // immediately after and again in `finally`. The repair is always in place (Clear + AddRange into the
+        // *existing* list, never a reassignment): because a clone shares the very same list object as its source at
+        // every depth, one in-place heal fixes the original and every clone below it at once; reassigning would
+        // leave an outer level's shared list broken. The insert's transform still has to be applied manually to a
+        // healed MLINE's or LEADER's points, because Explode()'s own ApplyTransform ran against the pre-heal list.
         Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
-        CollectMLines(insert.Block, mlineVertices, new HashSet<BlockRecord>());
+        Dictionary<Leader, List<XYZ>> leaderVertices = new();
+        CollectSharedVertexLists(insert.Block, mlineVertices, leaderVertices, new HashSet<BlockRecord>());
         int index = 0;
         try
         {
-            // Explode() is a lazy iterator and the heal must not be interleaved with the MLine.Clone() calls it
-            // makes, so the clones are materialised (and held alive at once) only when there is something to heal.
-            IEnumerable<Entity> clones = mlineVertices.Count == 0 ? insert.Explode() : insert.Explode().ToList();
-            if (mlineVertices.Count > 0)
+            // Explode() is a lazy iterator and the heal must not be interleaved with the Clone() calls it makes, so
+            // the clones are materialised (and held alive at once) only when there is something to heal.
+            bool needsHeal = mlineVertices.Count > 0 || leaderVertices.Count > 0;
+            IEnumerable<Entity> clones = needsHeal ? insert.Explode().ToList() : insert.Explode();
+            if (needsHeal)
             {
-                Heal(mlineVertices);
+                Heal(mlineVertices, leaderVertices);
             }
 
             foreach (Entity entity in clones)
@@ -803,12 +850,12 @@ internal sealed class EntityRenderDispatcher
                 NormalizeExplodedClone(entity);
                 Entity? source = null;
                 Transform? entityPlacement = null;
-                if (original is TextEntity or MText && original.GetType() == entity.GetType())
+                if (UsesOriginalGeometry(original, entity))
                 {
                     source = original;
                     entityPlacement = transform;
                 }
-                else if (entity is MLine)
+                else if (entity is MLine or Leader)
                 {
                     entityPlacement = transform;
                 }
@@ -818,7 +865,7 @@ internal sealed class EntityRenderDispatcher
         }
         finally
         {
-            Heal(mlineVertices);
+            Heal(mlineVertices, leaderVertices);
         }
 
         if (index != originals.Count)
@@ -830,9 +877,15 @@ internal sealed class EntityRenderDispatcher
 
         this.DrawAttributes(context, insert, layer, parent);
 
-        static void Heal(Dictionary<MLine, List<MLine.Vertex>> snapshot)
+        static void Heal(Dictionary<MLine, List<MLine.Vertex>> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot)
         {
-            foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in snapshot)
+            foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in mlineSnapshot)
+            {
+                pair.Key.Vertices.Clear();
+                pair.Key.Vertices.AddRange(pair.Value);
+            }
+
+            foreach (KeyValuePair<Leader, List<XYZ>> pair in leaderSnapshot)
             {
                 pair.Key.Vertices.Clear();
                 pair.Key.Vertices.AddRange(pair.Value);
@@ -841,15 +894,17 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
-    /// Snapshots every MLINE reachable from <paramref name="block"/>, following nested <see cref="Insert.Block"/>
-    /// references. <see cref="Insert.Explode"/> deep-clones its entire block subtree, so an MLINE nested several
-    /// blocks deep is destroyed by an ancestor insert's own explode even though it is never that ancestor's direct
-    /// child; this has to run, and capture the whole subtree, before that explode call.
+    /// Snapshots every MLINE's and LEADER's vertex list reachable from <paramref name="block"/>, following nested
+    /// <see cref="Insert.Block"/> references. <see cref="Insert.Explode"/> deep-clones its entire block subtree, so
+    /// an MLINE or LEADER nested several blocks deep is corrupted by an ancestor insert's own explode even though it
+    /// is never that ancestor's direct child; this has to run, and capture the whole subtree, before that explode
+    /// call.
     /// </summary>
     /// <param name="block">The block whose entities (and nested blocks) are searched.</param>
-    /// <param name="snapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
+    /// <param name="mlineSnapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
+    /// <param name="leaderSnapshot">Receives one entry per LEADER found, keyed by the LEADER itself.</param>
     /// <param name="visited">Blocks already walked, so a circular or diamond hierarchy is walked once.</param>
-    private static void CollectMLines(BlockRecord? block, Dictionary<MLine, List<MLine.Vertex>> snapshot, HashSet<BlockRecord> visited)
+    private static void CollectSharedVertexLists(BlockRecord? block, Dictionary<MLine, List<MLine.Vertex>> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot, HashSet<BlockRecord> visited)
     {
         if (block == null || !visited.Add(block))
         {
@@ -860,11 +915,14 @@ internal sealed class EntityRenderDispatcher
         {
             switch (entity)
             {
-                case MLine mline when !snapshot.ContainsKey(mline):
-                    snapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
+                case MLine mline when !mlineSnapshot.ContainsKey(mline):
+                    mlineSnapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
+                    break;
+                case Leader leaderEntity when !leaderSnapshot.ContainsKey(leaderEntity):
+                    leaderSnapshot.Add(leaderEntity, new List<XYZ>(leaderEntity.Vertices));
                     break;
                 case Insert nestedInsert:
-                    CollectMLines(nestedInsert.Block, snapshot, visited);
+                    CollectSharedVertexLists(nestedInsert.Block, mlineSnapshot, leaderSnapshot, visited);
                     break;
             }
         }

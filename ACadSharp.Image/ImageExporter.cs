@@ -161,6 +161,12 @@ public sealed class ImageExporter
     /// </summary>
     /// <param name="format">Output format the pages will be saved as. Defaults to PNG.</param>
     /// <returns>Rendered pages; dispose each when finished.</returns>
+    /// <remarks>
+    /// Rendering temporarily mutates block MLINEs and LEADERs while working around ACadSharp 3.7.1's destructive
+    /// <c>MLine.Clone()</c> and <c>Leader.Clone()</c> (both share their vertex list with their source instead of
+    /// copying it) and restores them before returning; a <see cref="CadDocument"/> must not be rendered concurrently
+    /// by two exporters, and <c>Insert.Explode()</c> itself is not safe for concurrent use either.
+    /// </remarks>
     public IReadOnlyList<RenderedPage> Render(ImageExportFormat format = ImageExportFormat.Png)
     {
         ImagePageRenderer renderer = new(this.Configuration);

@@ -999,6 +999,48 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
+    public void ConstantMultiLineAttributeDefinitionIsPlacedThroughTheInsertTransform()
+    {
+        // Constant multi-line ATTDEFs reach EntityRenderDispatcher.Draw through the block-explode path in
+        // DrawBlockContents, not through DrawAttributes: UsesOriginalGeometry already treats AttributeDefinition
+        // as a TextEntity subclass and hands it the insert's transform as placement, the same as a block TEXT,
+        // MTEXT or Leader. This pins that the new multi-line arm honours that placement instead of only working
+        // at top level (where DrawAttributes always passes null).
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("CONSTML");
+        block.Entities.Add(new AttributeDefinition
+        {
+            Tag = "ROOM",
+            Value = "WRONG",
+            AttributeType = AttributeType.ConstantMultiLine,
+            Flags = AttributeFlags.Constant,
+            InsertPoint = new XYZ(1, 1, 0),
+            Height = 2,
+            MText = new MText { Value = "Line1\\PLine2", InsertPoint = new XYZ(2, 3, 0), Height = 4 },
+        });
+        Insert insert = new(block) { InsertPoint = new XYZ(20, 10, 0), XScale = 2, YScale = 2, ZScale = 2 };
+        // Insert(BlockRecord) auto-creates a matching ATTRIB for the constant ATTDEF, which would suppress the
+        // definition in the explode loop (see ConstantAttributeDefinitionsAreStillDrawn); clearing it reproduces
+        // a file where the constant attribute was never persisted as its own ATTRIB.
+        insert.Attributes.Clear();
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        SurfaceText run = Assert.Single(surface.Texts);
+        Assert.Contains("Line1", run.Text);
+        Assert.Contains("Line2", run.Text);
+        Assert.DoesNotContain("WRONG", run.Text);
+        // The embedded MText's own insertion point (2,3) is scaled by the insert's uniform XScale/YScale (2) and
+        // translated by its InsertPoint (20,10): world = (2*2+20, 3*2+10) = (24, 16); CreateContext's 100-unit
+        // paper flips Y, so the surface origin is (24, 100-16) = (24, 84).
+        Assert.Equal(24d, run.Origin.X, 9);
+        Assert.Equal(84d, run.Origin.Y, 9);
+        // The MText's own up axis (0,1,0) is likewise scaled by 2, so its height in surface units doubles: 4*2=8.
+        Assert.Equal(8d, run.Height, 9);
+    }
+
+    [Fact]
     public void StraightLeaderIsOneOpenPolylineWithoutArrow()
     {
         RecordingDrawingSurface surface = new();

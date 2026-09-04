@@ -292,6 +292,10 @@ public sealed class TextRendererTests
     [Fact]
     public void AMultiLineAttributeKeepsTheAttributeAsTheObservableEntity()
     {
+        // Guards the dispatcher's BeginEntity structure, not this task's switch arm specifically: BeginEntity is
+        // called with the outer entity parameter before the switch runs, for every arm, so this assertion would
+        // pass even against the pre-fix code that drew the single-line value. It stays as documentation that the
+        // observable entity must never change no matter which arm draws the geometry.
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
         AttributeEntity attribute = new()

@@ -292,7 +292,7 @@ internal sealed class EntityRenderDispatcher
         SurfacePoint ToSurface(XYZ corner)
         {
             XYZ world = toWorld != null ? toWorld.ToWorld(corner.X, corner.Y, corner.Z) : corner;
-            return context.ToSurfacePoint(placement == null ? world : placement.ApplyTransform(world));
+            return context.ToSurfacePoint(InsertPlacement.MapPoint(placement, world));
         }
 
         SurfacePoint[] points =
@@ -521,7 +521,7 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        SurfacePoint Map(XYZ p) => context.ToSurfacePoint(placement == null ? p : placement.ApplyTransform(p));
+        SurfacePoint Map(XYZ p) => context.ToSurfacePoint(InsertPlacement.MapPoint(placement, p));
 
         SurfacePoint[] points = leader.Vertices.Select(Map).ToArray();
         if (leader.PathType == LeaderPathType.Spline && points.Length > 2)
@@ -664,7 +664,7 @@ internal sealed class EntityRenderDispatcher
                 }
 
                 XYZ world = vertex.Position + (vertex.Miter * along);
-                lines[j][i] = context.ToSurfacePoint(placement == null ? world : placement.ApplyTransform(world));
+                lines[j][i] = context.ToSurfacePoint(InsertPlacement.MapPoint(placement, world));
             }
         }
 

@@ -130,9 +130,9 @@ internal sealed class TextRenderer
     /// <returns>The placement, or null when the plane is seen edge-on (either axis projects to nothing).</returns>
     internal static Placement? Place(Transform? placement, XYZ origin, XYZ xAxis, XYZ yAxis)
     {
-        XYZ o = Apply(placement, origin);
-        XYZ dx = Apply(placement, origin + xAxis) - o;
-        XYZ dy = Apply(placement, origin + yAxis) - o;
+        XYZ o = InsertPlacement.MapPoint(placement, origin);
+        XYZ dx = InsertPlacement.MapPoint(placement, origin + xAxis) - o;
+        XYZ dy = InsertPlacement.MapPoint(placement, origin + yAxis) - o;
         XY direction = new(dx.X, dx.Y);
         XY up = new(dy.X, dy.Y);
         double length = direction.GetLength();
@@ -176,8 +176,6 @@ internal sealed class TextRenderer
         return (Math.Atan2(Math.Sin(turned), Math.Cos(turned)), flipped);
     }
 
-    private static XYZ Apply(Transform? placement, XYZ point) => placement == null ? point : placement.ApplyTransform(point);
-
     private static XYZ ToWorld(OcsTransform? toWorld, XYZ point) => toWorld == null ? point : toWorld.ToWorld(point.X, point.Y, point.Z);
 
     private static XYZ Direction(OcsTransform? toWorld, double angle)
@@ -201,8 +199,8 @@ internal sealed class TextRenderer
             return -1d;
         }
 
-        XYZ insert = Apply(placement, ToWorld(toWorld, textEntity.InsertPoint));
-        XYZ alignment = Apply(placement, ToWorld(toWorld, textEntity.AlignmentPoint));
+        XYZ insert = InsertPlacement.MapPoint(placement, ToWorld(toWorld, textEntity.InsertPoint));
+        XYZ alignment = InsertPlacement.MapPoint(placement, ToWorld(toWorld, textEntity.AlignmentPoint));
         double dx = alignment.X - insert.X;
         double dy = alignment.Y - insert.Y;
         double length = Math.Sqrt((dx * dx) + (dy * dy));

@@ -312,7 +312,9 @@ public sealed class ImagePageRendererTests
             ClipType = ClipType.Rectangular,
             ClipMode = ClipMode.Inside,
         };
-        inverted.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
+        // Strictly inside the frame, not equal to it (this wipeout's own default frame is (-0.5,-0.5)..(0.5,0.5)),
+        // so the two rings the fill relies on are genuinely different point sets.
+        inverted.ClipBoundaryVertices.AddRange([new XY(-0.25, -0.25), new XY(0.25, 0.25)]);
         document.Entities.Add(inverted);
         Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
         document.Layouts.Add(layout);
@@ -327,7 +329,7 @@ public sealed class ImagePageRendererTests
         RenderThrough(exporter, surface);
 
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
-        Assert.Contains(surface.Calls, c => c.StartsWith("FillPath", StringComparison.Ordinal));
+        Assert.Contains("FillPath rings=2", surface.Calls);
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented);
     }
 

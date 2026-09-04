@@ -1685,14 +1685,19 @@ public sealed class EntityRenderDispatcherTests
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
         Wipeout wipeout = UnitWipeout();
-        // A boundary is what makes "inside" vs "outside" meaningful; UnitWipeout() alone carries none.
-        wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
+        // A boundary strictly inside the frame (not equal to it, as UnitWipeout's own (-0.5,-0.5)..(0.5,0.5) frame
+        // would be): the two rings must be genuinely different point sets, or an implementation that returns the
+        // frame twice (or the boundary twice) would satisfy a count-only assertion unnoticed.
+        wipeout.ClipBoundaryVertices.AddRange([new XY(-0.25, -0.25), new XY(0.25, 0.25)]);
         wipeout.ClipMode = ClipMode.Inside;
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
 
         IReadOnlyList<IReadOnlyList<SurfacePoint>> rings = Assert.Single(surface.FillPaths);
         Assert.Equal(2, rings.Count);
+        // Ring 0 is the whole image frame; ring 1 is the boundary, strictly inside it.
+        Assert.Equal(new HashSet<SurfacePoint> { new(10, 85), new(15, 85), new(15, 90), new(10, 90) }, rings[0].ToHashSet());
+        Assert.Equal(new HashSet<SurfacePoint> { new(11.25, 86.25), new(13.75, 86.25), new(13.75, 88.75), new(11.25, 88.75) }, rings[1].ToHashSet());
         Assert.Empty(surface.Polygons);
     }
 
@@ -1707,7 +1712,8 @@ public sealed class EntityRenderDispatcherTests
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
 
-        Assert.Single(surface.Polygons);
+        // Pins the single ring to the whole image frame, not merely its count, so a wrong ring cannot pass unnoticed.
+        Assert.Equal(new HashSet<SurfacePoint> { new(10, 85), new(15, 85), new(15, 90), new(10, 90) }, Assert.Single(surface.Polygons).ToHashSet());
         Assert.Empty(surface.FillPaths);
     }
 

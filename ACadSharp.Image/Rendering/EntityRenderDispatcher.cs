@@ -158,7 +158,7 @@ internal sealed class EntityRenderDispatcher
                     this.DrawDimension(context, dimension, layer, resolved);
                     break;
                 case Leader leader:
-                    this.DrawLeader(context, style, source as Leader ?? leader, placement);
+                    this.DrawLeader(context, style, resolved, layer, source as Leader ?? leader, placement);
                     break;
                 case Solid solid:
                     DrawSolid(context, style, source as Solid ?? solid, placement);
@@ -515,11 +515,18 @@ internal sealed class EntityRenderDispatcher
     /// A leader is its stored path (the hookline is already the last vertex; the annotation is a separate entity)
     /// plus, when enabled, AutoCAD's default closed filled arrowhead at the first vertex: an isosceles triangle
     /// DIMASZ x DIMSCALE long and a third of that wide. A splined leader runs a Catmull-Rom curve through its
-    /// vertices. Custom arrowhead blocks fall back to the default triangle with a notification. Path and arrowhead
-    /// are built in the leader's own coordinates and mapped through <paramref name="placement"/> (null at top level)
-    /// last, so a leader inside a scaled or rotated insert scales and rotates with it.
+    /// vertices. A custom arrowhead block is drawn in the triangle's place by <see cref="DrawArrowBlock"/>, which
+    /// falls back to the triangle when the block cannot be placed. Path and arrowhead are built in the leader's own
+    /// coordinates and mapped through <paramref name="placement"/> (null at top level) last, so a leader inside a
+    /// scaled or rotated insert scales and rotates with it.
     /// </summary>
-    private void DrawLeader(ImageRenderContext context, ImageStyle style, Leader leader, Transform? placement)
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="style">The leader's stroke and fill style.</param>
+    /// <param name="resolved">The leader's resolved style, which a custom arrowhead's ByBlock entities inherit.</param>
+    /// <param name="layer">The leader's effective layer, which a custom arrowhead's layer-0 entities inherit.</param>
+    /// <param name="leader">The leader to draw.</param>
+    /// <param name="placement">The transform of the insert that placed the leader, or null at top level.</param>
+    private void DrawLeader(ImageRenderContext context, ImageStyle style, ResolvedStyle resolved, Layer? layer, Leader leader, Transform? placement)
     {
         if (leader.Vertices.Count < 2)
         {
@@ -558,12 +565,14 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
-        if (leader.Style.LeaderArrow != null)
+        direction /= length;
+        double tipZ = leader.Vertices[0].Z;
+        if (leader.Style.LeaderArrow != null
+            && this.DrawArrowBlock(context, layer, resolved, leader, leader.Style.LeaderArrow, tip, direction, size, tipZ, placement))
         {
-            this._configuration.Notify($"[{leader.SubclassMarker}] Arrowhead block '{leader.Style.LeaderArrow.Name}' is not rendered; the default closed arrow is drawn instead.", NotificationType.NotImplemented);
+            return;
         }
 
-        direction /= length;
         XY baseCenter = tip - (direction * size);
         XY half = new XY(-direction.Y, direction.X) * (size / 6d);
         XY baseLeft = baseCenter + half;
@@ -571,8 +580,105 @@ internal sealed class EntityRenderDispatcher
         // The triangle is built flat (in the leader's own XY plane, ignoring any Z on the second vertex), but its
         // anchor must carry the first vertex's own Z so it maps to the same point as the path's own first vertex;
         // dropping it here would detach the arrow from the line under a placement whose normal couples Z into X/Y.
-        double z = leader.Vertices[0].Z;
-        context.Surface.FillPolygon(style, [Map(new XYZ(tip.X, tip.Y, z)), Map(new XYZ(baseLeft.X, baseLeft.Y, z)), Map(new XYZ(baseRight.X, baseRight.Y, z))]);
+        context.Surface.FillPolygon(style, [Map(new XYZ(tip.X, tip.Y, tipZ)), Map(new XYZ(baseLeft.X, baseLeft.Y, tipZ)), Map(new XYZ(baseRight.X, baseRight.Y, tipZ))]);
+    }
+
+    /// <summary>
+    /// Draws a custom arrowhead block at a leader's tip: the block's base point goes to the tip, its local +X axis
+    /// turns to point outward along <paramref name="direction"/>, and it is scaled by <paramref name="size"/>, all
+    /// composed with the placement of the block reference that placed the leader.
+    /// </summary>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="layer">The leader's effective layer, which the arrow's layer-0 entities inherit.</param>
+    /// <param name="parent">The leader's resolved style, which the arrow's ByBlock entities inherit.</param>
+    /// <param name="leader">The leader the arrow belongs to, for notifications.</param>
+    /// <param name="arrow">The arrow block.</param>
+    /// <param name="tip">The leader's first vertex, in the leader's own coordinates.</param>
+    /// <param name="direction">The outward unit direction at the tip, in the leader's own coordinates.</param>
+    /// <param name="size">The arrow size, already multiplied by the dimension style's overall scale.</param>
+    /// <param name="z">The tip's own Z, so a leader off the world plane keeps its arrow attached to its line.</param>
+    /// <param name="placement">The transform of the insert that placed the leader, or null at top level.</param>
+    /// <returns>True when the block was drawn; false when the caller should fall back to the default triangle.</returns>
+    /// <remarks>
+    /// The block is drawn by handing a transient <c>Insert</c> of it to the ordinary block-content path, rather than
+    /// by walking its entities with a transform: most entity types are drawn from their own stored points and ignore
+    /// a placement, so only <c>Insert.Explode()</c> transforms an arbitrary block's contents correctly.
+    /// <para>
+    /// Two ACadSharp 3.7.1 behaviours shape the construction. An <c>Insert</c> cannot represent shear, so a composed
+    /// transform that is not a planar similarity has no equivalent insert and the caller falls back. And
+    /// <c>Insert.GetTransform()</c> computes <c>R * S * p + (InsertPoint - BasePoint)</c>, where AutoCAD specifies
+    /// <c>InsertPoint + R * S * (p - BasePoint)</c>; the two agree only when the rotation and scale are identity, so
+    /// the insertion point below is compensated to produce AutoCAD's placement. A package upgrade that corrects this
+    /// will break <c>ACustomArrowHonoursANonZeroBlockBasePoint</c>, which is the intended tripwire.
+    /// </para>
+    /// </remarks>
+    private bool DrawArrowBlock(ImageRenderContext context, Layer? layer, ResolvedStyle parent, Leader leader, BlockRecord arrow, XY tip, XY direction, double size, double z, Transform? placement)
+    {
+        string handle = leader.Handle.ToString("X", CultureInfo.InvariantCulture);
+        if (arrow.Entities.Count == 0)
+        {
+            this._configuration.Notify($"[{leader.SubclassMarker}] Handle {handle}: arrowhead block '{arrow.Name}' is empty; the default closed arrow is drawn instead.", NotificationType.Warning);
+            return false;
+        }
+
+        if (BlockGraphIsCircular(arrow))
+        {
+            this._configuration.Notify($"[{leader.SubclassMarker}] Handle {handle}: arrowhead block '{arrow.Name}' references itself; the default closed arrow is drawn instead.", NotificationType.Warning);
+            return false;
+        }
+
+        // The map the arrow block's own coordinates must go through: base point to the tip, local +X onto the
+        // outward direction, scaled by the arrow size, and then the outer placement.
+        XYZ basePoint = arrow.BlockEntity.BasePoint;
+        XY across = new(-direction.Y, direction.X);
+        XYZ Arrow(XYZ p)
+        {
+            XY local = new(p.X - basePoint.X, p.Y - basePoint.Y);
+            XY placed = tip + (direction * (local.X * size)) + (across * (local.Y * size));
+            return InsertPlacement.MapPoint(placement, new XYZ(placed.X, placed.Y, z + ((p.Z - basePoint.Z) * size)));
+        }
+
+        // The arrow's own map is a rotation and one uniform scale, so the composition is a similarity exactly when
+        // the outer placement is one. Testing the outer placement directly also catches the case a length-only check
+        // misses: a non-uniform scale turned 45 degrees leaves both axes the same length but not at right angles.
+        if (!InsertPlacement.TryGetPlanarSimilarity(placement, out double outerScale, out _, out _))
+        {
+            this._configuration.Notify($"[{leader.SubclassMarker}] Handle {handle}: arrowhead block '{arrow.Name}' cannot be placed under a non-uniform transform; the default closed arrow is drawn instead.", NotificationType.Warning);
+            return false;
+        }
+
+        XYZ origin = Arrow(basePoint);
+        XYZ ex = Arrow(basePoint + XYZ.AxisX) - origin;
+        XYZ ey = Arrow(basePoint + XYZ.AxisY) - origin;
+        double scale = size * outerScale;
+        bool mirrored = (ex.X * ey.Y) - (ex.Y * ey.X) < 0d;
+        double rotation = Math.Atan2(ex.Y, ex.X);
+        if (!double.IsFinite(scale) || scale < 1e-12 || !double.IsFinite(rotation))
+        {
+            this._configuration.Notify($"[{leader.SubclassMarker}] Handle {handle}: arrowhead block '{arrow.Name}' has a degenerate size; the default closed arrow is drawn instead.", NotificationType.Warning);
+            return false;
+        }
+
+        // A reflection is expressed as a negative X scale, which turns the mapped X axis around, so the rotation is
+        // taken half a turn further to bring it back.
+        Insert transient = new(arrow)
+        {
+            Rotation = mirrored ? rotation + Math.PI : rotation,
+            XScale = mirrored ? -scale : scale,
+            YScale = scale,
+            ZScale = scale,
+            InsertPoint = origin,
+        };
+        transient.Attributes.Clear();
+
+        // Where the block's base point actually lands under the insert as built, corrected by the difference. The
+        // translation ACadSharp derives from the insertion point is affine in it, so one correction lands the base
+        // point on the tip whichever formula the package uses — which keeps this right if a later ACadSharp fixes
+        // its own divergence from AutoCAD's documented insert semantics.
+        XYZ landed = transient.GetTransform().ApplyTransform(basePoint);
+        transient.InsertPoint = origin + (origin - landed);
+        this.DrawBlockContents(context, transient, layer, parent, leader.Handle);
+        return true;
     }
 
     /// <summary>
@@ -845,7 +951,21 @@ internal sealed class EntityRenderDispatcher
         return original is Solid solid && !IsWorldPlane(solid.Normal);
     }
 
-    private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent)
+    /// <summary>
+    /// Draws the contents of a block reference by exploding it, healing the vertex lists ACadSharp 3.7.1's clones
+    /// share with their sources, and drawing every clone (text, hatches and non-planar solids from the original
+    /// entity through the insert's transform).
+    /// </summary>
+    /// <param name="context">The context that maps drawing units onto the surface.</param>
+    /// <param name="insert">The block reference to draw the contents of.</param>
+    /// <param name="layer">The insert's effective layer, which its layer-0 contents inherit.</param>
+    /// <param name="parent">The insert's resolved style, which its ByBlock contents inherit.</param>
+    /// <param name="parentHandleOverride">
+    /// The handle to record as the contents' parent instead of the insert's own. Passed for the transient insert
+    /// <see cref="DrawArrowBlock"/> builds, whose handle is zero and belongs to no entity in the drawing, so an
+    /// arrowhead's parts point at the leader they belong to.
+    /// </param>
+    private void DrawBlockContents(ImageRenderContext context, Insert insert, Layer? layer, ResolvedStyle parent, ulong? parentHandleOverride = null)
     {
         if (insert.Block == null)
         {
@@ -935,7 +1055,7 @@ internal sealed class EntityRenderDispatcher
                     entityPlacement = transform;
                 }
 
-                this.Draw(context, entity, layer, insert.Handle, insert.Block.Name, parent, source, entityPlacement);
+                this.Draw(context, entity, layer, parentHandleOverride ?? insert.Handle, insert.Block.Name, parent, source, entityPlacement);
             }
         }
         finally
@@ -1088,7 +1208,10 @@ internal sealed class EntityRenderDispatcher
     /// This walks the whole graph without caching or stopping early, unlike the heal scan: a cycle can hide behind
     /// any branch, and an answer that stopped at the first interesting entity would miss it. Blocks are tracked on
     /// the current path rather than globally, so a diamond — two references to the same block from different places —
-    /// is not mistaken for a cycle.
+    /// is not mistaken for a cycle. A block is reached both through a nested <c>Insert</c> and through a LEADER's
+    /// arrowhead block: <c>Leader.Clone()</c> deep-clones its dimension style, which deep-clones that style's
+    /// arrowhead block, so a leader inside its own arrowhead block exhausts the stack in exactly the same way a
+    /// self-referencing insert does.
     /// <para>
     /// It has to be answered before <c>Insert.Explode()</c> is called, not while drawing: exploding deep-clones the
     /// whole block graph, so a cycle exhausts the stack inside ACadSharp before the renderer sees a single entity,
@@ -1112,7 +1235,14 @@ internal sealed class EntityRenderDispatcher
             {
                 foreach (Entity entity in block.Entities)
                 {
-                    if (entity is Insert nested && nested.Block != null && Walk(nested.Block, onPath))
+                    BlockRecord? reached = entity switch
+                    {
+                        Insert nested => nested.Block,
+                        Leader leader => leader.Style?.LeaderArrow,
+                        _ => null,
+                    };
+
+                    if (reached != null && Walk(reached, onPath))
                     {
                         return true;
                     }

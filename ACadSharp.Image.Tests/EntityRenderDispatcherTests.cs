@@ -1223,7 +1223,7 @@ public sealed class EntityRenderDispatcherTests
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
 
         Assert.Single(surface.Polygons);
-        Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("_DOT", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("_DOT", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1864,5 +1864,291 @@ public sealed class EntityRenderDispatcherTests
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
         Assert.Single(surface.Lines);
+    }
+
+    /// <summary>Whether two surface points agree to within a rounding tolerance.</summary>
+    private static bool Close(SurfacePoint actual, SurfacePoint expected)
+        => Math.Abs(actual.X - expected.X) < 1e-9 && Math.Abs(actual.Y - expected.Y) < 1e-9;
+
+    private static BlockRecord ArrowBlock(string name = "ARROW", double baseX = 0, double baseY = 0)
+    {
+        BlockRecord block = new(name);
+        block.BlockEntity.BasePoint = new XYZ(baseX, baseY, 0);
+        // A unit arrow: the tip sits at the base point and the body runs back along local -X.
+        block.Entities.Add(new Line(new XYZ(baseX - 1, baseY, 0), new XYZ(baseX, baseY, 0)));
+        block.Entities.Add(new Solid
+        {
+            FirstCorner = new XYZ(baseX - 1, baseY - 0.25, 0),
+            SecondCorner = new XYZ(baseX, baseY, 0),
+            ThirdCorner = new XYZ(baseX - 1, baseY + 0.25, 0),
+            FourthCorner = new XYZ(baseX, baseY, 0),
+        });
+        return block;
+    }
+
+    [Fact]
+    public void ALeaderWithACustomArrowBlockDrawsTheBlockAndNotifiesNothing()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        Leader leader = WithHandle(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(10, 10, 0), new XYZ(30, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        }, 0x5A);
+        document.Entities.Add(leader);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented);
+        // The block's own line: its local +X points outward, away from the leader running off to (30,10), so its
+        // body runs from the tip at (10,10) back towards the leader, twice as long as the block's own unit.
+        Assert.Contains(surface.Lines, l => l.Start == new SurfacePoint(12, 90) && l.End == new SurfacePoint(10, 90));
+        // The block's solid, not the built-in triangle.
+        Assert.Single(surface.Polygons);
+        // The arrow's parts belong to the leader, not to the transient insert that placed them.
+        Assert.Equal(new ulong?[] { null, 0x5AUL, 0x5AUL }, surface.Entities.Select(e => e.ParentHandle).ToArray());
+    }
+
+    [Fact]
+    public void ACustomArrowRotatesToTheOutwardLeaderDirection()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        // The leader runs downward from the tip, so the arrow's local +X must point up.
+        Leader leader = new()
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(10, 50, 0), new XYZ(10, 20, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        };
+        document.Entities.Add(leader);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.Contains(surface.Lines, l => l.Start == new SurfacePoint(10, 52) && l.End == new SurfacePoint(10, 50));
+    }
+
+    [Fact]
+    public void ACustomArrowHonoursANonZeroBlockBasePoint()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock("ARROWB", baseX: 5, baseY: 7);
+        document.BlockRecords.Add(arrow);
+        Leader leader = new()
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(10, 10, 0), new XYZ(30, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        };
+        document.Entities.Add(leader);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        // The base point is the arrow's tip, so it must land on the leader's first vertex exactly as in the
+        // zero-base-point case: the block's line still runs from (12,10) to (10,10) in world. The compensation for
+        // the base point goes through the insert's rotation, so the coordinates carry a few ulps of rounding.
+        Assert.Contains(surface.Lines, l => Close(l.Start, new SurfacePoint(12, 90)) && Close(l.End, new SurfacePoint(10, 90)));
+    }
+
+    [Fact]
+    public void ACustomArrowInsideAScaledInsertScalesWithIt()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        document.BlockRecords.Add(note);
+        note.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        });
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0), XScale = 3, YScale = 3, ZScale = 3 };
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // Arrow size 2 scaled by 3 is 6: the block's line runs from (16,10) to (10,10) in world.
+        Assert.Contains(surface.Lines, l => l.Start == new SurfacePoint(16, 90) && l.End == new SurfacePoint(10, 90));
+    }
+
+    [Fact]
+    public void ACustomArrowUnderANonUniformInsertFallsBackToTheDefaultTriangleWithAWarning()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        document.BlockRecords.Add(note);
+        note.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        });
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0), XScale = 3, YScale = 1, ZScale = 1, Rotation = Math.PI / 4 };
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(notifications, n => n.Message.Contains("cannot be placed", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(surface.Polygons);
+    }
+
+    [Fact]
+    public void ACustomArrowUnderARotatedNonUniformInsertFallsBackEvenThoughTheAxesMatchInLength()
+    {
+        // A 3:1 scale turned 45 degrees maps both unit axes to the same length, so a similarity test that compared
+        // only lengths would accept this and build an Insert that cannot express the shear.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        document.BlockRecords.Add(note);
+        note.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(10, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        });
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0), XScale = 3, YScale = 1, ZScale = 1, Rotation = Math.PI / 4 };
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(notifications, n => n.Message.Contains("cannot be placed", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(surface.Polygons);
+    }
+
+    [Fact]
+    public void ARecursiveArrowBlockFallsBackToTheDefaultTriangle()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        arrow.Entities.Add(new Insert(arrow));
+        Leader leader = new()
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(10, 10, 0), new XYZ(30, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        };
+        document.Entities.Add(leader);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.Contains(notifications, n => n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(surface.Polygons);
+    }
+
+    [Fact]
+    public void AnEmptyArrowBlockDrawsNothingExtraAndWarnsOnce()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = new("EMPTY");
+        document.BlockRecords.Add(arrow);
+        Leader leader = new()
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(10, 10, 0), new XYZ(30, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        };
+        document.Entities.Add(leader);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.Contains(notifications, n => n.Message.Contains("is empty", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(surface.Polygons);
+    }
+
+    [Fact]
+    public void AnArrowBlockWhoseOwnLeaderUsesItAgainFallsBackToTheDefaultTriangle()
+    {
+        // Leader.Clone() deep-clones its dimension style and with it that style's arrowhead block, so an arrow
+        // block holding a leader that points back at it exhausts the stack inside Explode(), uncatchably; the
+        // cycle walk follows the leader-arrow edge for exactly that reason.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        arrow.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(-0.5, 0, 0), new XYZ(-1, 0, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 0.2, ScaleFactor = 1, LeaderArrow = arrow },
+        });
+        Leader leader = new()
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(10, 10, 0), new XYZ(30, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        };
+        document.Entities.Add(leader);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        Assert.Contains(notifications, n => n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEmpty(surface.Polygons);
+    }
+
+    [Fact]
+    public void ACustomArrowInsideAMirroredInsertIsReflectedWithIt()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        document.BlockRecords.Add(note);
+        note.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        });
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0), XScale = -1, YScale = 1, ZScale = 1 };
+        document.Entities.Add(insert);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // The mirror turns the leader round to run towards world (0,10), so the arrow body still runs from the tip
+        // at (10,10) towards the leader, now along -X. A mirrored placement is expressed as a negative X scale on
+        // the transient insert, so an inverted reflection branch would put the body at (12,10) instead.
+        Assert.Contains(surface.Lines, l => Close(l.Start, new SurfacePoint(8, 90)) && Close(l.End, new SurfacePoint(10, 90)));
     }
 }

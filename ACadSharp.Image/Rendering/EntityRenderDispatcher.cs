@@ -659,25 +659,48 @@ internal sealed class EntityRenderDispatcher
             return false;
         }
 
-        // A reflection is expressed as a negative X scale, which turns the mapped X axis around, so the rotation is
-        // taken half a turn further to bring it back.
-        Insert transient = new(arrow)
+        // ACadSharp 3.7.1's Insert(BlockRecord) constructor clones a document-owned block's entities, so merely
+        // building the transient insert empties the vertex list of any MLINE in the arrow block (and of any MLINE
+        // in a further arrowhead block below it). The snapshot therefore has to be taken before the constructor
+        // runs, not inside DrawBlockContents, which only gets to look once the insert already exists.
+        Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
+        Dictionary<Leader, List<XYZ>> leaderVertices = new();
+        if (this.BlockSubtreeNeedsHeal(arrow, new HashSet<BlockRecord>()))
         {
-            Rotation = mirrored ? rotation + Math.PI : rotation,
-            XScale = mirrored ? -scale : scale,
-            YScale = scale,
-            ZScale = scale,
-            InsertPoint = origin,
-        };
-        transient.Attributes.Clear();
+            CollectSharedVertexLists(arrow, mlineVertices, leaderVertices, new HashSet<BlockRecord>());
+        }
 
-        // Where the block's base point actually lands under the insert as built, corrected by the difference. The
-        // translation ACadSharp derives from the insertion point is affine in it, so one correction lands the base
-        // point on the tip whichever formula the package uses — which keeps this right if a later ACadSharp fixes
-        // its own divergence from AutoCAD's documented insert semantics.
-        XYZ landed = transient.GetTransform().ApplyTransform(basePoint);
-        transient.InsertPoint = origin + (origin - landed);
-        this.DrawBlockContents(context, transient, layer, parent, leader.Handle);
+        try
+        {
+            // A reflection is expressed as a negative X scale, which turns the mapped X axis around, so the rotation
+            // is taken half a turn further to bring it back.
+            Insert transient = new(arrow)
+            {
+                Rotation = mirrored ? rotation + Math.PI : rotation,
+                XScale = mirrored ? -scale : scale,
+                YScale = scale,
+                ZScale = scale,
+                InsertPoint = origin,
+            };
+            transient.Attributes.Clear();
+
+            // Repaired straight away, so DrawBlockContents takes its own snapshot from intact lists.
+            Heal(mlineVertices, leaderVertices);
+
+            // Where the block's base point actually lands under the insert as built, corrected by the difference.
+            // Both formulas differ from the wanted placement by a translation that moves one for one with the
+            // insertion point — their derivative with respect to it is the identity — so a single correction lands
+            // the base point on the tip whichever one the package uses, which keeps this right if a later ACadSharp
+            // fixes its own divergence from AutoCAD's documented insert semantics.
+            XYZ landed = transient.GetTransform().ApplyTransform(basePoint);
+            transient.InsertPoint = origin + (origin - landed);
+            this.DrawBlockContents(context, transient, layer, parent, leader.Handle);
+        }
+        finally
+        {
+            Heal(mlineVertices, leaderVertices);
+        }
+
         return true;
     }
 
@@ -1071,33 +1094,43 @@ internal sealed class EntityRenderDispatcher
         }
 
         this.DrawAttributes(context, insert, layer, parent);
+    }
 
-        static void Heal(Dictionary<MLine, List<MLine.Vertex>> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot)
+    /// <summary>
+    /// Restores every snapshotted MLINE and LEADER vertex list in place (Clear + AddRange, never a reassignment):
+    /// a clone shares the very same list object as its source at every depth, so one in-place repair fixes the
+    /// original and every clone below it at once, where reassigning would leave an outer level's list broken.
+    /// </summary>
+    /// <param name="mlineSnapshot">The MLINE vertex lists captured before cloning.</param>
+    /// <param name="leaderSnapshot">The LEADER vertex lists captured before cloning.</param>
+    private static void Heal(Dictionary<MLine, List<MLine.Vertex>> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot)
+    {
+        foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in mlineSnapshot)
         {
-            foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in mlineSnapshot)
-            {
-                pair.Key.Vertices.Clear();
-                pair.Key.Vertices.AddRange(pair.Value);
-            }
+            pair.Key.Vertices.Clear();
+            pair.Key.Vertices.AddRange(pair.Value);
+        }
 
-            foreach (KeyValuePair<Leader, List<XYZ>> pair in leaderSnapshot)
-            {
-                pair.Key.Vertices.Clear();
-                pair.Key.Vertices.AddRange(pair.Value);
-            }
+        foreach (KeyValuePair<Leader, List<XYZ>> pair in leaderSnapshot)
+        {
+            pair.Key.Vertices.Clear();
+            pair.Key.Vertices.AddRange(pair.Value);
         }
     }
 
     /// <summary>
     /// Snapshots every MLINE's and LEADER's vertex list reachable from <paramref name="block"/>, following nested
-    /// <see cref="Insert.Block"/> references. <see cref="Insert.Explode"/> deep-clones its entire block subtree, so
-    /// an MLINE nested several blocks deep is corrupted by an ancestor insert's own explode even though it is never
-    /// that ancestor's direct child, because its list is emptied the moment it is cloned; a nested LEADER's list, by
-    /// contrast, is only overwritten when the insert that directly contains it is the one exploded, so snapshotting
-    /// it here is a defensive backstop rather than the fix MLINE needs. This has to run, and capture the whole
-    /// subtree, before that explode call.
+    /// <see cref="Insert.Block"/> references and the arrowhead block of every LEADER on the way.
+    /// <see cref="Insert.Explode"/> deep-clones its entire block subtree, so an MLINE nested several blocks deep is
+    /// corrupted by an ancestor insert's own explode even though it is never that ancestor's direct child, because
+    /// its list is emptied the moment it is cloned; a nested LEADER's list, by contrast, is only overwritten when
+    /// the insert that directly contains it is the one exploded, so snapshotting it here is a defensive backstop
+    /// rather than the fix MLINE needs. Cloning a LEADER also clones its dimension style, and that clones the
+    /// style's arrowhead block, which is how an MLINE inside a custom arrowhead is reached by a clone that never
+    /// names it. This has to run, and capture the whole subtree, before the clone that corrupts those lists — the
+    /// explode itself, or, for a document-owned block, the <c>Insert(BlockRecord)</c> constructor.
     /// </summary>
-    /// <param name="block">The block whose entities (and nested blocks) are searched.</param>
+    /// <param name="block">The block whose entities, nested blocks and leader arrowhead blocks are searched.</param>
     /// <param name="mlineSnapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
     /// <param name="leaderSnapshot">Receives one entry per LEADER found, keyed by the LEADER itself.</param>
     /// <param name="visited">Blocks already walked, so a circular or diamond hierarchy is walked once.</param>
@@ -1115,8 +1148,15 @@ internal sealed class EntityRenderDispatcher
                 case MLine mline when !mlineSnapshot.ContainsKey(mline):
                     mlineSnapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
                     break;
-                case Leader leader when !leaderSnapshot.ContainsKey(leader):
-                    leaderSnapshot.Add(leader, new List<XYZ>(leader.Vertices));
+                case Leader leader:
+                    if (!leaderSnapshot.ContainsKey(leader))
+                    {
+                        leaderSnapshot.Add(leader, new List<XYZ>(leader.Vertices));
+                    }
+
+                    // Cloning a LEADER clones its dimension style, and that clones the style's arrowhead block, so
+                    // an MLINE inside a custom arrowhead is emptied by an explode that never names it.
+                    CollectSharedVertexLists(leader.Style?.LeaderArrow, mlineSnapshot, leaderSnapshot, visited);
                     break;
                 case Insert nestedInsert:
                     CollectSharedVertexLists(nestedInsert.Block, mlineSnapshot, leaderSnapshot, visited);
@@ -1128,6 +1168,8 @@ internal sealed class EntityRenderDispatcher
     /// <summary>
     /// True when <paramref name="block"/>, or any block reachable from it through a nested <see cref="Insert.Block"/>,
     /// contains an MLINE or a LEADER — the entities <see cref="CollectSharedVertexLists"/> exists to snapshot.
+    /// Unlike that walk it needs no arrowhead-block edge of its own: an arrowhead block is only ever reached
+    /// through a LEADER, and finding a LEADER already answers yes, so the extra edge could not change an answer.
     /// Answers are memoised per block in <see cref="_blocksNeedingHeal"/>, so an insert of a block already proven
     /// clean (or already proven to need healing) elsewhere on the page costs a dictionary lookup instead of a walk.
     /// </summary>

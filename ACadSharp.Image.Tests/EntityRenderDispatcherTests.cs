@@ -2094,10 +2094,16 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
-    public void ACustomArrowUnderARotatedNonUniformInsertFallsBackEvenThoughTheAxesMatchInLength()
+    public void ACustomArrowUnderARotatedNonUniformInsertFallsBackOnAxisLength()
     {
-        // A 3:1 scale turned 45 degrees maps both unit axes to the same length, so a similarity test that compared
-        // only lengths would accept this and build an Insert that cannot express the shear.
+        // A rotated non-uniform insert, unlike the unrotated sibling above: an Insert's transform is a rotation
+        // times per-axis scales, so it maps the unit axes to lengths 3 and 1 at right angles however far it is
+        // turned, and this is rejected on length like the sibling rather than on orthogonality. No placement the
+        // renderer builds reaches the orthogonality branch of the gate: a tilted insert does not either, because
+        // ACadSharp's arbitrary-axis X always lies in the world XY plane and leaves the two projected axes at right
+        // angles with unequal lengths, and a nested insert is re-expressed by Explode() as an Insert, which cannot
+        // carry a shear in the first place. InsertPlacementTests.AShearedPlacementWithEqualLengthAxesIsNotASimilarity
+        // drives that branch directly with a hand-built shear instead.
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
         List<NotificationEventArgs> notifications = new();
@@ -2167,6 +2173,7 @@ public sealed class EntityRenderDispatcherTests
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
 
+        Assert.Single(notifications);
         Assert.Contains(notifications, n => n.Message.Contains("is empty", StringComparison.OrdinalIgnoreCase));
         Assert.Single(surface.Polygons);
     }
@@ -2201,7 +2208,7 @@ public sealed class EntityRenderDispatcherTests
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
 
         Assert.Contains(notifications, n => n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
-        Assert.NotEmpty(surface.Polygons);
+        Assert.Single(surface.Polygons);
     }
 
     [Fact]
@@ -2229,5 +2236,75 @@ public sealed class EntityRenderDispatcherTests
         // at (10,10) towards the leader, now along -X. A mirrored placement is expressed as a negative X scale on
         // the transient insert, so an inverted reflection branch would put the body at (12,10) instead.
         Assert.Contains(surface.Lines, l => Close(l.Start, new SurfacePoint(8, 90)) && Close(l.End, new SurfacePoint(10, 90)));
+    }
+
+    [Fact]
+    public void DrawingAnArrowBlockLeavesAnMLineInsideItIntact()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(-1, 0, [0.5, 0], [-0.5, 0]), VertexAt(0, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        arrow.Entities.Add(mline);
+        document.BlockRecords.Add(arrow);
+        BlockRecord note = new("NOTE");
+        // ACadSharp 3.7.1's Insert(BlockRecord) constructor clones a document-owned block's entities, and cloning a
+        // LEADER clones its dimension style and with it that style's arrowhead block, so building the insert after
+        // the leader would empty this MLINE before the renderer ever saw the drawing. The insert is therefore built
+        // while NOTE is still empty, the same construction-order workaround the cycle tests use.
+        Insert insert = new(note) { InsertPoint = new XYZ(10, 10, 0) };
+        note.Entities.Add(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        });
+        document.BlockRecords.Add(note);
+        document.Entities.Add(insert);
+        Assert.Equal(2, mline.Vertices.Count);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // The caller's own MLINE must survive the render, and it must have been drawn from its two vertices: the
+        // leader's path is one polyline and the MLINE's two style elements are the other two.
+        Assert.Equal(2, mline.Vertices.Count);
+        Assert.Equal(3, surface.Polylines.Count);
+    }
+
+    [Fact]
+    public void DrawingATopLevelLeadersArrowBlockLeavesAnMLineInsideItIntact()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        CadDocument document = new();
+        BlockRecord arrow = ArrowBlock();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(-1, 0, [0.5, 0], [-0.5, 0]), VertexAt(0, 0, [0.5, 0], [-0.5, 0]) },
+        };
+        arrow.Entities.Add(mline);
+        document.BlockRecords.Add(arrow);
+        Leader leader = new()
+        {
+            ArrowHeadEnabled = true,
+            Vertices = { new XYZ(10, 10, 0), new XYZ(30, 10, 0) },
+            Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
+        };
+        document.Entities.Add(leader);
+        Assert.Equal(2, mline.Vertices.Count);
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
+
+        // Nothing exploded this leader, so the only thing standing between ACadSharp's Insert(BlockRecord)
+        // constructor and the caller's MLINE is the snapshot DrawArrowBlock takes before building its transient
+        // insert.
+        Assert.Equal(2, mline.Vertices.Count);
+        Assert.Equal(3, surface.Polylines.Count);
     }
 }

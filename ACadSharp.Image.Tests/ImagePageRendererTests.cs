@@ -72,7 +72,7 @@ public sealed class ImagePageRendererTests
         Assert.Equal(paperWidth, page.Layout.PaperWidth);
     }
 
-    /// <summary>Renders the exporter's first page onto the surface, the way <see cref="ImageExporter.Render()"/> does.</summary>
+    /// <summary>Renders the exporter's first page onto the surface, the way <see cref="ImageExporter.Render(ImageExportFormat)"/> does.</summary>
     private static void RenderThrough(ImageExporter exporter, RecordingDrawingSurface surface)
     {
         new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
@@ -88,15 +88,56 @@ public sealed class ImagePageRendererTests
         document.Layouts.Add(layout);
         layout.AssociatedBlock.Entities.Add(new Line(new XYZ(5, 5, 0), new XYZ(50, 5, 0)));
         layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(5, 0), ViewHeight = 20 });
+        // A second paper line after the viewport pins the renderer to the sequence in both directions: drawing all
+        // entities and then all viewports (the mirror of the old bug) would put this one before the viewport too.
+        layout.AssociatedBlock.Entities.Add(new Line(new XYZ(5, 90, 0), new XYZ(50, 90, 0)));
 
         RecordingDrawingSurface surface = new();
         ImageExporter exporter = new();
         exporter.Add(layout);
         RenderThrough(exporter, surface);
 
-        int line = surface.Calls.FindIndex(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        int line1 = surface.Calls.FindIndex(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
         int viewport = surface.Calls.FindIndex(c => c.StartsWith("BeginViewport", StringComparison.Ordinal));
-        Assert.True(line >= 0 && viewport >= 0 && line < viewport, $"expected the title line before the viewport, got line at {line}, viewport at {viewport}.");
+        // The model line the viewport shows is a DrawLine too, so the second paper line is located past EndViewport
+        // rather than with FindLastIndex, which would match that one under the mirror bug.
+        int endViewport = surface.Calls.FindIndex(c => string.Equals(c, "EndViewport", StringComparison.Ordinal));
+        int line2 = endViewport < 0 ? -1 : surface.Calls.FindIndex(endViewport, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        Assert.True(
+            line1 >= 0 && viewport >= 0 && endViewport >= 0 && line1 < viewport && endViewport < line2,
+            $"expected the first title line, the viewport and the second title line in that order, got line1 at {line1}, viewport at {viewport}, EndViewport at {endViewport}, line2 at {line2}.");
+    }
+
+    [Fact]
+    public void AViewportAddedAsAPageEntityIsNotDrawnAsAViewport()
+    {
+        // ImagePage.Add(BlockRecord) has no viewport filter, so a layout block's paper viewport can reach the page
+        // through AddEntity. Such a viewport is an ordinary page entity, not a window onto model space.
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        Viewport viewport = new() { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(5, 0), ViewHeight = 20 };
+        layout.AssociatedBlock.Entities.Add(viewport);
+
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+
+        ImagePage asEntity = new() { Layout = layout, Document = document };
+        asEntity.AddEntity(viewport);
+        RecordingDrawingSurface entitySurface = new();
+        new ImagePageRenderer(configuration).RenderTo(entitySurface, asEntity);
+
+        Assert.DoesNotContain(entitySurface.Calls, c => c.StartsWith("BeginViewport", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented);
+
+        ImagePage asWindow = new() { Layout = layout, Document = document };
+        asWindow.AddViewport(viewport);
+        RecordingDrawingSurface windowSurface = new();
+        new ImagePageRenderer(configuration).RenderTo(windowSurface, asWindow);
+
+        Assert.Single(windowSurface.Calls, c => c.StartsWith("BeginViewport", StringComparison.Ordinal));
     }
 
     [Fact]

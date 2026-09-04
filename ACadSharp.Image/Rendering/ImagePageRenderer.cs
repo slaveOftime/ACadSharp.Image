@@ -128,11 +128,19 @@ internal sealed class ImagePageRenderer
     /// </summary>
     /// <param name="context">The page-level context.</param>
     /// <param name="page">The page to render.</param>
+    /// <remarks>
+    /// Only a viewport added through <see cref="ImagePage.AddViewport(Viewport)"/> is drawn as a window onto model
+    /// space. One that reached the page through <see cref="ImagePage.AddEntity(Entity)"/> (as the paper viewport of a
+    /// layout block does) is an ordinary page entity and goes to the dispatcher, which reports it as not implemented.
+    /// </remarks>
     private void RenderTo(ImageRenderContext context, ImagePage page)
     {
+        // Viewport does not override Equals, so the default comparer is reference equality: the set answers
+        // "did this very viewport come through AddViewport?", not "is there an equal-looking one".
+        HashSet<Viewport> windows = new(page.Viewports);
         foreach (Entity item in page.DrawSequence)
         {
-            if (item is Viewport viewport)
+            if (item is Viewport viewport && windows.Contains(viewport))
             {
                 this.DrawViewport(context, viewport);
             }
@@ -235,7 +243,7 @@ internal sealed class ImagePageRenderer
     {
         if (viewport.Document == null)
         {
-            this._configuration.Notify($"[{viewport.SubclassMarker}] Handle {viewport.Handle.ToString("X", CultureInfo.InvariantCulture)}: viewport has no document; skipped.", NotificationType.Warning);
+            this._configuration.Notify($"[{viewport.SubclassMarker}] Handle {viewport.Handle.ToString("X", CultureInfo.InvariantCulture)}: viewport has no document; contents skipped.", NotificationType.Warning);
             yield break;
         }
 
@@ -247,7 +255,7 @@ internal sealed class ImagePageRenderer
             {
                 bounds = entity.GetBoundingBox();
             }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or ArithmeticException)
             {
                 this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: bounds could not be computed ({ex.Message}); entity skipped in viewport.", NotificationType.Warning, ex);
                 continue;

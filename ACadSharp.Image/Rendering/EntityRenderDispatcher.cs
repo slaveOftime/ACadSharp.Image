@@ -432,9 +432,10 @@ internal sealed class EntityRenderDispatcher
         Face3D face => IsFinite(face.FirstCorner) && IsFinite(face.SecondCorner) && IsFinite(face.ThirdCorner) && IsFinite(face.FourthCorner),
         Leader leader => leader.Vertices.All(IsFinite),
         // Every value that reaches a fill point has to be covered, not just the positions: Parameters[0] is the
-        // element offset along the miter, and the clip vertices are mapped through WipeoutPixelToWorld.
+        // element offset along the miter, the values after it are cut positions that place the ends of a run, and
+        // the clip vertices are mapped through WipeoutPixelToWorld.
         MLine mline => mline.Vertices.All(v => IsFinite(v.Position) && IsFinite(v.Miter)
-            && v.Segments.All(s => s.Parameters.Count == 0 || double.IsFinite(s.Parameters[0]))),
+            && v.Segments.All(s => s.Parameters.All(double.IsFinite))),
         Wipeout wipeout => IsFinite(wipeout.InsertPoint) && IsFinite(wipeout.UVector) && IsFinite(wipeout.VVector)
             && double.IsFinite(wipeout.Size.X) && double.IsFinite(wipeout.Size.Y)
             && wipeout.ClipBoundaryVertices.All(p => double.IsFinite(p.X) && double.IsFinite(p.Y)),
@@ -777,11 +778,15 @@ internal sealed class EntityRenderDispatcher
         };
 
         bool fallback = false;
-        bool cuts = false;
         SurfacePoint[][] lines = new SurfacePoint[elements.Length][];
+        // The same points before any placement or projection: cut positions are distances in the multiline's own
+        // drawing units, so they can only be measured against a segment length taken in those units. Measuring the
+        // placed points instead would leave a cut at its stored distance while the geometry around it scaled.
+        XYZ[][] local = new XYZ[elements.Length][];
         for (int j = 0; j < elements.Length; j++)
         {
             lines[j] = new SurfacePoint[vertices.Count];
+            local[j] = new XYZ[vertices.Count];
             for (int i = 0; i < vertices.Count; i++)
             {
                 MLine.Vertex vertex = vertices[i];
@@ -789,7 +794,6 @@ internal sealed class EntityRenderDispatcher
                 if (j < vertex.Segments.Count && vertex.Segments[j].Parameters.Count > 0)
                 {
                     along = vertex.Segments[j].Parameters[0];
-                    cuts |= vertex.Segments[j].Parameters.Count > 2;
                 }
                 else
                 {
@@ -797,8 +801,9 @@ internal sealed class EntityRenderDispatcher
                     fallback = true;
                 }
 
-                XYZ world = vertex.Position + (vertex.Miter * along);
-                lines[j][i] = context.ToSurfacePoint(InsertPlacement.MapPoint(placement, world));
+                XYZ point = vertex.Position + (vertex.Miter * along);
+                local[j][i] = point;
+                lines[j][i] = context.ToSurfacePoint(InsertPlacement.MapPoint(placement, point));
             }
         }
 
@@ -807,9 +812,9 @@ internal sealed class EntityRenderDispatcher
             this._configuration.Notify($"[{mline.SubclassMarker}] Handle {handle}: vertex parameters are missing; element offsets were computed from the style.", NotificationType.Warning);
         }
 
-        if (cuts)
+        if (vertices.Any(v => v.Segments.Any(s => s.AreaFillParameters.Count > 0)))
         {
-            this._configuration.Notify($"[{mline.SubclassMarker}] Handle {handle}: cut segments are not rendered; elements are drawn continuous.", NotificationType.Warning);
+            this._configuration.Notify($"[{mline.SubclassMarker}] Handle {handle}: fill cuts are not drawn; the filled band is continuous.", NotificationType.NotImplemented);
         }
 
         ImageColor foreground = context.Configuration.ResolveForegroundColor();
@@ -845,7 +850,28 @@ internal sealed class EntityRenderDispatcher
                 ? style.DashPattern
                 : LineTypeDashResolver.Resolve(elementType, resolved.Header, resolved.LineTypeScale, context, style.StrokeWidth);
             ImageStyle elementStyle = style with { StrokeColor = ElementColor(elements[j].Color), DashPattern = dashes };
-            context.Surface.DrawPolyline(elementStyle, lines[j], closed);
+
+            // An uncut element stays one polyline: drawing it as a chain of separate lines would restart a dashed
+            // linetype's phase at every vertex and would move every existing golden.
+            if (!HasCut(j))
+            {
+                context.Surface.DrawPolyline(elementStyle, lines[j], closed);
+                continue;
+            }
+
+            int lastVertex = closed ? vertices.Count : vertices.Count - 1;
+            for (int i = 0; i < lastVertex; i++)
+            {
+                int next = (i + 1) % vertices.Count;
+                SurfacePoint from = lines[j][i];
+                SurfacePoint to = lines[j][next];
+                foreach ((double t0, double t1) in RunFractions(j, i, next))
+                {
+                    SurfacePoint a = new(from.X + ((to.X - from.X) * t0), from.Y + ((to.Y - from.Y) * t0));
+                    SurfacePoint b = new(from.X + ((to.X - from.X) * t1), from.Y + ((to.Y - from.Y) * t1));
+                    context.Surface.DrawLine(elementStyle, a, b);
+                }
+            }
         }
 
         if (!closed && hasRing)
@@ -862,6 +888,109 @@ internal sealed class EntityRenderDispatcher
         }
 
         ImageColor ElementColor(ACadSharp.Color color) => color.IsByLayer || color.IsByBlock ? style.StrokeColor : color.ToImageColor(foreground);
+
+        // The visible runs of one segment, as fractions of its length. The stored cut positions are distances in
+        // the multiline's own drawing units, so the segment they are measured against has to be the unplaced one;
+        // the fractions are then applied to the already-placed and projected surface points, which is exact because
+        // both steps are affine.
+        IReadOnlyList<(double Start, double End)> RunFractions(int element, int from, int to)
+        {
+            double segmentLength = (local[element][to] - local[element][from]).GetLength();
+            if (segmentLength <= 0d || !double.IsFinite(segmentLength))
+            {
+                // A zero-length segment (coincident vertices) has nothing to cut: report one full run so the element
+                // is not pushed onto the per-run path, where it would lose its linetype phase for no reason.
+                return [(0d, 1d)];
+            }
+
+            IReadOnlyList<double> parameters = element < vertices[from].Segments.Count ? vertices[from].Segments[element].Parameters : [];
+            return VisibleRuns(parameters, segmentLength).Select(run => (run.Start / segmentLength, run.End / segmentLength)).ToList();
+        }
+
+        // Whether any segment of this element is broken, i.e. yields anything other than one run covering the whole
+        // segment. An unbroken element keeps its single polyline.
+        bool HasCut(int element)
+        {
+            int lastVertex = closed ? vertices.Count : vertices.Count - 1;
+            for (int i = 0; i < lastVertex; i++)
+            {
+                IReadOnlyList<(double Start, double End)> runs = RunFractions(element, i, (i + 1) % vertices.Count);
+                if (runs.Count != 1 || runs[0].Start > 1e-12 || runs[0].End < 1d - 1e-12)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The visible runs of one MLINE element, as distances from the element's own start. DXF group 41 stores, after
+    /// the miter offset and the element's start offset, the positions at which the element breaks and resumes,
+    /// alternating; an odd count leaves the element hidden to its end. Values are clamped to the element's length,
+    /// and the list is cut short at the first value that is not finite or not greater than the one before it.
+    /// </summary>
+    /// <param name="parameters">The element's stored parameters, starting with the miter offset.</param>
+    /// <param name="length">The element's length between this vertex and the next.</param>
+    /// <returns>The visible runs, in order; a single full-length run when there are no usable cut positions.</returns>
+    /// <remarks>
+    /// Reading these as absolute positions is the literal sense of the DXF reference. ezdxf's model comments read the
+    /// same array as relative dash and gap lengths, and neither ezdxf nor LibreDWG draws cuts at all, so no
+    /// implementation settles it; the two readings agree only on a single cut. This is the interpretation the
+    /// renderer implements and the README records it as unconfirmed.
+    /// <para>
+    /// <c>p[1]</c>, the offset from the miter intersection to the element's actual start, is not applied: runs are
+    /// measured from the intersection, which is where the renderer already starts every element. Real values are a
+    /// small fraction of a unit, so applying it would move existing output for no visible gain; it is recorded here
+    /// so a later change is a deliberate one.
+    /// </para>
+    /// </remarks>
+    internal static IReadOnlyList<(double Start, double End)> VisibleRuns(IReadOnlyList<double> parameters, double length)
+    {
+        if (!double.IsFinite(length) || length <= 0d)
+        {
+            return [];
+        }
+
+        List<double> breaks = new();
+        double previous = 0d;
+        for (int i = 2; i < parameters.Count; i++)
+        {
+            double value = parameters[i];
+            if (!double.IsFinite(value) || value <= previous)
+            {
+                break;
+            }
+
+            if (value >= length)
+            {
+                break;
+            }
+
+            breaks.Add(value);
+            previous = value;
+        }
+
+        if (breaks.Count == 0)
+        {
+            return [(0d, length)];
+        }
+
+        List<(double Start, double End)> runs = new();
+        double start = 0d;
+        for (int i = 0; i < breaks.Count; i += 2)
+        {
+            runs.Add((start, breaks[i]));
+            start = i + 1 < breaks.Count ? breaks[i + 1] : double.NaN;
+            if (double.IsNaN(start))
+            {
+                return runs;
+            }
+        }
+
+        runs.Add((start, length));
+        return runs;
     }
 
     /// <summary>

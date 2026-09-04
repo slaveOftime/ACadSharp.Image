@@ -1436,19 +1436,118 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal("FillPolygon n=8", surface.Calls.First(c => c.StartsWith("Fill", StringComparison.Ordinal) || c.StartsWith("DrawPolyline", StringComparison.Ordinal)));
     }
 
+    [Theory]
+    // No cut values: one run covering the whole element.
+    [InlineData(new double[] { 0.5, 0 }, 10d, new double[] { 0, 10 })]
+    // A single break at the end is not a cut.
+    [InlineData(new double[] { 0.5, 0, 10 }, 10d, new double[] { 0, 10 })]
+    // Break at 4, resume at 6.
+    [InlineData(new double[] { 0.5, 0, 4, 6 }, 10d, new double[] { 0, 4, 6, 10 })]
+    // Odd count: the element ends hidden after the last value.
+    [InlineData(new double[] { 0.5, 0, 4 }, 10d, new double[] { 0, 4 })]
+    // Two cuts.
+    [InlineData(new double[] { 0.5, 0, 2, 3, 7, 8 }, 10d, new double[] { 0, 2, 3, 7, 8, 10 })]
+    // Values past the end are clamped.
+    [InlineData(new double[] { 0.5, 0, 4, 99 }, 10d, new double[] { 0, 4 })]
+    public void VisibleRunsFollowTheAbsoluteCutPositions(double[] parameters, double length, double[] expected)
+    {
+        IReadOnlyList<(double Start, double End)> runs = EntityRenderDispatcher.VisibleRuns(parameters, length);
+
+        Assert.Equal(expected.Length / 2, runs.Count);
+        for (int i = 0; i < runs.Count; i++)
+        {
+            Assert.Equal(expected[2 * i], runs[i].Start, 9);
+            Assert.Equal(expected[(2 * i) + 1], runs[i].End, 9);
+        }
+    }
+
     [Fact]
-    public void MLineCutParametersAreIgnoredWithAWarning()
+    public void VisibleRunsStopAtANonFiniteOrDecreasingValue()
+    {
+        Assert.Equal([(0d, 4d)], EntityRenderDispatcher.VisibleRuns([0.5, 0, 4, double.NaN, 8], 10d));
+        Assert.Equal([(0d, 4d)], EntityRenderDispatcher.VisibleRuns([0.5, 0, 4, 3], 10d));
+    }
+
+    [Fact]
+    public void AnMLineWithACutDrawsTwoRunsForThatElement()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLineStyle style = new("CUT");
+        style.AddElement(new MLineStyle.Element { Offset = 0 });
+        MLine mline = new()
+        {
+            Style = style,
+            Vertices =
+            {
+                VertexAt(0, 10, [0, 0, 4, 6]),
+                VertexAt(20, 10, [0, 0, 4, 6]),
+            },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        // A cut element leaves the single-polyline path entirely: its runs are drawn as separate lines.
+        Assert.Empty(surface.Polylines);
+        Assert.Equal(2, surface.Lines.Count);
+        Assert.Equal((new SurfacePoint(0, 90), new SurfacePoint(4, 90)), surface.Lines[0]);
+        Assert.Equal((new SurfacePoint(6, 90), new SurfacePoint(20, 90)), surface.Lines[1]);
+    }
+
+    [Fact]
+    public void AnMLineWithoutCutsStillDrawsOnePolylinePerElement()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(0, 10), VertexAt(20, 10) },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        Assert.Equal(2, surface.Polylines.Count);
+    }
+
+    [Fact]
+    public void ACutMLineInsideAScaledInsertScalesItsRuns()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLineStyle style = new("CUT");
+        style.AddElement(new MLineStyle.Element { Offset = 0 });
+        BlockRecord block = new("WALL");
+        block.Entities.Add(new MLine
+        {
+            Style = style,
+            Vertices = { VertexAt(0, 0, [0, 0, 4, 6]), VertexAt(20, 0, [0, 0, 4, 6]) },
+        });
+        Insert insert = new(block) { InsertPoint = new XYZ(0, 10, 0), XScale = 2, YScale = 2, ZScale = 2 };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // The cut positions are stored in the multiline's own units, so a 2x insert puts the 4..6 gap at 8..12.
+        Assert.Empty(surface.Polylines);
+        Assert.Equal(2, surface.Lines.Count);
+        Assert.Equal((new SurfacePoint(0, 90), new SurfacePoint(8, 90)), surface.Lines[0]);
+        Assert.Equal((new SurfacePoint(12, 90), new SurfacePoint(40, 90)), surface.Lines[1]);
+    }
+
+    [Fact]
+    public void AnMLineWithAreaFillCutsNotifiesThatFillCutsAreNotDrawn()
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
         List<NotificationEventArgs> notifications = new();
         configuration.OnNotification += (_, e) => notifications.Add(e);
-        MLine mline = new() { Style = TwoElementStyle(0.5), Vertices = { VertexAt(0, 10, [0.5, 0, 4, 6], [-0.5, 0]), VertexAt(20, 10, [0.5, 0], [-0.5, 0]) } };
+        MLine mline = new() { Style = TwoElementStyle(0.5), Vertices = { VertexAt(0, 10, [0.5, 0], [-0.5, 0]), VertexAt(20, 10, [0.5, 0], [-0.5, 0]) } };
+        mline.Vertices[0].Segments[0].AreaFillParameters.Add(2);
+        mline.Vertices[0].Segments[0].AreaFillParameters.Add(5);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
 
-        Assert.Equal(2, surface.Polylines.Count);
-        Assert.Single(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("cut", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("fill cuts", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

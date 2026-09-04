@@ -234,8 +234,10 @@ internal sealed class ImagePageRenderer
 
     /// <summary>
     /// The model-space entities a viewport shows, in the drawing's draw order: those whose bounding box lies in or
-    /// crosses the view box (what <c>Viewport.SelectEntities</c> does) minus the ones whose bounds ACadSharp cannot
-    /// compute, which are skipped with a warning instead of aborting the page.
+    /// crosses the view box (what <c>Viewport.SelectEntities</c> does), using the same bounds
+    /// <see cref="EntityBounds"/> gives the page framer (so a wipeout or an OCS solid is culled by the region it
+    /// actually draws, not ACadSharp's raw <c>GetBoundingBox</c>) and skipping, with a warning instead of aborting
+    /// the page, an entity <see cref="EntityBounds"/> cannot bound at all.
     /// </summary>
     /// <param name="viewport">The viewport to select the contents of.</param>
     /// <returns>The model-space entities to draw inside the viewport.</returns>
@@ -252,20 +254,22 @@ internal sealed class ImagePageRenderer
         {
             if (entity is Insert { Block: null })
             {
-                // Insert.GetBoundingBox() dereferences Block unguarded in ACadSharp 3.7.1 and would otherwise throw
-                // NullReferenceException here, outside the catch below.
-                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: block reference has no block; skipped.", NotificationType.Warning);
+                // Called out ahead of EntityBounds.TryGet so the warning names the actual cause: an unresolved
+                // block reference, not "bounds could not be computed".
+                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: block reference has no block; skipped in viewport.", NotificationType.Warning);
                 continue;
             }
 
-            BoundingBox bounds;
-            try
+            if (!EntityBounds.TryGet(entity, out BoundingBox bounds, out Exception? error))
             {
-                bounds = entity.GetBoundingBox();
-            }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or ArithmeticException)
-            {
-                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: bounds could not be computed ({ex.Message}); entity skipped in viewport.", NotificationType.Warning, ex);
+                // error is null when the entity has no bounds for a reason that is not a computation failure (a
+                // wipeout that would draw nothing, e.g. ShowImage off or an inverted clip DrawWipeout already
+                // handles at the page level): nothing is wrong with it, so it is skipped without a Warning.
+                if (error != null)
+                {
+                    this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: bounds could not be computed ({error.Message}); entity skipped in viewport.", NotificationType.Warning, error);
+                }
+
                 continue;
             }
 

@@ -4,9 +4,10 @@ using CSMath;
 namespace ACadSharp.Image.Rendering;
 
 /// <summary>
-/// Bounds the renderer would actually draw, for page framing. ACadSharp's <c>GetBoundingBox</c> ignores a wipeout's
-/// pixel vectors and a solid's extrusion normal, and throws for some malformed geometry; this helper applies the
-/// renderer's own mapping for those and reports failure instead of throwing.
+/// Bounds the renderer would actually draw, for page framing and for culling a viewport's model-space contents to
+/// its view box. ACadSharp's <c>GetBoundingBox</c> ignores a wipeout's pixel vectors and a solid's extrusion
+/// normal, and throws for some malformed geometry; this helper applies the renderer's own mapping for those and
+/// reports failure instead of throwing.
 /// </summary>
 internal static class EntityBounds
 {
@@ -16,9 +17,21 @@ internal static class EntityBounds
     /// <param name="entity">The entity to bound.</param>
     /// <param name="bounds">The bounds, or <see langword="default"/> when the entity cannot contribute.</param>
     /// <returns>True when <paramref name="bounds"/> is valid.</returns>
-    public static bool TryGet(Entity entity, out BoundingBox bounds)
+    public static bool TryGet(Entity entity, out BoundingBox bounds) => TryGet(entity, out bounds, out _);
+
+    /// <summary>
+    /// Computes the bounds an entity would occupy as the renderer draws it, and the exception that made it fail, if
+    /// any, so a caller can report it.
+    /// </summary>
+    /// <param name="entity">The entity to bound.</param>
+    /// <param name="bounds">The bounds, or <see langword="default"/> when the entity cannot contribute.</param>
+    /// <param name="error">The exception ACadSharp raised, or null when the entity has no bounds for another reason
+    /// (an unresolved block reference, or a wipeout/solid that would occupy no area).</param>
+    /// <returns>True when <paramref name="bounds"/> is valid.</returns>
+    public static bool TryGet(Entity entity, out BoundingBox bounds, out Exception? error)
     {
         bounds = default;
+        error = null;
         switch (entity)
         {
             case Insert insert when insert.Block == null:
@@ -35,9 +48,13 @@ internal static class EntityBounds
             bounds = entity.GetBoundingBox();
             return true;
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or ArithmeticException)
         {
-            // ACadSharp throws for some malformed geometry (e.g. a bulge between coincident vertices).
+            // ACadSharp's GetBoundingBox() throws for some malformed geometry (e.g. a bulge between coincident
+            // vertices); this is the same four-exception filter ImagePageRenderer.SelectViewportEntities already
+            // uses at its own GetBoundingBox() call, kept identical so routing that site through this method does
+            // not narrow what it tolerates.
+            error = ex;
             return false;
         }
     }

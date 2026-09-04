@@ -1,4 +1,3 @@
-using System.Reflection;
 using ACadSharp.Entities;
 using ACadSharp.Header;
 using ACadSharp.Image.Rendering;
@@ -192,5 +191,76 @@ public sealed class ImagePageRendererTests
 
         Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
         Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("no block", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ModelSpaceWipeoutMappedRegionDecidesViewportInclusionNotTheRawVertexBox()
+    {
+        // Mirrors ImagePageTests.FrameUsesTheMappedWipeoutRegionNotTheRawPixelVertices: pixel space is rotated 90
+        // degrees, so ACadSharp's own GetBoundingBox() returns the raw ClipBoundaryVertices' box, x/y in
+        // [9.5,10.5], while the region the renderer actually fills (mapped through UVector/VVector) spans x in
+        // [5,10], y in [10,15]. Viewport.SelectEntities-style culling (ImagePageRenderer.cs) checks entity-box
+        // corners against the viewport's model window, not general rectangle overlap, so the window below is
+        // placed on the mapped region's (5,10) corner: none of the raw box's four corners fall inside it (the raw
+        // box would be fully excluded), but the mapped region's corner does (partial inclusion), so only bounds
+        // that follow the renderer's own wipeout mapping select this entity into the viewport.
+        CadDocument document = new();
+        Wipeout wipeout = new()
+        {
+            InsertPoint = new XYZ(10, 10, 0),
+            UVector = new XYZ(0, 5, 0),
+            VVector = new XYZ(-5, 0, 0),
+            Size = new XY(1, 1),
+            ClippingState = true,
+            ClipType = ClipType.Rectangular,
+        };
+        wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
+        document.Entities.Add(wipeout);
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        // Model window x in [4,6], y in [9,11]: none of the raw box's corners ([9.5,10.5]x[9.5,10.5]) fall inside
+        // it, but the mapped region's (5,10) corner does.
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(5, 10), ViewHeight = 2 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void HiddenModelSpaceWipeoutInAViewportRaisesNoWarning()
+    {
+        // EntityBounds.TryGet returns false with a null error for a wipeout that would draw nothing (here,
+        // ImageDisplayFlags.ShowImage left unset) rather than one whose bounds could not be computed: it must be
+        // skipped from the viewport silently, not with a "bounds could not be computed" Warning that would be
+        // false (its bounds are well-defined; it simply draws nothing).
+        CadDocument document = new();
+        Wipeout hidden = new()
+        {
+            InsertPoint = new XYZ(10, 10, 0),
+            UVector = new XYZ(5, 0, 0),
+            VVector = new XYZ(0, 5, 0),
+            Size = new XY(1, 1),
+            Flags = ImageDisplayFlags.ShowNotAlignedImage | ImageDisplayFlags.UseClippingBoundary,   // ShowImage off
+        };
+        document.Entities.Add(hidden);
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(10, 10), ViewHeight = 20 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
+        Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.Warning);
     }
 }

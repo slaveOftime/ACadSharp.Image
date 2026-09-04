@@ -673,6 +673,8 @@ internal sealed class EntityRenderDispatcher
     /// </summary>
     private void DrawWipeout(ImageRenderContext context, ImageStyle style, Wipeout wipeout)
     {
+        // ShowImage and ClipMode.Inside are re-checked in WipeoutWorldBoundary (so it draws nothing when called
+        // standalone from EntityBounds); a future skip condition belongs in both places, or the two can desync.
         if (!wipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage))
         {
             return;

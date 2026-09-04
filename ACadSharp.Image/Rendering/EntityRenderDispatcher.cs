@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Runtime.CompilerServices;
 using ACadSharp.Entities;
 using ACadSharp.Extensions;
 using ACadSharp.Header;
@@ -43,9 +44,13 @@ internal sealed class EntityRenderDispatcher
     /// Keyed on <see cref="BlockRecord"/> identity, so this only pays off for repeated top-level inserts of the
     /// same block within one page: a nested <see cref="Insert"/> reached while exploding an outer one holds a
     /// deep-cloned block record (per <see cref="Insert.Clone"/> in ACadSharp 3.7.1), a different key every time, so
-    /// it misses the cache on every call regardless of how many times the same source block appears nested.
+    /// it misses the cache on every call regardless of how many times the same source block appears nested. A
+    /// <see cref="Dictionary{TKey, TValue}"/> would still write an entry for every one of those one-shot clones as
+    /// <see cref="ScanBlockSubtree"/> walks them, pinning the whole cloned block graph of a page in memory until
+    /// <see cref="BeginPage"/> for no benefit; a <see cref="ConditionalWeakTable{TKey, TValue}"/> gives the same
+    /// lookup semantics without retaining a clone past the call that produced it.
     /// </remarks>
-    private readonly Dictionary<BlockRecord, bool> _blocksNeedingHeal = new();
+    private readonly ConditionalWeakTable<BlockRecord, StrongBox<bool>> _blocksNeedingHeal = new();
 
     public EntityRenderDispatcher(ImageConfiguration configuration)
     {
@@ -92,8 +97,11 @@ internal sealed class EntityRenderDispatcher
     }
 
     // source is the original block entity a TEXT, MTEXT, non-world SOLID or LEADER clone came from, whose geometry is
-    // used instead of the clone's, and placement is the transform of the insert that placed it; both are null
-    // outside a block reference.
+    // used instead of the clone's (see UsesOriginalGeometry), and placement is the transform of the insert that
+    // placed it. Both are null outside a block reference, but they do not always travel together inside one: an
+    // MLINE clone is always drawn with placement set and source null (UsesOriginalGeometry never recognises an
+    // MLine original, since the heal already restores the clone's own vertices to local coordinates), and so is a
+    // LEADER clone whose ordinal pairing with the block's original entities failed.
     private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? source = null, Transform? placement = null)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
@@ -1015,9 +1023,9 @@ internal sealed class EntityRenderDispatcher
             return (false, false);
         }
 
-        if (this._blocksNeedingHeal.TryGetValue(block, out bool cached))
+        if (this._blocksNeedingHeal.TryGetValue(block, out StrongBox<bool>? cached))
         {
-            return (cached, false);
+            return (cached.Value, false);
         }
 
         if (!visited.Add(block))
@@ -1052,7 +1060,7 @@ internal sealed class EntityRenderDispatcher
 
         if (needsHeal || !truncated)
         {
-            this._blocksNeedingHeal[block] = needsHeal;
+            this._blocksNeedingHeal.AddOrUpdate(block, new StrongBox<bool>(needsHeal));
         }
 
         return (needsHeal, truncated);

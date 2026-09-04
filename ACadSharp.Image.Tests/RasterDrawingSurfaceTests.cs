@@ -1,4 +1,5 @@
 using ACadSharp.Image.Rendering;
+using ACadSharp.IO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using ImageColor = SixLabors.ImageSharp.Color;
@@ -427,5 +428,28 @@ public sealed class RasterDrawingSurfaceTests
         int naturalRowSpan = naturalRows[1] - naturalRows[0];
         int stretchedRowSpan = stretchedRows[1] - stretchedRows[0];
         Assert.True(Math.Abs(stretchedRowSpan - (2 * naturalRowSpan)) <= 2, $"expected the stretched row span (~{2 * naturalRowSpan}) to be about double the natural span ({naturalRowSpan}), got {stretchedRowSpan}.");
+    }
+
+    [Theory]
+    [InlineData(0d)]
+    [InlineData(-1d)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void DrawTextRejectsANonFiniteOrNonPositiveWidthScale(double widthScale)
+    {
+        // Matches SvgDrawingSurface.DrawText's guard: Matrix3x2.CreateScale(0f, 1f, pivot) would otherwise collapse
+        // the run to nothing silently instead of being rejected the same way a direct caller cannot reach through
+        // TextRenderer (both Place overloads guard length >= 1e-12).
+        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        using RasterDrawingSurface surface = new(canvas, configuration, ownsCanvas: false);
+        SurfaceText run = new("H", new SurfacePoint(10, 10), 4, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, -1, WidthScale: widthScale);
+
+        surface.DrawText(new ImageStyle(ImageColor.Black, 1f), run);
+
+        Assert.Equal(White, canvas[10, 10]);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("non-finite", StringComparison.OrdinalIgnoreCase));
     }
 }

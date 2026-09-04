@@ -194,6 +194,37 @@ public sealed class ImagePageRendererTests
     }
 
     [Fact]
+    public void ModelEntityWithANestedUnresolvedBlockReferenceDoesNotAbortViewportRendering()
+    {
+        // A model-space Insert whose own Block resolves fine, but which references a block holding a further Insert
+        // with a null Block, makes ACadSharp's Insert.GetBoundingBox() throw NullReferenceException one level down,
+        // out of BlockRecord.GetBoundingBox(). EntityBounds.TryGet must catch that too, not just the top-level
+        // Block == null case ModelEntityWithAnUnresolvedBlockDoesNotAbortViewportRendering above covers.
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        Insert nestedOrphan = new(new BlockRecord("GONE")) { InsertPoint = new XYZ(0, 0, 0) };
+        typeof(Insert).GetProperty(nameof(Insert.Block))!.SetValue(nestedOrphan, null);
+        BlockRecord middle = new("MIDDLE");
+        middle.Entities.Add(nestedOrphan);
+        Insert outer = new(middle) { InsertPoint = new XYZ(5, 5, 0) };
+        document.Entities.Add(outer);
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(5, 2), ViewHeight = 20 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("bounds could not be computed", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void ModelSpaceWipeoutMappedRegionDecidesViewportInclusionNotTheRawVertexBox()
     {
         // Mirrors ImagePageTests.FrameUsesTheMappedWipeoutRegionNotTheRawPixelVertices: pixel space is rotated 90
@@ -262,6 +293,70 @@ public sealed class ImagePageRendererTests
 
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.Warning);
+    }
+
+    [Fact]
+    public void InvertedClipModelSpaceWipeoutInAViewportRaisesTheSameNotImplementedAsThePageLevelDrawWipeout()
+    {
+        // DrawWipeout raises NotImplemented for ClipMode.Inside at the page level, but EntityBounds.TryGet returns
+        // false with a null error for it (nothing computed wrong; it simply draws nothing), the same as a
+        // ShowImage-off wipeout above. SelectViewportEntities must not let that null error swallow the
+        // NotImplemented a page-level render would have given.
+        CadDocument document = new();
+        Wipeout inverted = new()
+        {
+            InsertPoint = new XYZ(10, 10, 0),
+            UVector = new XYZ(5, 0, 0),
+            VVector = new XYZ(0, 5, 0),
+            Size = new XY(1, 1),
+            ClippingState = true,
+            ClipType = ClipType.Rectangular,
+            ClipMode = ClipMode.Inside,
+        };
+        inverted.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
+        document.Entities.Add(inverted);
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(10, 10), ViewHeight = 20 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("FillPolygon", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("inverted clip", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void NonFiniteModelEntityBoundsInAViewportRaiseAWarningInsteadOfVanishingSilently()
+    {
+        // OverlapsInPlane compares bounds with <=/>=, and every IEEE 754 comparison against NaN is false, so a NaN
+        // bound culls the entity the same way a strictly-outside one is, but silently: EntityBounds.TryGet succeeds
+        // (the bounds are computed, just NaN), so the "bounds could not be computed" branch never fires. (Infinity is
+        // not this case: +/-Infinity compares correctly against a finite window, so an infinite-bounds line would
+        // still be selected and reach Draw's own HasFiniteGeometry check, which is why this test uses NaN, not
+        // PositiveInfinity, to discriminate the fix from the pre-fix behaviour.) The page-level Draw would have
+        // warned "geometry contains non-finite values"; the viewport path must too.
+        CadDocument document = new();
+        document.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(double.NaN, 0, 0)));
+        Layout layout = new("Sheet") { PaperWidth = 200, PaperHeight = 100 };
+        document.Layouts.Add(layout);
+        layout.AssociatedBlock.Entities.Add(new Viewport { Center = new XYZ(100, 50, 0), Width = 50, Height = 50, ViewCenter = new XY(0, 0), ViewHeight = 10 });
+
+        RecordingDrawingSurface surface = new();
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(layout);
+
+        RenderThrough(exporter, surface);
+
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("non-finite", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

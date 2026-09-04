@@ -96,7 +96,9 @@ public sealed class ImagePage
     /// <remarks>
     /// Entities are added in the drawing's draw order (handle order, overridden by the block's DRAWORDER table),
     /// so later entities paint over earlier ones (in SVG, within each layer group; layer grouping comes first).
-    /// The order is the page's own: the contents of a block reference are drawn in the block's stored order.
+    /// The order is the page's own: the contents of a block reference are drawn in the block's stored order at the
+    /// first nesting level; deeper levels come back in handle order (ACadSharp's block clone does not preserve the
+    /// stored order below the first level).
     /// </remarks>
     public void Add(BlockRecord block, Func<Entity, bool>? entityFilter, bool resizeLayout = true)
     {

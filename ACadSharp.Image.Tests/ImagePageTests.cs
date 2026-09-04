@@ -130,4 +130,27 @@ public sealed class ImagePageTests
 
         Assert.Equal(10d, frame.PaperWidth, 6);
     }
+
+    [Fact]
+    public void FrameSkipsAnInsertWhoseNestedBlockReferenceIsUnresolved()
+    {
+        // A block reference nested one level inside a resolvable block, itself referencing a null Block, makes
+        // ACadSharp's Insert.GetBoundingBox() throw NullReferenceException from inside BlockRecord.GetBoundingBox(),
+        // past EntityBounds.TryGet's exception filter, unless that filter also catches NullReferenceException. This
+        // is not the page-level case FrameSkipsAnInsertWithoutABlock covers (Block == null on the entity itself);
+        // here the outer insert's own Block resolves fine, and the unresolved reference is one level down.
+        Insert nestedOrphan = new(new BlockRecord("GONE")) { InsertPoint = new XYZ(0, 0, 0) };
+        typeof(Insert).GetProperty(nameof(Insert.Block))!.SetValue(nestedOrphan, null);
+        BlockRecord middle = new("MIDDLE");
+        middle.Entities.Add(nestedOrphan);
+        Insert outer = new(middle) { InsertPoint = new XYZ(1000, 1000, 0) };
+
+        ImagePage page = new();
+        page.AddEntity(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        page.AddEntity(outer);
+
+        PageFrame frame = Assert.NotNull(page.ComputeFrame(null));
+
+        Assert.Equal(10d, frame.PaperWidth, 6);
+    }
 }

@@ -48,12 +48,14 @@ internal static class EntityBounds
             bounds = entity.GetBoundingBox();
             return true;
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or ArithmeticException)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or ArithmeticException or NullReferenceException)
         {
             // ACadSharp's GetBoundingBox() throws for some malformed geometry (e.g. a bulge between coincident
-            // vertices); this is the same four-exception filter ImagePageRenderer.SelectViewportEntities already
-            // uses at its own GetBoundingBox() call, kept identical so routing that site through this method does
-            // not narrow what it tolerates.
+            // vertices). NullReferenceException is also caught here: a block reference nested inside this entity's
+            // own block (reached recursively through BlockRecord.GetBoundingBox()) can itself have an unresolved
+            // Block, which Insert.GetBoundingBox() dereferences without a null check. The top-level Block == null
+            // case is handled above without reaching this method's own GetBoundingBox() call; this is the same
+            // failure one level (or more) down, where only ACadSharp's own recursive call sees it.
             error = ex;
             return false;
         }

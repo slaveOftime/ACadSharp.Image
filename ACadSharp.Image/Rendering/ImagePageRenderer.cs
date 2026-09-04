@@ -130,8 +130,8 @@ internal sealed class ImagePageRenderer
     /// <param name="page">The page to render.</param>
     /// <remarks>
     /// Only a viewport added through <see cref="ImagePage.AddViewport(Viewport)"/> is drawn as a window onto model
-    /// space. One that reached the page through <see cref="ImagePage.AddEntity(Entity)"/> (as the paper viewport of a
-    /// layout block does) is an ordinary page entity and goes to the dispatcher, which reports it as not implemented.
+    /// space. One that reached the page through <see cref="ImagePage.AddEntity(Entity)"/> is an ordinary page entity
+    /// and goes to the dispatcher, which reports it as not implemented.
     /// </remarks>
     private void RenderTo(ImageRenderContext context, ImagePage page)
     {
@@ -267,16 +267,40 @@ internal sealed class ImagePageRenderer
                 continue;
             }
 
+            if (entity is Wipeout { ClipMode: ClipMode.Inside } insideWipeout && insideWipeout.Flags.HasFlag(ImageDisplayFlags.ShowImage))
+            {
+                // EntityBounds.TryGet returns false with a null error for this case (nothing is wrong with the
+                // wipeout, it simply draws nothing), the same as a ShowImage-off one below; but at the page level
+                // DrawWipeout still raises this exact NotImplemented for an inverted clip, so viewport content must
+                // match it instead of silently dropping the notification a page-level render would have given.
+                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: inverted clip boundaries are not rendered.", NotificationType.NotImplemented);
+                continue;
+            }
+
             if (!EntityBounds.TryGet(entity, out BoundingBox bounds, out Exception? error))
             {
                 // error is null when the entity has no bounds for a reason that is not a computation failure (a
-                // wipeout that would draw nothing, e.g. ShowImage off or an inverted clip DrawWipeout already
-                // handles at the page level): nothing is wrong with it, so it is skipped without a Warning.
+                // wipeout that would draw nothing because ShowImage is off; the ClipMode.Inside case is handled,
+                // with its own notification, above): nothing is wrong with it, so it is skipped without a Warning.
                 if (error != null)
                 {
                     this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: bounds could not be computed ({error.Message}); entity skipped in viewport.", NotificationType.Warning, error);
                 }
 
+                continue;
+            }
+
+            if (HasNaNBound(bounds))
+            {
+                // OverlapsInPlane's <=/>= comparisons are all false against a NaN bound (IEEE 754: every comparison
+                // with NaN is false), so the entity below is culled the same way a strictly-outside one is, but
+                // silently; notify the same way Draw does for the same condition instead of letting it vanish. An
+                // infinite bound is not this case: +/-Infinity compares correctly against a finite window (an
+                // unbounded entity genuinely overlaps it), so it is left to OverlapsInPlane and, if selected, to
+                // Draw's own HasFiniteGeometry/entity-type handling — narrowing this check to NaN only keeps it from
+                // pre-empting that with a "non-finite" message that would be wrong for a legitimately unbounded
+                // entity (an XLine or Ray, say).
+                this._configuration.Notify($"[{entity.SubclassMarker}] Handle {entity.Handle.ToString("X", CultureInfo.InvariantCulture)}: geometry contains non-finite values; entity skipped in viewport.", NotificationType.Warning);
                 continue;
             }
 
@@ -300,4 +324,16 @@ internal sealed class ImagePageRenderer
         return bounds.Min.X <= window.Max.X && bounds.Max.X >= window.Min.X
             && bounds.Min.Y <= window.Max.Y && bounds.Max.Y >= window.Min.Y;
     }
+
+    /// <summary>
+    /// True when any of the four X/Y components <see cref="OverlapsInPlane"/> reads (Z is ignored there, so a NaN Z
+    /// is never silently culled) is NaN. Every IEEE 754 comparison against NaN is false, so a NaN bound makes
+    /// <see cref="OverlapsInPlane"/> return false regardless of the others; an infinite bound is not this case
+    /// (+/-Infinity compares correctly against a finite window), so it is deliberately not checked here.
+    /// </summary>
+    /// <param name="bounds">The bounds to check.</param>
+    /// <returns>True when <paramref name="bounds"/> has a NaN X or Y component.</returns>
+    private static bool HasNaNBound(BoundingBox bounds) =>
+        double.IsNaN(bounds.Min.X) || double.IsNaN(bounds.Min.Y) ||
+        double.IsNaN(bounds.Max.X) || double.IsNaN(bounds.Max.Y);
 }

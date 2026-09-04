@@ -188,6 +188,16 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
             return;
         }
 
+        if (!double.IsFinite(text.WidthScale) || text.WidthScale <= 0)
+        {
+            // Matches SvgDrawingSurface.DrawText's guard: Matrix3x2.CreateScale(0f, 1f, pivot) below would collapse
+            // the run to nothing silently instead of throwing, and a negative or non-finite scale is just as wrong.
+            // TextRenderer never produces one of these (both Place overloads guard length >= 1e-12), so this only
+            // matters to a caller driving SurfaceText directly.
+            this.NotifyNonFinite();
+            return;
+        }
+
         PointF origin = ToPointF(text.Origin);
 
         // The font size is the em, 4/3 of the CAD text height, laid out at 72 dpi so one point is one pixel: text

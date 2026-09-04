@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ACadSharp.Image.Rendering;
 using ACadSharp.Image.Rendering.Svg;
+using ACadSharp.IO;
 using CSMath;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp.PixelFormats;
@@ -43,10 +44,14 @@ public sealed class FidelityGoldenTests
         GoldenAssert.Png("fidelity.model.01", page.Canvas);
 
         // The inverted wipeout masks the whole wipeout frame (world x in [60,110], y in [10,30] — derived from its
-        // own InsertPoint/UVector/VVector/Size) EXCEPT its boundary (world x in [75,95], y in [10,30] — derived the
+        // own InsertPoint/UVector/VVector/Size) EXCEPT its boundary (world x in [75,95], y in [14,26] — derived the
         // same way from ClipBoundaryVertices), so the "Under" line at y = 20 survives only inside the boundary and
         // is masked outside it (but still inside the frame). This is the assertion the SVG cannot make: SVG groups
         // by layer, so the line and the mask are not in draw order there.
+        // CreatePageContext(surface, ImagePage, …) resolves to PageFrame.Of(page), which is also what
+        // ImagePageRenderer.ResolveFrame returns as long as HasActiveFilters() is false; FidelityExporter() sets no
+        // included/hidden layers and leaves LayerVisibility at its default, so the two fits coincide here. A filter
+        // added to the exporter later would desync this reconstructed fit from the one the render actually used.
         ImageRenderContext context = ImageRenderContext.CreatePageContext(new RecordingDrawingSurface(), exporter.Pages[0], exporter.Configuration);
         SurfacePoint inside = context.ToSurfacePoint(new XY(85, 20));
         SurfacePoint outside = context.ToSurfacePoint(new XY(65, 20));
@@ -59,10 +64,18 @@ public sealed class FidelityGoldenTests
     public void FidelitySvgMatchesGoldenAndContainsEveryFeature()
     {
         ImageExporter exporter = FidelityExporter();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
 
         RenderedSvgPage page = Assert.IsType<RenderedSvgPage>(Assert.Single(exporter.Render(ImageExportFormat.Svg)));
 
         GoldenAssert.Svg("fidelity.model.01", page.Content);
+
+        // This fixture deliberately walks four arrowhead fallback paths (an empty or self-referencing arrow block, a
+        // non-uniform placement, a degenerate size); a silent fallback to the default triangle would still satisfy
+        // the geometry assertions below, so this is the one check that proves every feature actually took its
+        // intended path rather than falling back unnoticed.
+        Assert.DoesNotContain(notifications, n => n.NotificationType is NotificationType.Warning or NotificationType.NotImplemented);
 
         XDocument document = XDocument.Parse(page.Content);
         XElement InLayer(string layer) => document.Descendants(Ns + "g").Single(g => (string?)g.Attribute("data-layer") == layer);

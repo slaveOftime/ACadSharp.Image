@@ -303,8 +303,11 @@ internal static class SyntheticSamples
             Vertices = { new XYZ(10, 40, 0), new XYZ(35, 55, 0), new XYZ(55, 55, 0) },
         }, 0x13));
 
-        // Inverted wipeout over a line: only the middle band of the line survives.
-        block.Entities.Add(WithHandle(new Line(new XYZ(60, 20, 0), new XYZ(110, 20, 0)) { Layer = underLayer }, 0x14));
+        // Inverted wipeout over a line: only the middle band of the line survives. The line runs past the
+        // wipeout's own frame (world x in [60,110]) on both sides, so no endpoint shares a fractional pixel with
+        // the frame's edge; the boundary is inset in both axes (not just x), so a regression that clamped only one
+        // component of the clip boundary to the frame would still be caught.
+        block.Entities.Add(WithHandle(new Line(new XYZ(55, 20, 0), new XYZ(115, 20, 0)) { Layer = underLayer }, 0x14));
         Wipeout wipeout = WithHandle(new Wipeout
         {
             InsertPoint = new XYZ(60, 10, 0),
@@ -316,8 +319,8 @@ internal static class SyntheticSamples
             ClipMode = ClipMode.Inside,
             Layer = coverLayer,
         }, 0x15);
-        wipeout.ClipBoundaryVertices.Add(new XY(-0.2, -0.5));
-        wipeout.ClipBoundaryVertices.Add(new XY(0.2, 0.5));
+        wipeout.ClipBoundaryVertices.Add(new XY(-0.2, -0.3));
+        wipeout.ClipBoundaryVertices.Add(new XY(0.2, 0.3));
         block.Entities.Add(wipeout);
 
         // Cut MLINE: both elements break between 20 and 30 along their own length.

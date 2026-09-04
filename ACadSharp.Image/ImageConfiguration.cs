@@ -142,7 +142,7 @@ public sealed class ImageConfiguration
     /// Gets or sets the dots-per-inch resolution used when converting drawing units to pixels.
     /// </summary>
     /// <remarks>
-    /// This value affects line weight calculations and text sizing.
+    /// This value affects line weight calculations only; text is sized from the drawing on both backends.
     /// Default is 96 DPI.
     /// </remarks>
     public float Dpi { get; set; } = 96f;
@@ -213,8 +213,10 @@ public sealed class ImageConfiguration
     /// Gets or sets the font family name used for rendering text entities.
     /// </summary>
     /// <remarks>
-    /// The font must be available on the system. If the specified font is not found,
-    /// the system's default font family is used as a fallback.
+    /// If the family is not installed, the first installed family of the fallback chain
+    /// <see cref="ACadSharp.Image.Rendering.FontResolver.Fallbacks"/> (Liberation Sans, DejaVu Sans, Arial, Helvetica,
+    /// Noto Sans, Segoe UI) is used, then the first installed family; when no font is installed, raster text is
+    /// skipped with a warning and SVG text is emitted unwrapped.
     /// Default is "Arial".
     /// </remarks>
     public string FontFamilyName { get; set; } = "Arial";

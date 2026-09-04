@@ -85,6 +85,7 @@ public sealed class CliTests
     [InlineData("--layer-visibility", "hidden")]
     [InlineData("--layer-visibility", "1")]
     [InlineData("--output")]
+    [InlineData("b.dxf")]
     public void ParseArgsRejectsInvalidArguments(params string[] tail)
     {
         List<string> args = ["a.dxf", .. tail];
@@ -169,6 +170,19 @@ public sealed class CliTests
         Assert.Equal(1, exitCode);
         Assert.Equal(string.Empty, output.ToString());
         Assert.StartsWith("Error: Input file was not found.", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RunRejectsAnExtraPositionalArgument()
+    {
+        // The input need not exist: ParseArgs runs, and fails, before Run checks File.Exists.
+        StringWriter output = new();
+        StringWriter error = new();
+
+        int exitCode = Program.Run(["a.dxf", "b.dxf"], output, error);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Unexpected argument 'b.dxf'", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

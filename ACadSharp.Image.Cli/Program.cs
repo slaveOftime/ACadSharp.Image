@@ -230,7 +230,12 @@ internal static class Program
             string current = args[i];
             if (!current.StartsWith('-'))
             {
-                inputPath ??= current;
+                if (inputPath != null)
+                {
+                    throw new InvalidOperationException($"Unexpected argument '{current}'.");
+                }
+
+                inputPath = current;
                 continue;
             }
 

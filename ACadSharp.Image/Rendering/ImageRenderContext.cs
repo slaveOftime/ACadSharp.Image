@@ -206,19 +206,8 @@ internal sealed class ImageRenderContext
     }
 
     /// <summary>
-    /// Computes the SVG viewBox for a page: the page rectangle in drawing units grown by the configured padding,
-    /// converted to drawing units with the same fit scale the raster backend would use.
-    /// </summary>
-    /// <param name="page">Page being rendered.</param>
-    /// <param name="configuration">Configuration driving the export.</param>
-    /// <returns>The viewBox rectangle in drawing units.</returns>
-    public static SurfaceRect ComputeSvgViewBox(ImagePage page, ImageConfiguration configuration)
-    {
-        return ComputeSvgViewBox(PageFrame.Of(page), configuration);
-    }
-
-    /// <summary>
-    /// Computes the SVG viewBox for a page frame (see <see cref="ComputeSvgViewBox(ImagePage, ImageConfiguration)"/>).
+    /// Computes the SVG viewBox for a page frame: the frame rectangle in drawing units grown by the configured
+    /// padding, converted to drawing units with the same fit scale the raster backend would use.
     /// </summary>
     /// <param name="frame">Frame being rendered.</param>
     /// <param name="configuration">Configuration driving the export.</param>
@@ -244,19 +233,8 @@ internal sealed class ImageRenderContext
     }
 
     /// <summary>
-    /// Pixels per drawing unit the raster fit would use for this page; SVG uses it to convert padding and,
+    /// Pixels per drawing unit the raster fit would use for a page frame; SVG uses it to convert padding and,
     /// in non-scaling-stroke mode, dash lengths into pixels.
-    /// </summary>
-    /// <param name="page">Page being rendered.</param>
-    /// <param name="configuration">Configuration driving the export.</param>
-    /// <returns>The fit scale in pixels per drawing unit.</returns>
-    public static double ComputeSvgFitScale(ImagePage page, ImageConfiguration configuration)
-    {
-        return ComputeSvgFitScale(PageFrame.Of(page), configuration);
-    }
-
-    /// <summary>
-    /// Pixels per drawing unit the raster fit would use for a page frame (see <see cref="ComputeSvgFitScale(ImagePage, ImageConfiguration)"/>).
     /// </summary>
     /// <param name="frame">Frame being rendered.</param>
     /// <param name="configuration">Configuration driving the export.</param>
@@ -269,22 +247,8 @@ internal sealed class ImageRenderContext
     }
 
     /// <summary>
-    /// Creates the page-level context for the SVG backend: drawing units one-to-one, the padding living in the
-    /// viewBox margin rather than in an offset.
-    /// </summary>
-    /// <param name="surface">Surface receiving the page content.</param>
-    /// <param name="page">Page being rendered.</param>
-    /// <param name="configuration">Configuration driving the export.</param>
-    /// <param name="strokeUnitsPerMillimeter">Drawing units per millimetre for stroke widths, or null to keep pixel widths.</param>
-    /// <returns>A double-precision context whose surface units are drawing units.</returns>
-    public static ImageRenderContext CreateSvgPageContext(IDrawingSurface surface, ImagePage page, ImageConfiguration configuration, double? strokeUnitsPerMillimeter)
-    {
-        return CreateSvgPageContext(surface, PageFrame.Of(page), configuration, strokeUnitsPerMillimeter);
-    }
-
-    /// <summary>
-    /// Creates the page-level context for the SVG backend from a page frame
-    /// (see <see cref="CreateSvgPageContext(IDrawingSurface, ImagePage, ImageConfiguration, double?)"/>).
+    /// Creates the page-level context for the SVG backend from a page frame: drawing units one-to-one, the padding
+    /// living in the viewBox margin rather than in an offset.
     /// </summary>
     /// <param name="surface">Surface receiving the page content.</param>
     /// <param name="frame">Frame being rendered; the page's own, or one fitted to its visible entities.</param>

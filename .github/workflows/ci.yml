@@ -6,6 +6,9 @@ on:
       - 'ACadSharp.Image/**'
       - 'ACadSharp.Image.Cli/**'
       - 'ACadSharp.Image.Tests/**'
+      - 'Directory.Packages.props'
+      - 'Directory.Build.props'
+      - '*.sln'
       - '.github/workflows/ci.yml'
   push:
     branches:
@@ -14,6 +17,9 @@ on:
       - 'ACadSharp.Image/**'
       - 'ACadSharp.Image.Cli/**'
       - 'ACadSharp.Image.Tests/**'
+      - 'Directory.Packages.props'
+      - 'Directory.Build.props'
+      - '*.sln'
       - '.github/workflows/ci.yml'
 
 jobs:
@@ -36,5 +42,8 @@ jobs:
       - name: Install parity font
         run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core
 
+      - name: Build
+        run: dotnet build ACadSharp.Image.sln --configuration Release --no-restore -warnaserror
+
       - name: Test
-        run: dotnet test ACadSharp.Image.sln --configuration Release --no-restore -warnaserror
+        run: dotnet test ACadSharp.Image.sln --configuration Release --no-build -warnaserror

@@ -14,7 +14,7 @@
 
 - ACadSharp `3.7.1`; SixLabors packages as pinned; no new NuGet dependencies; target frameworks unchanged.
 - Coding conventions: `this.` prefix on instance members, explicit types except LINQ lambdas, XML docs on public and internal members, `sealed` classes, file-scoped namespaces, four-space indent, UTF-8 without BOM, LF line endings.
-- PNG baselines must stay byte-identical in every task (the parity tests pin `DejaVu Sans`, which is installed, so the fallback chain never engages there). SVG goldens: Tasks 1 and 2 must not change any; Task 3 regenerates exactly the goldens that contain `<text` (`6-57-1119.model.01.svg`, `HSK80AHCP16190M_BMG.model.01.svg`, `features.model.01.svg`, `viewport-sheet.paper.01.svg`) with the scoped commands given there, and nothing else.
+- PNG baselines must stay byte-identical in every task (the parity tests pin `DejaVu Sans`, which is installed, so the fallback chain never engages there). SVG goldens: Tasks 1 and 2 must not change any; Task 3 regenerates exactly the goldens that contain `<text` (`6-57-1119.model.01.svg`, `HSK80AHCP16190M_BMG.model.01.svg`, `features.model.01.svg`, `viewport-sheet.paper.01.svg`) with the scoped commands given there, and nothing else. **Amended 2026-09-03 (final review):** Commit B of the final fix wave regenerated `HSK80AHCP16190M_BMG.model.01.png` and `features.model.01.png` for the 5/3 line spacing, with the cause in its body.
 - `dotnet build ACadSharp.Image.sln -warnaserror` warning-free; full suite green before each commit.
 - No reference to any drawing outside `Samples/` in code, tests, comments or commit messages.
 - Never use bare `git stash` / `git stash pop`. Commit messages end with the repository's two trailer lines (see any commit on this branch).

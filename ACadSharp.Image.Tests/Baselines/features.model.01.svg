@@ -30,11 +30,11 @@
         <line x1="40" y1="15" x2="40" y2="5" stroke="#0000ff" stroke-width="2.646" vector-effect="non-scaling-stroke" data-type="LINE" data-parent="0" data-block="DOOR" />
       </g>
       <g id="layer-anno" class="cad-layer" data-layer="Anno" stroke="#000000" stroke-width="1">
-        <text x="70" y="7" font-size="5.33" dominant-baseline="hanging" fill="#000000" stroke="none" data-type="MTEXT">
+        <text x="70" y="7" font-size="5.33" xml:space="preserve" dominant-baseline="hanging" fill="#000000" stroke="none" data-type="MTEXT">
           <tspan x="70">Line1</tspan>
           <tspan x="70" dy="6.67">Line2</tspan>
         </text>
-        <text x="110" y="0" font-size="5.33" text-anchor="middle" textLength="40" lengthAdjust="spacingAndGlyphs" fill="#000000" stroke="none" data-type="TEXT">FIT</text>
+        <text x="110" y="0" font-size="5.33" xml:space="preserve" text-anchor="middle" textLength="40" lengthAdjust="spacingAndGlyphs" fill="#000000" stroke="none" data-type="TEXT">FIT</text>
       </g>
     </g>
   </g>

@@ -19,7 +19,7 @@
       </g>
       <g id="layer-walls" class="cad-layer" data-layer="Walls" stroke="#ff0000" stroke-width="1">
         <line x1="10" y1="200" x2="287" y2="200" vector-effect="non-scaling-stroke" data-handle="57" data-type="LINE" />
-        <text x="10" y="20" font-size="10.67" fill="#ff0000" stroke="none" data-handle="58" data-type="TEXT">SHEET 1</text>
+        <text x="10" y="20" font-size="10.67" xml:space="preserve" fill="#ff0000" stroke="none" data-handle="58" data-type="TEXT">SHEET 1</text>
       </g>
     </g>
   </g>

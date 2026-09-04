@@ -576,6 +576,18 @@ public sealed class SvgDrawingSurfaceTests
     }
 
     [Fact]
+    public void TextElementsPreserveRepeatedWhitespace()
+    {
+        using SvgDrawingSurface surface = CreateSurface();
+        surface.BeginEntity(Entity("Anno", "TEXT"), Layer("Anno"));
+        surface.DrawText(new ImageStyle(Color.Black, 1f), new SurfaceText("A  B", new SurfacePoint(0, 0), 3, 0, SurfaceTextAnchor.Start, SurfaceTextBaseline.Alphabetic, -1, 1, 0));
+        surface.EndEntity();
+
+        XElement text = Assert.Single(surface.ToDocument().Descendants(Ns + "text"));
+        Assert.Equal("preserve", (string?)text.Attribute(XNamespace.Xml + "space"));
+    }
+
+    [Fact]
     public void WrapKeepsExplicitBreaksAndLongWords()
     {
         IReadOnlyList<string> lines = SvgTextLayout.Wrap("one two\nthree fourfivesixseven", 8, 4, "DejaVu Sans");

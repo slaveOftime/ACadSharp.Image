@@ -109,18 +109,6 @@ internal sealed class ImageStyleResolver
     }
 
     /// <summary>
-    /// Resolves the visual style of a top-level entity (no placing insert) in the given context.
-    /// </summary>
-    /// <param name="entity">The entity whose style should be resolved.</param>
-    /// <param name="context">The context that maps drawing units onto the surface.</param>
-    /// <param name="foreground">The colour to use for AutoCAD colour index 7 ("ByBackground").</param>
-    /// <returns>The entity's style in surface units.</returns>
-    public ImageStyle Resolve(Entity entity, ImageRenderContext context, ImageColor foreground)
-    {
-        return this.ToImageStyle(this.ResolveAttributes(entity, entity.Layer, parent: null), context, foreground);
-    }
-
-    /// <summary>
     /// Maps CAD transparency to opacity. ByLayer is opaque (ACadSharp 3.7.1 layers carry no transparency);
     /// ByBlock inherits the parent's opacity; explicit values 0..90 mean that percentage transparent.
     /// </summary>

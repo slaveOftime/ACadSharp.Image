@@ -392,7 +392,10 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
         XElement element = new(Ns + "text",
             new XAttribute("x", this.N(text.Origin.X)),
             new XAttribute("y", this.N(firstLineY)),
-            new XAttribute("font-size", this.N(emSize)));
+            new XAttribute("font-size", this.N(emSize)),
+            // Repeated spaces are meaningful CAD content (alignment, tabular labels); SVG collapses runs of
+            // whitespace by default, so xml:space keeps what the wrapper already preserved in the source text.
+            new XAttribute(XNamespace.Xml + "space", "preserve"));
 
         if (text.Anchor != SurfaceTextAnchor.Start)
         {

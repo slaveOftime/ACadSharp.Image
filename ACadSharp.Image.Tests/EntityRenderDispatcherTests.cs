@@ -1130,6 +1130,82 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal([new XYZ(0, 0, 0), new XYZ(10, 0, 0)], leader.Vertices);
     }
 
+    [Fact]
+    public void LeaderArrowTipKeepsVertexZUnderANonWorldInsertNormal()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("ARROWZ");
+        Leader leader = new() { ArrowHeadEnabled = true, Vertices = { new XYZ(0, 0, 7), new XYZ(10, 0, 7) }, Style = new DimensionStyle("ARROWZ") { ArrowSize = 3, ScaleFactor = 1 } };
+        block.Entities.Add(leader);
+        // Normal (0,1,0) couples Z into X/Y through the insert's transform; an arrow anchored with Z forced to 0
+        // would land at a different point than the path's own first vertex, detaching the arrow from the line.
+        Insert insert = new(block) { Normal = new XYZ(0, 1, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        IReadOnlyList<SurfacePoint> arrow = Assert.Single(surface.Polygons);
+        IReadOnlyList<SurfacePoint> path = Assert.Single(surface.Polylines);
+        Assert.Equal(path[0], arrow[0]);
+    }
+
+    [Fact]
+    public void OcsSolidInsideAMirroredInsertComposesBothTransforms()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("PLATEM");
+        block.Entities.Add(new Solid { FirstCorner = new XYZ(0, 0, 0), SecondCorner = new XYZ(10, 0, 0), ThirdCorner = new XYZ(0, 5, 0), FourthCorner = new XYZ(10, 5, 0), Normal = new XYZ(0, 0, -1) });
+        // The OCS normal mirrors X (world x in [-10,0]), and the insert's own XScale mirrors X again: the two
+        // mirrors compose to identity in X, offset by InsertPoint, not a double mirror away from it.
+        Insert insert = new(block) { InsertPoint = new XYZ(20, 0, 0), XScale = -1 };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        IReadOnlyList<SurfacePoint> polygon = Assert.Single(surface.Polygons);
+        Assert.Equal(new HashSet<SurfacePoint> { new(20, 100), new(30, 100), new(30, 95), new(20, 95) }, polygon.ToHashSet());
+    }
+
+    [Fact]
+    public void SplinedLeaderInsideAScaledInsertMapsBezierEndpointsThroughThePlacement()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord block = new("SPLINENOTE");
+        block.Entities.Add(new Leader { PathType = LeaderPathType.Spline, Vertices = { new XYZ(0, 0, 0), new XYZ(5, 5, 0), new XYZ(10, 0, 0) } });
+        Insert insert = new(block) { InsertPoint = new XYZ(5, 5, 0), XScale = 2, YScale = 2 };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        // Catmull-Rom control points always start and end exactly on the input points, mapped or not, so the chain's
+        // first and last control point must equal the first and last vertex mapped through the insert's transform.
+        IReadOnlyList<SurfacePoint> controls = Assert.Single(surface.Beziers);
+        Assert.Equal(new SurfacePoint(5, 95), controls[0]);
+        Assert.Equal(new SurfacePoint(25, 95), controls[^1]);
+    }
+
+    [Fact]
+    public void LeaderNestedTwoBlocksDeepIsDrawnThroughTheComposedInsertsAndKeepsItsVertices()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        Leader leader = new() { Vertices = { new XYZ(0, 0, 0), new XYZ(10, 0, 0) } };
+        BlockRecord inner = new("INNERL");
+        inner.Entities.Add(leader);
+        Insert nestedInsert = new(inner) { InsertPoint = new XYZ(2, 3, 0) };
+        BlockRecord outer = new("OUTERL");
+        outer.Entities.Add(nestedInsert);
+        Insert outerInsert = new(outer) { InsertPoint = new XYZ(5, 20, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), outerInsert);
+
+        // Neither Insert.Clone() (which deep-clones INNERL, including a Leader that shares LEADER's own vertex
+        // list) nor either level's Explode() call is allowed to leave the deep original mutated.
+        Assert.Equal([new XYZ(0, 0, 0), new XYZ(10, 0, 0)], leader.Vertices);
+        // Composed translation (5,20) + (2,3) = (7,23), both inserts translation-only.
+        Assert.Equal([new SurfacePoint(7, 77), new SurfacePoint(17, 77)], Assert.Single(surface.Polylines));
+    }
+
     private static MLineStyle TwoElementStyle(double outer, MLineStyleFlags flags = MLineStyleFlags.None)
     {
         MLineStyle style = new("PLAN") { Flags = flags, FillColor = new ACadSharp.Color(3) };

@@ -532,7 +532,11 @@ internal sealed class EntityRenderDispatcher
         XY half = new XY(-direction.Y, direction.X) * (size / 6d);
         XY baseLeft = baseCenter + half;
         XY baseRight = baseCenter - half;
-        context.Surface.FillPolygon(style, [Map(new XYZ(tip.X, tip.Y, 0d)), Map(new XYZ(baseLeft.X, baseLeft.Y, 0d)), Map(new XYZ(baseRight.X, baseRight.Y, 0d))]);
+        // The triangle is built flat (in the leader's own XY plane, ignoring any Z on the second vertex), but its
+        // anchor must carry the first vertex's own Z so it maps to the same point as the path's own first vertex;
+        // dropping it here would detach the arrow from the line under a placement whose normal couples Z into X/Y.
+        double z = leader.Vertices[0].Z;
+        context.Surface.FillPolygon(style, [Map(new XYZ(tip.X, tip.Y, z)), Map(new XYZ(baseLeft.X, baseLeft.Y, z)), Map(new XYZ(baseRight.X, baseRight.Y, z))]);
     }
 
     /// <summary>
@@ -759,13 +763,13 @@ internal sealed class EntityRenderDispatcher
     /// <summary>
     /// True when an exploded <paramref name="clone"/> should be drawn from <paramref name="original"/>'s geometry,
     /// placed through the insert's transform, instead of the clone's own points: a TEXT or MTEXT (their alignment
-    /// point and, for MTEXT, X axis are never transformed by <c>Explode()</c>), a LEADER (its clone shares the
-    /// source's vertex list and both are healed back to local coordinates, so drawing from the original and mapping
-    /// through the insert's transform keeps the arrowhead's size and orientation correct instead of picking them up
-    /// from an already-placed point), or a SOLID whose normal is not the world Z axis (its OCS corners must be
-    /// brought into world space before the insert transform, not after). The pairing requires
-    /// <paramref name="original"/> to be the block entity at the clone's own index and of the same runtime type,
-    /// since a mismatched index (an ATTDEF the clone stream skipped, for example) would pair the wrong entity.
+    /// point and, for MTEXT, X axis are never transformed by <c>Explode()</c>), a LEADER (once healed, the clone
+    /// shares the same local vertex list as the original, so either would draw identically; the original is used
+    /// for consistency with TEXT, MTEXT and SOLID, not because it carries anything the clone lacks), or a SOLID
+    /// whose normal is not the world Z axis (its OCS corners must be brought into world space before the insert
+    /// transform, not after). The pairing requires <paramref name="original"/> to be the block entity at the
+    /// clone's own index and of the same runtime type, since a mismatched index (an ATTDEF the clone stream
+    /// skipped, for example) would pair the wrong entity.
     /// </summary>
     /// <param name="original">The block entity at the same index as <paramref name="clone"/>, or null past the end of the block's own entities.</param>
     /// <param name="clone">The entity <c>Explode()</c> produced.</param>
@@ -806,10 +810,13 @@ internal sealed class EntityRenderDispatcher
         // overwrites that shared list's contents (world coordinates) in place instead of emptying it; either way the
         // source document is left corrupted once Explode() runs, because the clone and its source are the very same
         // List object. Insert.Clone() deep-clones its entire block subtree, so exploding this insert destroys every
-        // MLINE and LEADER reachable through it, including ones nested inside a block placed inside this one,
-        // several levels below anything Explode() itself returns: cloning the nested Insert clones its block along
-        // the way. CollectSharedVertexLists walks the whole subtree (following nested Insert.Block references, not
-        // yet cloned at this point) to snapshot every one of them before Explode() runs, and Heal repairs them
+        // MLINE reachable through it, including ones nested inside a block placed inside this one, several levels
+        // below anything Explode() itself returns, because cloning the nested Insert empties that MLINE's list the
+        // moment it is cloned along the way; a nested LEADER's list, by contrast, is overwritten only when the
+        // insert that directly contains it is the one exploded, so a deeply nested LEADER survives an ancestor's
+        // Explode() unharmed and its snapshot below is a defensive backstop, not a load-bearing fix.
+        // CollectSharedVertexLists walks the whole subtree (following nested Insert.Block references, not yet
+        // cloned at this point) to snapshot every MLINE and LEADER before Explode() runs, and Heal repairs them
         // immediately after and again in `finally`. The repair is always in place (Clear + AddRange into the
         // *existing* list, never a reassignment): because a clone shares the very same list object as its source at
         // every depth, one in-place heal fixes the original and every clone below it at once; reassigning would
@@ -896,9 +903,11 @@ internal sealed class EntityRenderDispatcher
     /// <summary>
     /// Snapshots every MLINE's and LEADER's vertex list reachable from <paramref name="block"/>, following nested
     /// <see cref="Insert.Block"/> references. <see cref="Insert.Explode"/> deep-clones its entire block subtree, so
-    /// an MLINE or LEADER nested several blocks deep is corrupted by an ancestor insert's own explode even though it
-    /// is never that ancestor's direct child; this has to run, and capture the whole subtree, before that explode
-    /// call.
+    /// an MLINE nested several blocks deep is corrupted by an ancestor insert's own explode even though it is never
+    /// that ancestor's direct child, because its list is emptied the moment it is cloned; a nested LEADER's list, by
+    /// contrast, is only overwritten when the insert that directly contains it is the one exploded, so snapshotting
+    /// it here is a defensive backstop rather than the fix MLINE needs. This has to run, and capture the whole
+    /// subtree, before that explode call.
     /// </summary>
     /// <param name="block">The block whose entities (and nested blocks) are searched.</param>
     /// <param name="mlineSnapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
@@ -918,8 +927,8 @@ internal sealed class EntityRenderDispatcher
                 case MLine mline when !mlineSnapshot.ContainsKey(mline):
                     mlineSnapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
                     break;
-                case Leader leaderEntity when !leaderSnapshot.ContainsKey(leaderEntity):
-                    leaderSnapshot.Add(leaderEntity, new List<XYZ>(leaderEntity.Vertices));
+                case Leader leader when !leaderSnapshot.ContainsKey(leader):
+                    leaderSnapshot.Add(leader, new List<XYZ>(leader.Vertices));
                     break;
                 case Insert nestedInsert:
                     CollectSharedVertexLists(nestedInsert.Block, mlineSnapshot, leaderSnapshot, visited);

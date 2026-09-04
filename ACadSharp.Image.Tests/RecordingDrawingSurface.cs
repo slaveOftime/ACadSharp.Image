@@ -31,6 +31,9 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     /// <summary>Points of every FillPolygon call, in order.</summary>
     public List<IReadOnlyList<SurfacePoint>> Polygons { get; } = new();
 
+    /// <summary>Control points of every DrawCubicBezier call, in order.</summary>
+    public List<IReadOnlyList<SurfacePoint>> Beziers { get; } = new();
+
     /// <summary>Every text run handed to DrawText, in order.</summary>
     public List<SurfaceText> Texts { get; } = new();
 
@@ -78,6 +81,7 @@ internal sealed class RecordingDrawingSurface : IDrawingSurface
     {
         this.Styles.Add(style);
         this.Calls.Add($"DrawCubicBezier n={controlPoints.Count} closed={closed}");
+        this.Beziers.Add(controlPoints.ToArray());
     }
 
     public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed)

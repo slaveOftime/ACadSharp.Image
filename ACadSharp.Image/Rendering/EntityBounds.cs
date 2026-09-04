@@ -36,6 +36,9 @@ internal static class EntityBounds
         {
             case Insert insert when insert.Block == null:
                 return false;
+            case Insert insert when EntityRenderDispatcher.BlockGraphIsCircular(insert.Block):
+                error = new InvalidOperationException($"block '{insert.Block!.Name}' references itself");
+                return false;
             case Wipeout wipeout:
                 return TryFromPoints(EntityRenderDispatcher.WipeoutWorldBoundary(wipeout), out bounds);
             case Solid solid when !OcsTransform.IsWorldPlane(solid.Normal):

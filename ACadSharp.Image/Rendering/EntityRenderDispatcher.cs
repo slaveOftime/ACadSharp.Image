@@ -853,6 +853,12 @@ internal sealed class EntityRenderDispatcher
             return;
         }
 
+        if (BlockGraphIsCircular(insert.Block))
+        {
+            this._configuration.Notify($"[{insert.SubclassMarker}] Handle {insert.Handle.ToString("X", CultureInfo.InvariantCulture)}: block '{insert.Block.Name}' references itself; skipped.", NotificationType.Warning);
+            return;
+        }
+
         // The exploded clones carry the block entities' own attributes but no owner or document; ByBlock and
         // layer-0 inheritance, and the header's LTSCALE, come from the insert's resolved style and effective layer.
         // ACadSharp 3.7.1's Explode() yields one clone per block entity, in order. Text geometry comes from the
@@ -1071,6 +1077,54 @@ internal sealed class EntityRenderDispatcher
         }
 
         return (needsHeal, truncated);
+    }
+
+    /// <summary>
+    /// Whether a block's own graph contains a cycle, so that a reference to it cannot be exploded.
+    /// </summary>
+    /// <param name="block">The block a reference points at.</param>
+    /// <returns>True when walking the block's nested references reaches a block already on the walk.</returns>
+    /// <remarks>
+    /// This walks the whole graph without caching or stopping early, unlike the heal scan: a cycle can hide behind
+    /// any branch, and an answer that stopped at the first interesting entity would miss it. Blocks are tracked on
+    /// the current path rather than globally, so a diamond — two references to the same block from different places —
+    /// is not mistaken for a cycle.
+    /// <para>
+    /// It has to be answered before <c>Insert.Explode()</c> is called, not while drawing: exploding deep-clones the
+    /// whole block graph, so a cycle exhausts the stack inside ACadSharp before the renderer sees a single entity,
+    /// and a <c>StackOverflowException</c> cannot be caught in .NET — the process dies. A draw-time guard keyed on
+    /// the block record could not recognise a nested level anyway, because the inserts reached down there hold
+    /// deep-cloned records with a different identity at every level.
+    /// </para>
+    /// </remarks>
+    internal static bool BlockGraphIsCircular(BlockRecord? block)
+    {
+        return block != null && Walk(block, new HashSet<BlockRecord>());
+
+        static bool Walk(BlockRecord block, HashSet<BlockRecord> onPath)
+        {
+            if (!onPath.Add(block))
+            {
+                return true;
+            }
+
+            try
+            {
+                foreach (Entity entity in block.Entities)
+                {
+                    if (entity is Insert nested && nested.Block != null && Walk(nested.Block, onPath))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            finally
+            {
+                onPath.Remove(block);
+            }
+        }
     }
 
     /// <summary>

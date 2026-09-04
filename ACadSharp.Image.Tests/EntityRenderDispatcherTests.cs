@@ -1795,4 +1795,74 @@ public sealed class EntityRenderDispatcherTests
         Assert.DoesNotContain(surface.Calls, c => c.StartsWith("Draw", StringComparison.Ordinal));
         Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("no block", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void ABlockThatReferencesItselfIsSkippedWithAWarningInsteadOfOverflowing()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        List<NotificationEventArgs> notifications = new();
+        configuration.OnNotification += (_, e) => notifications.Add(e);
+        CadDocument document = new();
+        BlockRecord outer = new("OUTER");
+        BlockRecord inner = new("INNER");
+        document.BlockRecords.Add(outer);
+        document.BlockRecords.Add(inner);
+        outer.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)));
+        // Constructing an Insert of a block overflows the stack once that block's graph already contains a cycle
+        // (ACadSharp 3.7.1's Insert(BlockRecord) constructor itself recurses through the block). So the insert under
+        // test is built, and added to the document, while outer's graph is still acyclic; the second half of the
+        // cycle (inner's own Insert(outer)) is wired up afterwards, closing the cycle only in the two blocks'
+        // Entities collections, never inside another Insert constructor call.
+        Insert insert = new(outer);
+        document.Entities.Add(insert);
+        outer.Entities.Add(new Insert(inner));
+        inner.Entities.Add(new Insert(outer));
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("references itself", StringComparison.OrdinalIgnoreCase));
+        Assert.Empty(surface.Lines);
+    }
+
+    [Fact]
+    public void ACircularBlockGraphDoesNotKillTheExporterWhileFramingThePage()
+    {
+        // Framing runs before rendering and recurses through the same graph, so this is the call that dies first if
+        // only the draw path is guarded. A stack overflow cannot be caught, so a regression here takes the whole
+        // test process down rather than failing this test: run it on its own when it is new.
+        CadDocument document = new();
+        BlockRecord outer = new("OUTER");
+        BlockRecord inner = new("INNER");
+        document.BlockRecords.Add(outer);
+        document.BlockRecords.Add(inner);
+        outer.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)));
+        // See the comment above: the insert is built and added to the document before the cycle is closed, because
+        // constructing an Insert of an already-cyclic block overflows the stack inside ACadSharp's own constructor.
+        Insert insert = new(outer);
+        document.Entities.Add(insert);
+        outer.Entities.Add(new Insert(inner));
+        inner.Entities.Add(new Insert(outer));
+        ImageExporter exporter = new();
+
+        exporter.Add(document.ModelSpace);
+
+        Assert.NotNull(exporter.Pages);
+    }
+
+    [Fact]
+    public void AnOrdinaryNestedBlockStillDraws()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        BlockRecord outer = new("OUTER");
+        BlockRecord inner = new("INNER");
+        inner.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
+        outer.Entities.Add(new Insert(inner) { InsertPoint = new XYZ(0, 5, 0) });
+        Insert insert = new(outer) { InsertPoint = new XYZ(2, 3, 0) };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
+
+        Assert.Single(surface.Lines);
+    }
 }

@@ -1495,19 +1495,54 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
-    public void AnMLineWithoutCutsStillDrawsOnePolylinePerElement()
+    public void AnMLineWhoseOnlyCutValueSitsAtTheSegmentEndStillDrawsOnePolylinePerElement()
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
+        // The shape the one real-world sample carries: a third parameter equal to the segment length, which is a
+        // break at the very end and so no cut at all. Such an element must stay on the single-polyline path, or
+        // every dashed multiline in the repository would restart its linetype phase at each vertex.
         MLine mline = new()
         {
             Style = TwoElementStyle(0.5),
-            Vertices = { VertexAt(0, 10), VertexAt(20, 10) },
+            Vertices = { VertexAt(0, 10, [0.5, 0, 20], [-0.5, 0, 20]), VertexAt(20, 10, [0.5, 0, 20], [-0.5, 0, 20]) },
         };
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
 
         Assert.Equal(2, surface.Polylines.Count);
+        Assert.Empty(surface.Lines);
+        Assert.Equal([new SurfacePoint(0, 89.5), new SurfacePoint(20, 89.5)], surface.Polylines[0]);
+        Assert.Equal([new SurfacePoint(0, 90.5), new SurfacePoint(20, 90.5)], surface.Polylines[1]);
+    }
+
+    [Fact]
+    public void AClosedMLineCutsItsClosingSegmentToo()
+    {
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        MLineStyle style = new("CUT");
+        style.AddElement(new MLineStyle.Element { Offset = 0 });
+        // A 20-15-25 triangle, so the closing segment (the third vertex back to the first) has an exact length of
+        // 25 and its runs land on whole surface coordinates. The cut is stored on that last vertex.
+        MLine mline = new()
+        {
+            Style = style,
+            Flags = MLineFlags.Closed,
+            Vertices = { VertexAt(0, 10, [0, 0]), VertexAt(20, 10, [0, 0]), VertexAt(20, 25, [0, 0, 5, 20]) },
+        };
+
+        new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), mline);
+
+        // A cut anywhere puts the whole element on the per-run path, so all three segments are drawn as lines: the
+        // first two whole, the closing one broken at 5 and resumed at 20 of its 25 units, i.e. at fractions 0.2 and
+        // 0.8 of the surface segment from (20,75) to (0,90).
+        Assert.Empty(surface.Polylines);
+        Assert.Equal(4, surface.Lines.Count);
+        Assert.Equal((new SurfacePoint(0, 90), new SurfacePoint(20, 90)), surface.Lines[0]);
+        Assert.Equal((new SurfacePoint(20, 90), new SurfacePoint(20, 75)), surface.Lines[1]);
+        Assert.Equal((new SurfacePoint(20, 75), new SurfacePoint(16, 78)), surface.Lines[2]);
+        Assert.Equal((new SurfacePoint(4, 87), new SurfacePoint(0, 90)), surface.Lines[3]);
     }
 
     [Fact]
@@ -1927,6 +1962,21 @@ public sealed class EntityRenderDispatcherTests
         List<NotificationEventArgs> warnings = RenderWithNonFiniteEntity(mline);
         Assert.Contains("geometry contains non-finite values; entity skipped", Assert.Single(warnings).Message, StringComparison.Ordinal);
         Assert.DoesNotContain(warnings, w => w.Message.Contains("Raster:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MLineWithANonFiniteCutPositionIsSkippedWithoutKillingTheExport()
+    {
+        // A cut position places the end of a run, so it reaches the surface exactly as a vertex position does and
+        // has to be validated with them: an MLINE carrying NaN anywhere in its parameters is skipped whole.
+        MLine mline = new()
+        {
+            Style = TwoElementStyle(0.5),
+            Vertices = { VertexAt(0, 0, [0.5, 0, double.NaN], [-0.5, 0]), VertexAt(20, 0, [0.5, 0], [-0.5, 0]) },
+        };
+
+        List<NotificationEventArgs> warnings = RenderWithNonFiniteEntity(mline);
+        Assert.Contains("geometry contains non-finite values; entity skipped", Assert.Single(warnings).Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -732,8 +732,10 @@ internal sealed class EntityRenderDispatcher
     /// The geometry stored in an MLINE's vertices is final: element j passes through
     /// <c>Position + Segments[j].Parameters[0] * Miter</c> at every vertex (DXF group 41), with justification and
     /// scale already applied by the writer. Vertices without parameters fall back to the style offsets with the
-    /// justification shift, with a warning. Cuts made by MLEDIT (further group-41 values) are ignored with a
-    /// warning; the elements stay continuous. Each element takes the style element's colour and linetype, falling
+    /// justification shift, with a warning. Cuts made by MLEDIT (further group-41 values) break an element into the
+    /// visible runs <see cref="VisibleRuns"/> computes, each drawn as its own line; an element with no usable cut
+    /// position stays a single polyline so its linetype phase is unbroken. Fill cuts (group 42) are notified, not
+    /// drawn. Each element takes the style element's colour and linetype, falling
     /// back to the entity's own; a fill-on style fills the ring between the two outermost elements first. Square
     /// caps join the outermost elements at an open end unless the entity suppresses them; round and inner-arc
     /// caps and joints are not drawn.

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-04-remaining-limitations-design.md` (which follows `docs/superpowers/specs/2026-09-02-layers-and-svg-design.md`; both bind).
 
+> **Corrections applied during execution** — including to the test snippets quoted in the tasks below, several of which were wrong as written — are recorded in the *As implemented (2026-09-04)* section at the end of that design, which lists them per task. Read it before trusting a snippet in this plan.
+
 ## Global Constraints
 
 - ACadSharp `3.7.1`; SixLabors packages as pinned; no new NuGet dependencies; target frameworks unchanged.

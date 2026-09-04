@@ -363,16 +363,6 @@ public sealed class EntityRenderDispatcherTests
         return hatch;
     }
 
-    private static Hatch.BoundaryPath SquarePath(double x0, double y0, double x1, double y1)
-    {
-        Hatch.BoundaryPath path = new();
-        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x0, y0), End = new XY(x1, y0) });
-        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x1, y0), End = new XY(x1, y1) });
-        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x1, y1), End = new XY(x0, y1) });
-        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x0, y1), End = new XY(x0, y0) });
-        return path;
-    }
-
     [Fact]
     public void SolidHatchFillsBoundaryRings()
     {
@@ -666,7 +656,7 @@ public sealed class EntityRenderDispatcherTests
         ImageConfiguration configuration = new();
         BlockRecord block = new("TILT");
         Hatch hatch = new() { IsSolid = true, Normal = new XYZ(0, 0, -1), Elevation = 0d };
-        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+        hatch.Paths.Add(SyntheticSamples.SquarePath(0, 0, 10, 10));
         block.Entities.Add(hatch);
         Insert insert = new(block) { InsertPoint = new XYZ(20, 0, 0) };
 
@@ -684,7 +674,7 @@ public sealed class EntityRenderDispatcherTests
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
         Hatch hatch = new() { IsSolid = true, Normal = new XYZ(0, 0, -1), Elevation = 0d };
-        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+        hatch.Paths.Add(SyntheticSamples.SquarePath(0, 0, 10, 10));
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), hatch);
 
@@ -700,7 +690,7 @@ public sealed class EntityRenderDispatcherTests
         ImageConfiguration configuration = new();
         BlockRecord block = new("MIRROR");
         Hatch hatch = new() { IsSolid = true, Normal = XYZ.AxisZ, Elevation = 0d };
-        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+        hatch.Paths.Add(SyntheticSamples.SquarePath(0, 0, 10, 10));
         block.Entities.Add(hatch);
         Insert insert = new(block) { InsertPoint = new XYZ(50, 0, 0), XScale = -1 };
 
@@ -717,7 +707,7 @@ public sealed class EntityRenderDispatcherTests
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
         Hatch hatch = new() { IsSolid = true, Normal = new XYZ(0, 1, 0), Elevation = 5d };
-        hatch.Paths.Add(SquarePath(0, 0, 10, 10));
+        hatch.Paths.Add(SyntheticSamples.SquarePath(0, 0, 10, 10));
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), hatch);
 

@@ -52,35 +52,8 @@ public sealed class EntityGoldenTests
         SurfacePoint exposed = context.ToSurfacePoint(new XY(65, 30));
 
         Rgba32 white = SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>();
-        Assert.Equal(white, DarkestPixelNear(page.Canvas, covered));
-        Assert.NotEqual(white, DarkestPixelNear(page.Canvas, exposed));
-    }
-
-    /// <summary>
-    /// The darkest (lowest R+G+B) pixel in a small window around <paramref name="point"/>, so the assertion survives
-    /// anti-aliasing and rounding of the fitted coordinates without depending on one exact pixel.
-    /// </summary>
-    private static Rgba32 DarkestPixelNear(SixLabors.ImageSharp.Image<Rgba32> canvas, SurfacePoint point, int radius = 2)
-    {
-        int centerX = (int)Math.Round(point.X);
-        int centerY = (int)Math.Round(point.Y);
-        Rgba32 darkest = SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>();
-        int darkestLuma = int.MaxValue;
-        for (int y = Math.Max(0, centerY - radius); y <= Math.Min(canvas.Height - 1, centerY + radius); y++)
-        {
-            for (int x = Math.Max(0, centerX - radius); x <= Math.Min(canvas.Width - 1, centerX + radius); x++)
-            {
-                Rgba32 pixel = canvas[x, y];
-                int luma = pixel.R + pixel.G + pixel.B;
-                if (luma < darkestLuma)
-                {
-                    darkestLuma = luma;
-                    darkest = pixel;
-                }
-            }
-        }
-
-        return darkest;
+        Assert.Equal(white, GoldenAssert.DarkestPixelNear(page.Canvas, covered));
+        Assert.NotEqual(white, GoldenAssert.DarkestPixelNear(page.Canvas, exposed));
     }
 
     [Fact]

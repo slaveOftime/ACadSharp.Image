@@ -133,6 +133,21 @@ internal static class SyntheticSamples
     }
 
     /// <summary>
+    /// A rectangular hatch boundary path built from four line edges (rather than a single closed polyline edge),
+    /// spanning <paramref name="x0"/>..<paramref name="x1"/> and <paramref name="y0"/>..<paramref name="y1"/>.
+    /// Shared by <c>EntityRenderDispatcherTests</c> and this class.
+    /// </summary>
+    internal static Hatch.BoundaryPath SquarePath(double x0, double y0, double x1, double y1)
+    {
+        Hatch.BoundaryPath path = new();
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x0, y0), End = new XY(x1, y0) });
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x1, y0), End = new XY(x1, y1) });
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x1, y1), End = new XY(x0, y1) });
+        path.Edges.Add(new Hatch.BoundaryPath.Line { Start = new XY(x0, y1), End = new XY(x0, y0) });
+        return path;
+    }
+
+    /// <summary>
     /// One block exercising the entities added after the feature goldens were written: a 3DFACE with one hidden edge,
     /// a straight and a splined LEADER (both with arrowheads), a filled two-element MLINE turning a right-angle corner,
     /// an opaque WIPEOUT masking part of a line, and an INSERT whose ATTRIB carries a room number. Handles are
@@ -225,6 +240,100 @@ internal static class SyntheticSamples
         attribute.InsertPoint = new XYZ(60, 45, 0);
         attribute.Height = 3;
         block.Entities.Add(insert);
+
+        return block;
+    }
+
+    /// <summary>
+    /// A block exercising every feature the remaining-limitations work added: a multi-line attribute, a hatch on a
+    /// tilted plane inside a block, a leader with a custom arrowhead block, an inverted wipeout over a line, and an
+    /// MLINE with a cut in both of its elements. Handles increase in draw order, so the wipeout follows the line it
+    /// masks.
+    /// </summary>
+    /// <returns>The block, with every entity on its own named layer.</returns>
+    public static BlockRecord FidelityBlock()
+    {
+        BlockRecord block = new("fidelity");
+        Layer roomsLayer = new("Rooms") { Color = new Color(9) };
+        Layer hatchLayer = new("Tilted") { Color = new Color(3) };
+        Layer leaderLayer = new("Leader") { Color = new Color(4) };
+        Layer underLayer = new("Under") { Color = new Color(1) };
+        Layer coverLayer = new("Cover") { Color = new Color(8) };
+        Layer wallLayer = new("Wall") { Color = new Color(6) };
+
+        // Multi-line attribute: the single-line value must never appear in the output.
+        BlockRecord label = new("LABEL");
+        label.Entities.Add(new AttributeDefinition { Tag = "ROOM", Value = "FLAT", Layer = roomsLayer });
+        Insert labelInsert = WithHandle(new Insert(label) { InsertPoint = new XYZ(10, 80, 0), Layer = roomsLayer }, 0x10);
+        labelInsert.Attributes.Clear();
+        labelInsert.Attributes.Add(WithHandle(new AttributeEntity
+        {
+            Tag = "ROOM",
+            Value = "FLAT",
+            AttributeType = AttributeType.MultiLine,
+            InsertPoint = new XYZ(10, 80, 0),
+            Height = 4,
+            Layer = roomsLayer,
+            MText = new MText { Value = "Room 1\\PLevel 2", InsertPoint = new XYZ(10, 80, 0), Height = 4, RectangleWidth = 40 },
+        }, 0x11));
+        block.Entities.Add(labelInsert);
+
+        // Tilted hatch inside a block: normal (0,0,-1) mirrors X on the way to world.
+        BlockRecord tilted = new("TILTED");
+        Hatch hatch = new() { IsSolid = true, Normal = new XYZ(0, 0, -1), Elevation = 0d, Layer = hatchLayer };
+        hatch.Paths.Add(SquarePath(0, 0, 20, 15));
+        tilted.Entities.Add(hatch);
+        block.Entities.Add(WithHandle(new Insert(tilted) { InsertPoint = new XYZ(80, 70, 0), Layer = hatchLayer }, 0x12));
+
+        // Custom arrowhead block: tip at the base point, body back along local -X.
+        BlockRecord arrow = new("FIDELITY_ARROW");
+        arrow.Entities.Add(new Line(new XYZ(-1, 0, 0), new XYZ(0, 0, 0)));
+        arrow.Entities.Add(new Solid
+        {
+            FirstCorner = new XYZ(-1, -0.25, 0),
+            SecondCorner = new XYZ(0, 0, 0),
+            ThirdCorner = new XYZ(-1, 0.25, 0),
+            FourthCorner = new XYZ(0, 0, 0),
+        });
+        block.Entities.Add(WithHandle(new Leader
+        {
+            ArrowHeadEnabled = true,
+            Style = new DimensionStyle("FIDELITY") { ArrowSize = 4, ScaleFactor = 1, LeaderArrow = arrow },
+            Layer = leaderLayer,
+            Vertices = { new XYZ(10, 40, 0), new XYZ(35, 55, 0), new XYZ(55, 55, 0) },
+        }, 0x13));
+
+        // Inverted wipeout over a line: only the middle band of the line survives.
+        block.Entities.Add(WithHandle(new Line(new XYZ(60, 20, 0), new XYZ(110, 20, 0)) { Layer = underLayer }, 0x14));
+        Wipeout wipeout = WithHandle(new Wipeout
+        {
+            InsertPoint = new XYZ(60, 10, 0),
+            UVector = new XYZ(50, 0, 0),
+            VVector = new XYZ(0, 20, 0),
+            Size = new XY(1, 1),
+            ClippingState = true,
+            ClipType = ClipType.Rectangular,
+            ClipMode = ClipMode.Inside,
+            Layer = coverLayer,
+        }, 0x15);
+        wipeout.ClipBoundaryVertices.Add(new XY(-0.2, -0.5));
+        wipeout.ClipBoundaryVertices.Add(new XY(0.2, 0.5));
+        block.Entities.Add(wipeout);
+
+        // Cut MLINE: both elements break between 20 and 30 along their own length.
+        MLineStyle wallStyle = new("FIDELITY_WALL");
+        wallStyle.AddElement(new MLineStyle.Element { Offset = 1 });
+        wallStyle.AddElement(new MLineStyle.Element { Offset = -1 });
+        block.Entities.Add(WithHandle(new MLine
+        {
+            Style = wallStyle,
+            Layer = wallLayer,
+            Vertices =
+            {
+                MLineVertex(new XYZ(10, 10, 0), new XYZ(1, 0, 0), new XYZ(0, 1, 0), [1, 0, 20, 30], [-1, 0, 20, 30]),
+                MLineVertex(new XYZ(60, 10, 0), new XYZ(1, 0, 0), new XYZ(0, 1, 0), [1, 0, 20, 30], [-1, 0, 20, 30]),
+            },
+        }, 0x16));
 
         return block;
     }

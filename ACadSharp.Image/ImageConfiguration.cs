@@ -105,11 +105,19 @@ public sealed class ImageConfiguration
 
     private readonly HashSet<string> _hiddenLayers = new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly HashSet<string> _includedLayers = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly Dictionary<LineWeightType, double> _lineWeightValues = new();
 
     private readonly IReadOnlySet<string> _readOnlyHiddenLayers;
 
+    private readonly IReadOnlySet<string> _readOnlyIncludedLayers;
+
     private readonly ReadOnlyDictionary<LineWeightType, double> _readOnlyLineWeightValues;
+
+    private float _minimumDashPixels = 2f;
+
+    private int _maxHatchLines = 20000;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ImageConfiguration"/> class.
@@ -117,6 +125,7 @@ public sealed class ImageConfiguration
     public ImageConfiguration()
     {
         this._readOnlyHiddenLayers = new ReadOnlySet<string>(this._hiddenLayers);
+        this._readOnlyIncludedLayers = new ReadOnlySet<string>(this._includedLayers);
         this._readOnlyLineWeightValues = new ReadOnlyDictionary<LineWeightType, double>(this._lineWeightValues);
     }
 
@@ -133,7 +142,7 @@ public sealed class ImageConfiguration
     /// Gets or sets the dots-per-inch resolution used when converting drawing units to pixels.
     /// </summary>
     /// <remarks>
-    /// This value affects line weight calculations and text sizing.
+    /// This value affects line weight calculations only; text is sized from the drawing on both backends.
     /// Default is 96 DPI.
     /// </remarks>
     public float Dpi { get; set; } = 96f;
@@ -204,17 +213,61 @@ public sealed class ImageConfiguration
     /// Gets or sets the font family name used for rendering text entities.
     /// </summary>
     /// <remarks>
-    /// The font must be available on the system. If the specified font is not found,
-    /// the system's default font family is used as a fallback.
+    /// If the family is not installed, the first installed family of the fallback chain <c>FontResolver.Fallbacks</c>
+    /// (Liberation Sans, DejaVu Sans, Arial, Helvetica, Noto Sans, Segoe UI) is used, then the first installed
+    /// family; when no font is installed, raster text is skipped with a warning and SVG text is emitted unwrapped.
     /// Default is "Arial".
     /// </remarks>
     public string FontFamilyName { get; set; } = "Arial";
+
+    /// <summary>
+    /// Gets the settings that only affect SVG output.
+    /// </summary>
+    public SvgOptions Svg { get; } = new();
 
     /// <summary>
     /// Gets the set of layer names that should be hidden during export.
     /// Layer names are case-insensitive.
     /// </summary>
     public IReadOnlySet<string> HiddenLayers => this._readOnlyHiddenLayers;
+
+    /// <summary>
+    /// Gets or sets how layer state (on/off, frozen, plottable) affects rendering. Default <see cref="LayerVisibilityMode.All"/>.
+    /// </summary>
+    public LayerVisibilityMode LayerVisibility { get; set; } = LayerVisibilityMode.All;
+
+    /// <summary>
+    /// Gets the layers to render when the set is not empty; all other layers are skipped. Applied before <see cref="HiddenLayers"/>. Case-insensitive.
+    /// </summary>
+    public IReadOnlySet<string> IncludedLayers => this._readOnlyIncludedLayers;
+
+    /// <summary>
+    /// Gets or sets the colour used for AutoCAD colour index 7 ("white/black by background"). Null (default) picks black or white from the luminance of <see cref="BackgroundColor"/>.
+    /// </summary>
+    public ImageColor? ForegroundColor { get; set; }
+
+    /// <summary>
+    /// Gets or sets the pattern length in pixels below which dashed linetypes are drawn solid. Default 2.
+    /// </summary>
+    public float MinimumDashPixels
+    {
+        get => this._minimumDashPixels;
+        set => this._minimumDashPixels = value >= 0f ? value : throw new ArgumentOutOfRangeException(nameof(value), "Minimum dash length must be zero or greater.");
+    }
+
+    /// <summary>
+    /// Gets or sets the maximum number of pattern lines drawn per hatch; beyond it a warning is raised and the remainder is skipped. Default 20000.
+    /// </summary>
+    /// <remarks>
+    /// The same limit is applied before the pattern is expanded: ACadSharp builds every pattern line of a hatch up
+    /// front, so a hatch whose pattern would need more scan lines than this is skipped entirely, with a warning,
+    /// instead of being expanded and then truncated.
+    /// </remarks>
+    public int MaxHatchLines
+    {
+        get => this._maxHatchLines;
+        set => this._maxHatchLines = value > 0 ? value : throw new ArgumentOutOfRangeException(nameof(value), "Maximum hatch lines must be greater than zero.");
+    }
 
     /// <summary>
     /// Gets or sets the JPEG output quality as a percentage.
@@ -298,11 +351,7 @@ public sealed class ImageConfiguration
     /// </remarks>
     public float GetLineWeightPixels(LineWeightType lineWeight)
     {
-        double millimeters = this._lineWeightValues.TryGetValue(lineWeight, out double configured)
-            ? configured
-            : LineWeightDefaultValues.TryGetValue(lineWeight, out double fallback)
-                ? fallback
-                : 0d;
+        double millimeters = this.GetLineWeightMillimeters(lineWeight);
 
         if (millimeters <= 0d)
         {
@@ -311,6 +360,18 @@ public sealed class ImageConfiguration
 
         float pixels = (float)(millimeters * this.Dpi / 25.4d);
         return Math.Max(1f, pixels * this.LineWeightScale);
+    }
+
+    /// <summary>
+    /// Gets the configured millimetre value for a line weight (overrides first, then <see cref="LineWeightDefaultValues"/>, else 0).
+    /// </summary>
+    public double GetLineWeightMillimeters(LineWeightType lineWeight)
+    {
+        return this._lineWeightValues.TryGetValue(lineWeight, out double configured)
+            ? configured
+            : LineWeightDefaultValues.TryGetValue(lineWeight, out double fallback)
+                ? fallback
+                : 0d;
     }
 
     /// <summary>
@@ -391,6 +452,49 @@ public sealed class ImageConfiguration
     }
 
     /// <summary>
+    /// Adds the specified layer to the include list.
+    /// </summary>
+    /// <param name="layerName">The layer name to include.</param>
+    public void IncludeLayer(string layerName)
+    {
+        ThrowIfNullOrWhiteSpace(layerName);
+        this._includedLayers.Add(layerName);
+    }
+
+    /// <summary>
+    /// Adds the specified layers to the include list.
+    /// </summary>
+    /// <param name="layerNames">The layer names to include.</param>
+    public void IncludeLayers(IEnumerable<string> layerNames)
+    {
+        ArgumentNullException.ThrowIfNull(layerNames);
+
+        foreach (string layerName in layerNames)
+        {
+            this.IncludeLayer(layerName);
+        }
+    }
+
+    /// <summary>
+    /// Removes the specified layer from the include list.
+    /// </summary>
+    /// <param name="layerName">The layer name to exclude.</param>
+    /// <returns><see langword="true"/> if the layer was removed; otherwise, <see langword="false"/>.</returns>
+    public bool ExcludeLayer(string layerName)
+    {
+        ThrowIfNullOrWhiteSpace(layerName);
+        return this._includedLayers.Remove(layerName);
+    }
+
+    /// <summary>
+    /// Clears the include list.
+    /// </summary>
+    public void ClearIncludedLayers()
+    {
+        this._includedLayers.Clear();
+    }
+
+    /// <summary>
     /// Sets a custom line weight override in millimeters.
     /// </summary>
     /// <param name="lineWeight">The line weight to override.</param>
@@ -426,6 +530,27 @@ public sealed class ImageConfiguration
     internal void Notify(string message, NotificationType notificationType, Exception? ex = null)
     {
         this.OnNotification?.Invoke(this, new NotificationEventArgs(message, notificationType, ex));
+    }
+
+    /// <summary>
+    /// Colour used for AutoCAD colour index 7: <see cref="ForegroundColor"/> when set, else black on light or transparent
+    /// backgrounds and white on dark ones.
+    /// </summary>
+    internal ImageColor ResolveForegroundColor()
+    {
+        if (this.ForegroundColor is ImageColor explicitColor)
+        {
+            return explicitColor;
+        }
+
+        SixLabors.ImageSharp.PixelFormats.Rgba32 background = this.BackgroundColor.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+        if (background.A == 0)
+        {
+            return ImageColor.Black;
+        }
+
+        double luminance = (0.299d * background.R) + (0.587d * background.G) + (0.114d * background.B);
+        return luminance < 128d ? ImageColor.White : ImageColor.Black;
     }
 
     private static int ValidateNonNegative(int value, string propertyName)

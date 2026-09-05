@@ -1,0 +1,372 @@
+using System.Numerics;
+using ACadSharp.IO;
+using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Processing;
+using ImageColor = SixLabors.ImageSharp.Color;
+using ImagePoint = SixLabors.ImageSharp.Point;
+using Rgba32 = SixLabors.ImageSharp.PixelFormats.Rgba32;
+
+namespace ACadSharp.Image.Rendering;
+
+/// <summary>
+/// <see cref="IDrawingSurface"/> backed by an ImageSharp <see cref="Image{Rgba32}"/>.
+/// </summary>
+/// <remarks>
+/// Primitives map onto the same ImageSharp.Drawing calls the pre-abstraction renderer used; callers keep the closing heuristic and curve tessellation, so routed output is pixel-identical.
+/// Curves are not supported natively; callers tessellate them (<see cref="SupportsCurves"/> is false).
+/// </remarks>
+internal sealed class RasterDrawingSurface : IDrawingSurface
+{
+    private readonly ImageConfiguration _configuration;
+    private readonly bool _ownsCanvas;
+    private readonly Dictionary<ViewportSurface, (Image<Rgba32> Image, SurfaceRect Bounds)> _viewports = new();
+
+    public RasterDrawingSurface(Image<Rgba32> canvas, ImageConfiguration configuration, bool ownsCanvas)
+    {
+        this.Canvas = canvas;
+        this._configuration = configuration;
+        this._ownsCanvas = ownsCanvas;
+    }
+
+    public Image<Rgba32> Canvas { get; }
+
+    public bool SupportsCurves => false;
+
+    public void BeginEntity(EntityRenderInfo info, LayerRenderInfo layer)
+    {
+    }
+
+    public void EndEntity()
+    {
+    }
+
+    public void DrawLine(ImageStyle style, SurfacePoint start, SurfacePoint end)
+    {
+        Pen pen = CreatePen(style);
+        this.Canvas.Mutate(x => x.DrawLine(pen, ToPointF(start), ToPointF(end)));
+    }
+
+    public void DrawPolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, bool closed)
+    {
+        if (points.Count < 2)
+        {
+            return;
+        }
+
+        PointF[] pixels = new PointF[closed ? points.Count + 1 : points.Count];
+        for (int i = 0; i < points.Count; i++)
+        {
+            pixels[i] = ToPointF(points[i]);
+        }
+
+        if (closed)
+        {
+            pixels[^1] = pixels[0];
+        }
+
+        Pen pen = CreatePen(style);
+        this.Canvas.Mutate(x => x.DrawLine(pen, pixels));
+    }
+
+    public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle)
+    {
+        int segments = CurveTessellation.SegmentsForSweep(sweepAngle, this._configuration.ArcPrecision);
+        this.DrawPolyline(style, CurveTessellation.ArcPoints(center, radiusX, radiusY, rotation, startAngle, sweepAngle, segments), closed: false);
+    }
+
+    public void DrawEllipse(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation)
+    {
+        this.DrawPolyline(style, CurveTessellation.ArcPoints(center, radiusX, radiusY, rotation, 0d, 2d * Math.PI, this._configuration.ArcPrecision), closed: true);
+    }
+
+    public void DrawCubicBezier(ImageStyle style, IReadOnlyList<SurfacePoint> controlPoints, bool closed)
+    {
+        if (controlPoints.Count < 4)
+        {
+            return;
+        }
+
+        PathBuilder builder = new();
+        for (int index = 0; index + 3 < controlPoints.Count; index += 3)
+        {
+            builder.AddCubicBezier(
+                ToPointF(controlPoints[index]),
+                ToPointF(controlPoints[index + 1]),
+                ToPointF(controlPoints[index + 2]),
+                ToPointF(controlPoints[index + 3]));
+        }
+
+        IPath path = builder.Build();
+        Pen pen = CreatePen(style);
+        this.Canvas.Mutate(x => x.Draw(pen, path));
+    }
+
+    public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed)
+    {
+        if (points.Count < 2)
+        {
+            return;
+        }
+
+        List<SurfacePoint> flattened = new(points.Count * 4) { points[0] };
+        int segmentCount = closed ? points.Count : points.Count - 1;
+        for (int i = 0; i < segmentCount; i++)
+        {
+            SurfacePoint start = points[i];
+            SurfacePoint end = points[(i + 1) % points.Count];
+            double bulge = i < bulges.Count ? bulges[i] : 0d;
+            if (Math.Abs(bulge) < 1e-12 || start == end)
+            {
+                flattened.Add(end);
+                continue;
+            }
+
+            CurveTessellation.BulgeArc(start, end, bulge, out SurfacePoint center, out double radius, out double startAngle, out double sweep);
+            IReadOnlyList<SurfacePoint> arc = CurveTessellation.ArcPoints(center, radius, radius, 0d, startAngle, sweep, CurveTessellation.SegmentsForSweep(sweep, this._configuration.ArcPrecision));
+            for (int j = 1; j < arc.Count; j++)
+            {
+                flattened.Add(arc[j]);
+            }
+        }
+
+        this.DrawPolyline(style, flattened, closed: false);
+    }
+
+    public void FillPolygon(ImageStyle style, IReadOnlyList<SurfacePoint> points)
+    {
+        if (this.FinitePoints(points, 3) is not List<SurfacePoint> finite)
+        {
+            return;
+        }
+
+        PointF[] pixels = finite.Select(ToPointF).ToArray();
+        ImageColor color = style.EffectiveColor;
+        this.Canvas.Mutate(x => x.FillPolygon(color, pixels));
+    }
+
+    public void FillPath(ImageStyle style, IReadOnlyList<IReadOnlyList<SurfacePoint>> rings)
+    {
+        IPath[] polygons = rings
+            .Select(ring => this.FinitePoints(ring, 3))
+            .Where(ring => ring != null)
+            .Select(ring => (IPath)new Polygon(new LinearLineSegment(ring!.Select(ToPointF).ToArray())))
+            .ToArray();
+        if (polygons.Length == 0)
+        {
+            return;
+        }
+
+        IPath shape = polygons.Length == 1 ? polygons[0] : new ComplexPolygon(polygons);
+        ImageColor color = style.EffectiveColor;
+        DrawingOptions options = new()
+        {
+            ShapeOptions = { IntersectionRule = IntersectionRule.EvenOdd },
+        };
+        this.Canvas.Mutate(x => x.Fill(options, color, shape));
+    }
+
+    public void FillCircle(ImageStyle style, SurfacePoint center, double radius)
+    {
+        if (!IsFinite(center) || !double.IsFinite(radius))
+        {
+            this.NotifyNonFinite();
+            return;
+        }
+
+        PointF pixel = ToPointF(center);
+        ImageColor color = style.EffectiveColor;
+        this.Canvas.Mutate(x => x.Fill(color, new EllipsePolygon(pixel.X, pixel.Y, (float)radius)));
+    }
+
+    public void DrawText(ImageStyle style, SurfaceText text)
+    {
+        if (string.IsNullOrWhiteSpace(text.Text))
+        {
+            return;
+        }
+
+        if (!double.IsFinite(text.WidthScale) || text.WidthScale <= 0)
+        {
+            // Matches SvgDrawingSurface.DrawText's guard: Matrix3x2.CreateScale(0f, 1f, pivot) below would collapse
+            // the run to nothing silently instead of throwing, and a negative or non-finite scale is just as wrong.
+            // TextRenderer never produces one of these (both Place overloads guard length >= 1e-12), so this only
+            // matters to a caller driving SurfaceText directly.
+            this.NotifyNonFinite();
+            return;
+        }
+
+        PointF origin = ToPointF(text.Origin);
+
+        // The font size is the em, 4/3 of the CAD text height, laid out at 72 dpi so one point is one pixel: text
+        // then scales with the page like the geometry does and not with ImageConfiguration.Dpi, which only sizes
+        // line weights. The SVG backend uses the same em through TextMetrics.EmSize.
+        Font font = this.CreateFont(TextMetrics.EmSize(text.Height));
+
+        // ImageSharp advances the baseline by one em per line; AutoCAD and the SVG backend space lines at 5/3 of
+        // the text height, that is 5/4 em, so the spacing factor carries the 5/4. ImageSharp then splits the extra
+        // (LineSpacing - 1) em of leading evenly above and below every line, which would displace even a single
+        // line, so the origin is pulled back by that half-leading on whichever end the alignment anchors: up for
+        // Hanging, which anchors the top, down for Alphabetic, which anchors the bottom, and not at all for
+        // Central. The offset rides on the layout origin, so the rotation below turns it with the glyphs.
+        double factor = text.LineSpacingFactor <= 0d ? 1d : text.LineSpacingFactor;
+        float lineSpacing = (float)factor * 5f / 4f;
+        double halfLeading = font.Size * (lineSpacing - 1d) / 2d;
+        double leadingOffset = text.Baseline switch
+        {
+            SurfaceTextBaseline.Hanging => -halfLeading,
+            SurfaceTextBaseline.Alphabetic => halfLeading,
+            _ => 0d,
+        };
+
+        TextOptions options = new(font)
+        {
+            Dpi = 72f,
+            Origin = new PointF(origin.X, origin.Y + (float)leadingOffset),
+            HorizontalAlignment = text.Anchor switch
+            {
+                SurfaceTextAnchor.Middle => HorizontalAlignment.Center,
+                SurfaceTextAnchor.End => HorizontalAlignment.Right,
+                _ => HorizontalAlignment.Left,
+            },
+            VerticalAlignment = text.Baseline switch
+            {
+                SurfaceTextBaseline.Hanging => VerticalAlignment.Top,
+                SurfaceTextBaseline.Central => VerticalAlignment.Center,
+                _ => VerticalAlignment.Bottom,
+            },
+            WrappingLength = text.WrappingWidth > 0 ? (float)(text.WrappingWidth / text.WidthScale) : -1,
+            LineSpacing = lineSpacing,
+        };
+
+        IPathCollection glyphs = TextBuilder.GenerateGlyphs(text.Text, options);
+        DrawingOptions drawingOptions = new();
+        bool stretched = Math.Abs(text.WidthScale - 1d) > 1e-9;
+        bool rotated = Math.Abs(text.Rotation) > double.Epsilon;
+        if (stretched || rotated)
+        {
+            // Glyphs are laid out along the page's own x axis before any transform; scaling that layout about the
+            // origin first widens the run along its own reading axis, and the rotation that follows carries the
+            // widened run to its final orientation, so the stretch travels with the text instead of the canvas.
+            Vector2 pivot = new(origin.X, origin.Y);
+            Matrix3x2 transform = stretched ? Matrix3x2.CreateScale((float)text.WidthScale, 1f, pivot) : Matrix3x2.Identity;
+            if (rotated)
+            {
+                transform *= Matrix3x2.CreateRotation((float)-text.Rotation, pivot);
+            }
+
+            drawingOptions.Transform = transform;
+        }
+
+        ImageColor color = style.EffectiveColor;
+        this.Canvas.Mutate(x => x.Fill(drawingOptions, color, glyphs));
+    }
+
+    public ViewportSurface BeginViewport(SurfaceRect bounds)
+    {
+        // The child image can only be pasted at whole pixels. Its position is floored, the fractional remainder moves
+        // into the child's own offsets (so content keeps its exact page position), and the image grows to hold that
+        // remainder. The flip origin is the exact height: rounding it used to shift content and drop boundary geometry.
+        double left = Math.Floor(bounds.X);
+        double top = Math.Floor(bounds.Y);
+        double fractionX = bounds.X - left;
+        double fractionY = bounds.Y - top;
+        int width = Math.Max(1, (int)Math.Ceiling(fractionX + bounds.Width));
+        int height = Math.Max(1, (int)Math.Ceiling(fractionY + bounds.Height));
+        Image<Rgba32> image = new(width, height, ImageColor.Transparent);
+        RasterDrawingSurface child = new(image, this._configuration, ownsCanvas: true);
+        ViewportSurface viewport = new(child, fractionX, fractionY + bounds.Height);
+        this._viewports[viewport] = (image, new SurfaceRect(left, top, width, height));
+        return viewport;
+    }
+
+    public void EndViewport(ViewportSurface viewport)
+    {
+        if (!this._viewports.Remove(viewport, out (Image<Rgba32> Image, SurfaceRect Bounds) entry))
+        {
+            throw new InvalidOperationException("EndViewport was called for a viewport this surface did not begin.");
+        }
+
+        // Bounds were floored to whole pixels in BeginViewport.
+        ImagePoint destination = new((int)entry.Bounds.X, (int)entry.Bounds.Y);
+        this.Canvas.Mutate(x => x.DrawImage(entry.Image, destination, 1f));
+        viewport.Surface.Dispose();
+    }
+
+    public void Dispose()
+    {
+        foreach ((Image<Rgba32> image, _) in this._viewports.Values)
+        {
+            image.Dispose();
+        }
+
+        this._viewports.Clear();
+        if (this._ownsCanvas)
+        {
+            this.Canvas.Dispose();
+        }
+    }
+
+    /// <summary>Font at the given em size in points; at 72 dpi one point is one pixel.</summary>
+    private Font CreateFont(double emSize)
+    {
+        return FontResolver.Create(this._configuration.FontFamilyName, (float)emSize);
+    }
+
+    private static Pen CreatePen(ImageStyle style)
+    {
+        ImageColor color = style.EffectiveColor;
+        if (style.DashPattern is not { Length: > 0 })
+        {
+            return new SolidPen(color, style.StrokeWidth);
+        }
+
+        // ImageSharp.Drawing pattern values are multiples of the stroke width.
+        float width = Math.Max(0.01f, style.StrokeWidth);
+        float[] pattern = new float[style.DashPattern.Length];
+        for (int i = 0; i < pattern.Length; i++)
+        {
+            pattern[i] = Math.Max(0.001f, style.DashPattern[i] / width);
+        }
+
+        return new PatternPen(color, width, pattern);
+    }
+
+    private static PointF ToPointF(SurfacePoint point)
+    {
+        return new PointF((float)point.X, (float)point.Y);
+    }
+
+    private static bool IsFinite(SurfacePoint p) => double.IsFinite(p.X) && double.IsFinite(p.Y);
+
+    /// <summary>
+    /// Copies the points that carry no NaN or infinity, notifying when any is dropped. ImageSharp's scan-line fill
+    /// throws <see cref="ArithmeticException"/> on a non-finite vertex, which would abort the whole export; the
+    /// dispatcher filters the entities it knows about, and this is the backstop, matching the SVG backend.
+    /// </summary>
+    /// <param name="points">Points to filter.</param>
+    /// <param name="minimum">Number of points the shape needs.</param>
+    /// <returns>The surviving points, or null when fewer than <paramref name="minimum"/> remain.</returns>
+    private List<SurfacePoint>? FinitePoints(IReadOnlyList<SurfacePoint> points, int minimum)
+    {
+        List<SurfacePoint> finite = new(points.Count);
+        for (int i = 0; i < points.Count; i++)
+        {
+            if (IsFinite(points[i]))
+            {
+                finite.Add(points[i]);
+            }
+        }
+
+        if (finite.Count != points.Count)
+        {
+            this.NotifyNonFinite();
+        }
+
+        return finite.Count >= minimum ? finite : null;
+    }
+
+    private void NotifyNonFinite() => this._configuration.Notify("Raster: non-finite geometry skipped.", NotificationType.Warning);
+}

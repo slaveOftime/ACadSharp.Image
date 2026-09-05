@@ -29,6 +29,7 @@ public static class ImageExportFormatExtensions
             ImageExportFormat.Jpeg => ".jpg",
             ImageExportFormat.Gif => ".gif",
             ImageExportFormat.Webp => ".webp",
+            ImageExportFormat.Svg => ".svg",
             _ => ".png",
         };
     }
@@ -74,6 +75,7 @@ public static class ImageExportFormatExtensions
             "jpg" or "jpeg" => Success(ImageExportFormat.Jpeg, out format),
             "gif" => Success(ImageExportFormat.Gif, out format),
             "webp" => Success(ImageExportFormat.Webp, out format),
+            "svg" => Success(ImageExportFormat.Svg, out format),
             _ => Failure(out format),
         };
     }

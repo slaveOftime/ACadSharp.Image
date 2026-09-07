@@ -2,7 +2,7 @@
 
 [![NuGet downloads](https://img.shields.io/nuget/dt/ACadSharp.Image?logo=nuget&label=downloads)](https://www.nuget.org/packages/ACadSharp.Image)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%2010.0-512bd4)](https://dotnet.microsoft.com/download)
+[![.NET](https://img.shields.io/badge/.NET-6.0%20%7C%208.0%20%7C%2010.0-512bd4)](https://dotnet.microsoft.com/download)
 [![CI](https://github.com/slaveoftime/ACadSharp.Image/actions/workflows/ci.yml/badge.svg)](https://github.com/slaveoftime/ACadSharp.Image/actions)
 
 **High-performance DXF/DWG to image renderer for .NET**, built on [ACadSharp](https://github.com/DomCR/ACadSharp) and [ImageSharp](https://github.com/SixLabors/ImageSharp).

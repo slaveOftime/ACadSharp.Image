@@ -342,33 +342,6 @@ dotnet publish ./ACadSharp.Image.Cli/ -c Release -r osx-arm64 --self-contained -
 
 ---
 
-## 🔄 Migration Notes
-
-Recent modernization work includes intentional API tightening:
-
-- `ImageExporter.Pages` is now a read-only collection view.
-- `ImagePage.Entities` and `ImagePage.Viewports` are now read-only collection views.
-- Add content through `ImageExporter.Add(...)`, `ImagePage.Add(...)`, `ImagePage.AddEntity(...)`, and `ImagePage.AddViewport(...)`.
-- `ImageConfiguration.HiddenLayers` is now read-only; use `HideLayer`, `HideLayers`, `ShowLayer`, and `ClearHiddenLayers`.
-- `ImageConfiguration.LineWeightValues` is now read-only; use `SetLineWeight`, `RemoveLineWeight`, and `ClearLineWeights`.
-
-These changes preserve the rendering behavior while making mutation points explicit and easier to maintain.
-
-Changes on the way to the next major release:
-
-- `ImageExporter.Render()` now takes an optional `ImageExportFormat` and returns `IReadOnlyList<RenderedPage>`; cast items to `RenderedImagePage` for the raster canvas or `RenderedSvgPage` (its `Content` holds the markup), or call `Save(path)`/`Save(stream)` on the page.
-- `RenderedImagePage` derives from the new abstract `RenderedPage` and its constructor takes the format and quality it will save with.
-- The library targets net8.0 and net10.0; net6.0 is no longer supported.
-- ACadSharp 3.7.1 is required.
-- `ImagePage.Entities` now keeps every added entity; `ImageConfiguration.HiddenLayers` and `LayerVisibility` are applied at render time instead of at `Add`, so changing them afterwards takes effect, and the framing of auto-sized pages follows the currently visible entities.
-- New public members: `ImageConfiguration.GetLineWeightMillimeters` and `ImagePage.Document`.
-- `RenderedImagePage.Save` throws `NotSupportedException` when its format is `ImageExportFormat.Svg`; use a `RenderedSvgPage` for SVG output instead.
-- `ImagePage.Entities` is now ordered by the drawing's draw order (handle order, overridden by DRAWORDER) instead of file order, so later entities paint over earlier ones; block contents keep their stored order.
-- `ImageConfiguration.Dpi` no longer scales text; it affects only line weights. Raster text is laid out at a fixed 72 dpi from the same em size the SVG backend uses, so PNG text at the default 96 dpi is unchanged.
-- Release this work under a major version tag (for example `v2.0.0`); the version is derived from the tag by the release workflow.
-
----
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

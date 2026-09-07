@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-		<TargetFrameworks Condition="'$(PublishAot)' != 'true'">net8.0;net10.0</TargetFrameworks>
+		<TargetFrameworks Condition="'$(PublishAot)' != 'true'">net6.0;net8.0;net10.0</TargetFrameworks>
 		<TargetFrameworks Condition="'$(PublishAot)' == 'true'">net10.0</TargetFrameworks>
 		<BaseIntermediateOutputPath Condition="'$(PublishAot)' == 'true'">obj\publish-aot\</BaseIntermediateOutputPath>
 		<IsPackable>true</IsPackable>

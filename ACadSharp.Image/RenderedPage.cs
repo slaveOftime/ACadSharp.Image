@@ -31,7 +31,11 @@ public abstract class RenderedPage : IDisposable
     /// </summary>
     public void Save(string path)
     {
+#if NET7_0_OR_GREATER
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+#else
+        ArgumentNullException.ThrowIfNull(path);
+#endif
         string fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         using FileStream stream = new(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);

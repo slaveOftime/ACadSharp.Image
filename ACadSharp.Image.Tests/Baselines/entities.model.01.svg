@@ -1,0 +1,30 @@
+<svg viewBox="-1.28 -1.28 102.56 52.56" xmlns="http://www.w3.org/2000/svg">
+  <g class="cad-root">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" font-family="'DejaVu Sans', Arial, Helvetica, sans-serif">
+      <rect class="cad-background" x="-1.28" y="-1.28" width="102.56" height="52.56" fill="#ffffff" stroke="none" />
+      <g id="layer-face" class="cad-layer" data-layer="Face" stroke="#ffff00" stroke-width="1">
+        <polyline points="0 35 0 50 20 50 20 35" vector-effect="non-scaling-stroke" data-handle="10" data-type="3DFACE" />
+      </g>
+      <g id="layer-leader" class="cad-layer" data-layer="Leader" stroke="#00ffff" stroke-width="1">
+        <polyline points="30 50 45 40 60 40" vector-effect="non-scaling-stroke" data-handle="11" data-type="LEADER" />
+        <polygon points="30 50 31.85 49.17 31.48 48.61" fill="#00ffff" stroke="none" data-handle="11" data-type="LEADER" />
+        <path d="M70 50C71.67 48.33 76.67 40 80 40C83.33 40 86.67 50 90 50C93.33 50 98.33 41.67 100 40" vector-effect="non-scaling-stroke" data-handle="12" data-type="LEADER" />
+        <polygon points="70 50 71.65 48.82 71.18 48.35" fill="#00ffff" stroke="none" data-handle="12" data-type="LEADER" />
+      </g>
+      <g id="layer-wall" class="cad-layer" data-layer="Wall" stroke="#ff00ff" stroke-width="1">
+        <polygon points="0 19 39 19 39 0 41 0 41 21 0 21" fill="#00ff00" stroke="none" data-handle="13" data-type="MLINE" />
+        <polyline points="0 19 39 19 39 0" stroke="#ff0000" vector-effect="non-scaling-stroke" data-handle="13" data-type="MLINE" />
+        <polyline points="0 21 41 21 41 0" stroke="#0000ff" vector-effect="non-scaling-stroke" data-handle="13" data-type="MLINE" />
+      </g>
+      <g id="layer-under" class="cad-layer" data-layer="Under" stroke="#ff0000" stroke-width="1">
+        <line x1="60" y1="20" x2="100" y2="20" vector-effect="non-scaling-stroke" data-handle="14" data-type="LINE" />
+      </g>
+      <g id="layer-cover" class="cad-layer" data-layer="Cover" stroke="#808080" stroke-width="1">
+        <polygon points="70 15 90 15 90 25 70 25" fill="#ffffff" stroke="none" data-handle="15" data-type="WIPEOUT" />
+      </g>
+      <g id="layer-rooms" class="cad-layer" data-layer="Rooms" stroke="#c0c0c0" stroke-width="1">
+        <text x="60" y="5" font-size="4" xml:space="preserve" fill="#c0c0c0" stroke="none" data-type="ATTRIB" data-parent="16" data-block="ROOM">A-101</text>
+      </g>
+    </g>
+  </g>
+</svg>

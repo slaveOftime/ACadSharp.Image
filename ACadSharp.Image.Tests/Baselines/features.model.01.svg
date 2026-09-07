@@ -1,0 +1,41 @@
+<svg viewBox="-1.54 -1.54 123.08 58.08" xmlns="http://www.w3.org/2000/svg">
+  <g class="cad-root">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" font-family="'DejaVu Sans', Arial, Helvetica, sans-serif">
+      <rect class="cad-background" x="-1.54" y="-1.54" width="123.08" height="58.08" fill="#ffffff" stroke="none" />
+      <g id="layer-hatch" class="cad-layer" data-layer="Hatch" stroke="#ff0000" stroke-width="1">
+        <path fill-rule="evenodd" d="M0 55L20 55L20 35L0 35L0 55Z" fill="#ff0000" stroke="none" data-type="HATCH" />
+        <line x1="47.63" y1="55" x2="50" y2="52.63" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="44.45" y1="55" x2="50" y2="49.45" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="41.28" y1="55" x2="50" y2="46.28" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="38.1" y1="55" x2="50" y2="43.1" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="34.93" y1="55" x2="50" y2="39.92" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="31.75" y1="55" x2="50" y2="36.75" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="30" y1="53.58" x2="48.58" y2="35" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="30" y1="50.4" x2="45.4" y2="35" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="30" y1="47.22" x2="42.23" y2="35" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="30" y1="44.05" x2="39.05" y2="35" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="30" y1="40.88" x2="35.88" y2="35" vector-effect="non-scaling-stroke" data-type="HATCH" />
+        <line x1="30" y1="37.7" x2="32.7" y2="35" vector-effect="non-scaling-stroke" data-type="HATCH" />
+      </g>
+      <g id="layer-curves" class="cad-layer" data-layer="Curves" stroke="#00ffff" stroke-width="1">
+        <ellipse cx="70" cy="45" rx="10" ry="5" vector-effect="non-scaling-stroke" data-type="ELLIPSE" />
+        <path d="M110 45A10 5 0 0 0 90 45" vector-effect="non-scaling-stroke" data-type="ELLIPSE" />
+        <path d="M0 15A10 10 0 0 0 20 15L20 0L0 15Z" vector-effect="non-scaling-stroke" data-type="LWPOLYLINE" />
+      </g>
+      <g id="layer-trans" class="cad-layer" data-layer="Trans" stroke="#ff00ff" stroke-width="1">
+        <line x1="0" y1="25" x2="120" y2="25" stroke-width="3.78" vector-effect="non-scaling-stroke" opacity="0.5" data-type="LINE" />
+      </g>
+      <g id="layer-doors" class="cad-layer" data-layer="Doors" stroke="#00ff00" stroke-width="1">
+        <line x1="40" y1="15" x2="50" y2="15" vector-effect="non-scaling-stroke" data-type="LINE" data-parent="0" data-block="DOOR" />
+        <line x1="40" y1="15" x2="40" y2="5" stroke="#0000ff" stroke-width="2.646" vector-effect="non-scaling-stroke" data-type="LINE" data-parent="0" data-block="DOOR" />
+      </g>
+      <g id="layer-anno" class="cad-layer" data-layer="Anno" stroke="#000000" stroke-width="1">
+        <text x="70" y="7" font-size="5.33" dominant-baseline="hanging" fill="#000000" stroke="none" data-type="MTEXT">
+          <tspan x="70" xml:space="preserve">Line1</tspan>
+          <tspan x="70" xml:space="preserve" dy="6.67">Line2</tspan>
+        </text>
+        <text x="110" y="0" font-size="5.33" xml:space="preserve" text-anchor="middle" textLength="40" lengthAdjust="spacingAndGlyphs" fill="#000000" stroke="none" data-type="TEXT">FIT</text>
+      </g>
+    </g>
+  </g>
+</svg>

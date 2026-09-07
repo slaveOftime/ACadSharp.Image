@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using ACadSharp.Entities;
+using ACadSharp.Image.Rendering;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
@@ -14,6 +15,8 @@ public sealed class ImagePage
     private readonly List<Entity> _entities = [];
 
     private readonly List<Viewport> _viewports = [];
+
+    private readonly List<Entity> _drawSequence = [];
 
     private readonly ReadOnlyCollection<Entity> _readOnlyEntities;
 
@@ -40,6 +43,16 @@ public sealed class ImagePage
     public IReadOnlyList<Viewport> Viewports => this._readOnlyViewports;
 
     /// <summary>
+    /// Gets the entities and viewports in the order they were added, which is the order they are drawn in.
+    /// </summary>
+    internal IReadOnlyList<Entity> DrawSequence => this._drawSequence;
+
+    /// <summary>
+    /// Gets or sets the document the page content came from, when known. Used for header settings such as units and linetype scale.
+    /// </summary>
+    public CadDocument? Document { get; set; }
+
+    /// <summary>
     /// Gets or sets the translation offset applied to the page content.
     /// </summary>
     public XY Translation { get; set; } = XY.Zero;
@@ -48,6 +61,12 @@ public sealed class ImagePage
     /// Gets the paper units used for this page (pixels).
     /// </summary>
     internal PlotPaperUnits PaperUnits => PlotPaperUnits.Pixels;
+
+    /// <summary>
+    /// Gets a value indicating whether the page size came from <see cref="UpdateLayoutSize()"/> rather than from a layout's paper size.
+    /// Auto-sized pages are re-framed on the visible entities at render time.
+    /// </summary>
+    internal bool AutoSized { get; private set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ImagePage"/> class.
@@ -74,13 +93,20 @@ public sealed class ImagePage
     /// <param name="block">The block record to add entities from.</param>
     /// <param name="entityFilter">Optional predicate to filter entities. Return true to include the entity.</param>
     /// <param name="resizeLayout">Whether to automatically calculate layout bounds. Defaults to true.</param>
+    /// <remarks>
+    /// Entities are added in the drawing's draw order (handle order, overridden by the block's DRAWORDER table),
+    /// so later entities paint over earlier ones (in SVG, within each layer group; layer grouping comes first).
+    /// The order is the page's own: the contents of a block reference are drawn in the block's stored order at the
+    /// first nesting level; deeper levels come back in handle order (ACadSharp's block clone does not preserve the
+    /// stored order below the first level).
+    /// </remarks>
     public void Add(BlockRecord block, Func<Entity, bool>? entityFilter, bool resizeLayout = true)
     {
         ArgumentNullException.ThrowIfNull(block);
 
         if (entityFilter != null)
         {
-            foreach (Entity entity in block.Entities)
+            foreach (Entity entity in block.GetSortedEntities())
             {
                 if (entityFilter(entity))
                 {
@@ -90,7 +116,7 @@ public sealed class ImagePage
         }
         else
         {
-            foreach (Entity entity in block.Entities)
+            foreach (Entity entity in block.GetSortedEntities())
             {
                 this.AddEntity(entity);
             }
@@ -110,6 +136,7 @@ public sealed class ImagePage
     {
         ArgumentNullException.ThrowIfNull(entity);
         this._entities.Add(entity);
+        this._drawSequence.Add(entity);
     }
 
     /// <summary>
@@ -120,16 +147,37 @@ public sealed class ImagePage
     {
         ArgumentNullException.ThrowIfNull(viewport);
         this._viewports.Add(viewport);
+        this._drawSequence.Add(viewport);
     }
 
     /// <summary>
     /// Updates the layout size based on the bounding box of all entities on this page.
     /// </summary>
+    /// <remarks>
+    /// When no entity has finite bounds, <see cref="Translation"/> and the layout size are left unchanged.
+    /// </remarks>
     public void UpdateLayoutSize()
+    {
+        if (this.ComputeFrame(null) is PageFrame frame)
+        {
+            this.Translation = frame.Translation;
+            this.Layout ??= frame.Layout;
+            this.Layout.PaperWidth = frame.PaperWidth;
+            this.Layout.PaperHeight = frame.PaperHeight;
+            this.AutoSized = true;
+        }
+    }
+
+    /// <summary>
+    /// Computes the frame that fits the entities the predicate accepts, without changing the page.
+    /// </summary>
+    /// <param name="include">Predicate selecting the entities to frame, or null to frame every entity.</param>
+    /// <returns>The fitted frame, or null when no selected entity has finite bounds.</returns>
+    internal PageFrame? ComputeFrame(Func<Entity, bool>? include)
     {
         if (this._entities.Count == 0)
         {
-            return;
+            return null;
         }
 
         bool hasValidBounds = false;
@@ -142,9 +190,20 @@ public sealed class ImagePage
 
         foreach (Entity entity in this._entities)
         {
-            BoundingBox boundingBox = entity.GetBoundingBox();
-            if (double.IsNaN(boundingBox.Min.X) || double.IsNaN(boundingBox.Min.Y) ||
-                double.IsNaN(boundingBox.Max.X) || double.IsNaN(boundingBox.Max.Y))
+            if (include != null && !include(entity))
+            {
+                continue;
+            }
+
+            if (!EntityBounds.TryGet(entity, out BoundingBox boundingBox))
+            {
+                continue;
+            }
+
+            // NaN and infinity both occur in the wild (Samples/6-57-1119.dxf has an ARC with an infinite radius)
+            // and either would poison the page size.
+            if (!double.IsFinite(boundingBox.Min.X) || !double.IsFinite(boundingBox.Min.Y) || !double.IsFinite(boundingBox.Min.Z) ||
+                !double.IsFinite(boundingBox.Max.X) || !double.IsFinite(boundingBox.Max.Y) || !double.IsFinite(boundingBox.Max.Z))
             {
                 continue;
             }
@@ -171,15 +230,17 @@ public sealed class ImagePage
 
         if (!hasValidBounds)
         {
-            return;
+            return null;
         }
 
         BoundingBox limits = new(minX, minY, minZ, maxX, maxY, maxZ);
-        this.Translation = -(XY)limits.Min;
+        XY translation = -(XY)limits.Min;
         limits = limits.Move(-limits.Min);
 
-        this.Layout ??= new Layout("default_page");
-        this.Layout.PaperWidth = Math.Max(1d, limits.Max.X);
-        this.Layout.PaperHeight = Math.Max(1d, limits.Max.Y);
+        return new PageFrame(
+            this.Layout ?? new Layout("default_page"),
+            translation,
+            Math.Max(1d, limits.Max.X),
+            Math.Max(1d, limits.Max.Y));
     }
 }

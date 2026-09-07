@@ -43,7 +43,7 @@ public sealed class ImageExporterTests
         exporter.Configuration.Height = 600;
         exporter.Add(block);
 
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Assert.Equal(800, page.Canvas.Width);
         Assert.Equal(600, page.Canvas.Height);
@@ -69,11 +69,12 @@ public sealed class ImageExporterTests
         };
 
         using Image<Rgba32> canvas = new(configuration.Width, configuration.Height);
-        ImageRenderContext context = ImageRenderContext.CreatePageContext(canvas, page, configuration);
+        using RasterDrawingSurface surface = new(canvas, configuration, ownsCanvas: false);
+        ImageRenderContext context = ImageRenderContext.CreatePageContext(surface, page, configuration);
 
-        Assert.Equal(5f, context.PixelsPerUnit);
-        Assert.Equal(10f, context.OffsetX);
-        Assert.Equal(20f, context.OffsetY);
+        Assert.Equal(5d, context.Scale);
+        Assert.Equal(10d, context.OffsetX);
+        Assert.Equal(20d, context.OffsetY);
     }
 
     [Fact]
@@ -112,10 +113,17 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Assert.NotNull(page.Canvas);
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Spline", StringComparison.OrdinalIgnoreCase));
+
+        // Silence is not enough: the spline must actually reach the surface. ACadSharp 3.7.1's UpdateFromFitPoints
+        // produces no control points, so this one is drawn through its fit points, with a warning saying so.
+        RecordingDrawingSurface surface = new();
+        new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
+        Assert.Contains(surface.Calls, c => c.StartsWith("DrawPolyline n=3", StringComparison.Ordinal));
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("fit points", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -135,7 +143,8 @@ public sealed class ImageExporterTests
                 PaperHeight = 10,
             },
         };
-        ImageRenderContext context = new(canvas, configuration, page.Layout, 100, 100, -5, -5, 10f);
+        using RasterDrawingSurface surface = new(canvas, configuration, ownsCanvas: false);
+        ImageRenderContext context = new(surface, configuration, page.Layout, 100, 100, -5, -5, 10f, 0, 0, singlePrecision: true, lineTypeScale: 10f);
         EntityRenderDispatcher dispatcher = new(configuration);
         Spline spline = new()
         {
@@ -187,7 +196,7 @@ public sealed class ImageExporterTests
         exporter.Configuration.OnNotification += (_, args) => notifications.Add(args);
         exporter.Add(pageBlock);
 
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Rgba32 white = SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>();
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Insert", StringComparison.OrdinalIgnoreCase));
@@ -198,20 +207,27 @@ public sealed class ImageExporterTests
     [Fact]
     public void RenderHandlesEntitiesWithNaNBoundingBox()
     {
-        // Create a block with normal lines
+        // Two ordinary lines plus an arc whose bounding box is non-finite (Samples/6-57-1119.dxf has one like it).
         BlockRecord block = new("nan-bbox-block");
         block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
         block.Entities.Add(new Line(new XYZ(100, 50, 0), new XYZ(200, 0, 0)));
+        block.Entities.Add(new Arc { Center = new XYZ(10, 10, 0), Radius = double.PositiveInfinity, StartAngle = double.NaN, EndAngle = double.NaN });
 
         ImageExporter exporter = new();
         exporter.Add(block);
+        ImagePage framed = Assert.Single(exporter.Pages);
 
-        // Should render successfully without NaN propagation issues
-        using RenderedImagePage page = Assert.Single(exporter.Render());
+        // The non-finite entity must not poison the auto-sized frame...
+        Assert.Equal(200d, framed.Layout!.PaperWidth);
+        Assert.Equal(50d, framed.Layout.PaperHeight);
+
+        // ...nor the render.
+        using RenderedImagePage page = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
 
         Assert.NotNull(page.Canvas);
         Assert.Equal(ImageConfiguration.DefaultWidth, page.Canvas.Width);
         Assert.Equal(ImageConfiguration.DefaultHeight, page.Canvas.Height);
+        Assert.Contains(Enumerable.Range(0, page.Canvas.Width).SelectMany(x => Enumerable.Range(0, page.Canvas.Height).Select(y => page.Canvas[x, y])), p => p != new Rgba32(255, 255, 255, 255));
     }
 
     [Fact]
@@ -238,9 +254,8 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        // Verify filtering before rendering
-        ImagePage page = exporter.Pages[0];
-        Assert.Equal(2, page.Entities.Count); // Only Layer1 and Layer3 entities
+        Assert.Equal(3, exporter.Pages[0].Entities.Count); // pages keep every entity; filtering happens at render time
+        Assert.Equal(2, CountDrawnLines(exporter));
     }
 
     [Fact]
@@ -257,8 +272,8 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        ImagePage page = exporter.Pages[0];
-        Assert.Empty(page.Entities); // All entities filtered out
+        Assert.Single(exporter.Pages[0].Entities); // pages keep every entity; filtering happens at render time
+        Assert.Equal(0, CountDrawnLines(exporter));
     }
 
     [Fact]
@@ -285,7 +300,163 @@ public sealed class ImageExporterTests
 
         exporter.Add(block);
 
-        ImagePage page = exporter.Pages[0];
-        Assert.Single(page.Entities); // Only Layer2 entity
+        Assert.Equal(3, exporter.Pages[0].Entities.Count); // pages keep every entity; filtering happens at render time
+        Assert.Equal(1, CountDrawnLines(exporter));
+    }
+
+    [Fact]
+    public void RenderReturnsRasterPagesCarryingTheRequestedFormat()
+    {
+        BlockRecord block = new("format-block");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)));
+
+        ImageExporter exporter = new();
+        exporter.Add(block);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Jpeg));
+
+        RenderedImagePage raster = Assert.IsType<RenderedImagePage>(page);
+        Assert.Equal(ImageExportFormat.Jpeg, raster.Format);
+        Assert.Equal("format-block", raster.Name);
+    }
+
+    [Fact]
+    public void RenderedPageSavesToStreamInItsFormat()
+    {
+        BlockRecord block = new("stream-block");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)));
+
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 32;
+        exporter.Configuration.Height = 32;
+        exporter.Add(block);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Png));
+        using MemoryStream stream = new();
+        page.Save(stream);
+
+        byte[] bytes = stream.ToArray();
+        Assert.Equal(0x89, bytes[0]);
+        Assert.Equal((byte)'P', bytes[1]);
+        Assert.Equal((byte)'N', bytes[2]);
+        Assert.Equal((byte)'G', bytes[3]);
+    }
+
+    private static int CountDrawnLines(ImageExporter exporter)
+    {
+        RecordingDrawingSurface surface = new();
+        ImagePageRenderer renderer = new(exporter.Configuration);
+        renderer.RenderTo(surface, exporter.Pages[0]);
+        return surface.Calls.Count(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ChangingHiddenLayersAfterAddTakesEffect()
+    {
+        BlockRecord block = new("late-hide");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 1, 0)) { Layer = new Layer("Late") });
+        ImageExporter exporter = new();
+        exporter.Add(block);
+
+        Assert.Equal(1, CountDrawnLines(exporter));
+        exporter.Configuration.HideLayer("Late");
+        Assert.Equal(0, CountDrawnLines(exporter));
+    }
+
+    [Fact]
+    public void HiddenEntitiesDoNotAffectAutoSizedFraming()
+    {
+        static ImageExporter Build(bool withFarHiddenLine)
+        {
+            BlockRecord block = new("framing");
+            block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)) { Layer = new Layer("Visible") });
+            if (withFarHiddenLine)
+            {
+                block.Entities.Add(new Line(new XYZ(1000, 1000, 0), new XYZ(1010, 1010, 0)) { Layer = new Layer("Far") });
+            }
+
+            ImageExporter exporter = new();
+            exporter.Configuration.Width = 200;
+            exporter.Configuration.Height = 200;
+            exporter.Configuration.HideLayer("Far");
+            exporter.Add(block);
+            return exporter;
+        }
+
+        static string FirstLineCall(ImageExporter exporter)
+        {
+            RecordingDrawingSurface surface = new();
+            new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
+            return surface.Calls.Single(c => c.StartsWith("DrawLine", StringComparison.Ordinal));
+        }
+
+        Assert.Equal(FirstLineCall(Build(withFarHiddenLine: false)), FirstLineCall(Build(withFarHiddenLine: true)));
+    }
+
+    [Fact]
+    public void FilteredRenderingLeavesThePageFrameUntouchedAndClearingFiltersRestoresTheFullFrame()
+    {
+        BlockRecord block = new("framing-roundtrip");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 10, 0)) { Layer = new Layer("Near") });
+        block.Entities.Add(new Line(new XYZ(1000, 1000, 0), new XYZ(1010, 1010, 0)) { Layer = new Layer("Far") });
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 200;
+        exporter.Configuration.Height = 200;
+        exporter.Add(block);
+        ImagePage page = Assert.Single(exporter.Pages);
+        double fullWidth = page.Layout!.PaperWidth;
+        XY fullTranslation = page.Translation;
+        Assert.Equal(1010d, fullWidth);
+
+        static (SurfacePoint Start, SurfacePoint End)[] Render(ImageExporter exporter)
+        {
+            RecordingDrawingSurface surface = new();
+            new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
+            return surface.Lines.ToArray();
+        }
+
+        // Hidden far line: the near line fills the frame, and the page is not written to.
+        exporter.Configuration.HideLayer("Far");
+        (SurfacePoint Start, SurfacePoint End)[] filtered = Render(exporter);
+        Assert.Single(filtered);
+        Assert.Equal(200d, filtered[0].End.X - filtered[0].Start.X, 3);
+        Assert.Equal(fullWidth, page.Layout.PaperWidth);
+        Assert.Equal(fullTranslation, page.Translation);
+
+        // Filters cleared: both lines are drawn in the full frame the caller built, not the 10-unit one.
+        exporter.Configuration.ClearHiddenLayers();
+        (SurfacePoint Start, SurfacePoint End)[] unfiltered = Render(exporter);
+        Assert.Equal(2, unfiltered.Length);
+        Assert.All(unfiltered, l => Assert.InRange(l.End.X, 0, 200));
+        Assert.Equal(200d / 1010d * 10d, unfiltered[0].End.X - unfiltered[0].Start.X, 3);
+    }
+
+    [Fact]
+    public void MalformedPolylineDoesNotAbortTheExport()
+    {
+        // Two coincident vertices joined by a bulge make ACadSharp throw from GetBoundingBox and GetPoints.
+        LwPolyline malformed = new();
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)) { Bulge = 1 });
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(5, 5)));
+        malformed.Vertices.Add(new LwPolyline.Vertex(new XY(8, 5)));
+        BlockRecord block = new("malformed");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
+        block.Entities.Add(malformed);
+
+        ImageExporter exporter = new();
+        List<NotificationEventArgs> notifications = new();
+        exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
+        exporter.Add(block);
+
+        // The frame comes from the entities whose bounds can be computed.
+        ImagePage page = Assert.Single(exporter.Pages);
+        Assert.Equal(100d, page.Layout!.PaperWidth);
+        Assert.Equal(50d, page.Layout.PaperHeight);
+
+        using RenderedImagePage png = Assert.IsType<RenderedImagePage>(Assert.Single(exporter.Render()));
+        RenderedSvgPage svg = Assert.IsType<RenderedSvgPage>(Assert.Single(exporter.Render(ImageExportFormat.Svg)));
+
+        Assert.Contains("<line", svg.Content, StringComparison.Ordinal);
+        Assert.Contains(notifications, n => n.NotificationType == NotificationType.Warning && n.Message.Contains("entity skipped", StringComparison.Ordinal));
     }
 }

@@ -20,4 +20,8 @@
 		<ProjectReference Include="..\ACadSharp.Image\ACadSharp.Image.csproj" SetTargetFramework="TargetFramework=net10.0" AdditionalProperties="TargetFramework=net10.0;TargetFrameworks=net10.0;PublishAot=false" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="ACadSharp.Image.Tests" />
+	</ItemGroup>
+
 </Project>

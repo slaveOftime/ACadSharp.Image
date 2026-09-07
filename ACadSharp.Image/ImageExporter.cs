@@ -4,17 +4,11 @@ using ACadSharp.Entities;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using ACadSharp.Image.Rendering;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Bmp;
-using SixLabors.ImageSharp.Formats.Gif;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Formats.Webp;
 
 namespace ACadSharp.Image;
 
 /// <summary>
-/// Exports CAD drawings to raster images in various formats.
+/// Exports CAD drawings to raster images or SVG.
 /// </summary>
 /// <remarks>
 /// The <see cref="ImageExporter"/> is the main entry point for exporting CAD content to images.
@@ -99,6 +93,11 @@ public sealed class ImageExporter
     /// Adds a single layout to the exporter.
     /// </summary>
     /// <param name="layout">The layout to add.</param>
+    /// <remarks>
+    /// Layer filters and visibility settings are applied when rendering, so all entities are kept on the page.
+    /// Paper entities and viewports are taken from one sorted pass over the layout's block, so the page keeps
+    /// the drawing's draw order between them.
+    /// </remarks>
     public void Add(Layout layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
@@ -107,24 +106,23 @@ public sealed class ImageExporter
         {
             Layout = layout,
             Name = SanitizeFileName(layout.Name),
+            Document = layout.Document,
         };
 
-        foreach (Entity entity in layout.AssociatedBlock.Entities)
+        foreach (Entity entity in layout.AssociatedBlock.GetSortedEntities())
         {
-            if (this.ShouldIncludeEntity(entity))
+            if (entity is Viewport viewport)
             {
-                page.AddEntity(entity);
-            }
-        }
+                // The paper viewport is the sheet itself, not a window onto model space.
+                if (!viewport.RepresentsPaper)
+                {
+                    page.AddViewport(viewport);
+                }
 
-        foreach (Viewport viewport in layout.Viewports)
-        {
-            if (viewport.RepresentsPaper)
-            {
                 continue;
             }
 
-            page.AddViewport(viewport);
+            page.AddEntity(entity);
         }
 
         this._pages.Add(page);
@@ -134,6 +132,9 @@ public sealed class ImageExporter
     /// Adds a block record to the exporter as a single page.
     /// </summary>
     /// <param name="block">The block record to add.</param>
+    /// <remarks>
+    /// Layer filters and visibility settings are applied when rendering, so all entities are kept on the page.
+    /// </remarks>
     public void Add(BlockRecord block)
     {
         ArgumentNullException.ThrowIfNull(block);
@@ -141,53 +142,38 @@ public sealed class ImageExporter
         ImagePage page = new()
         {
             Name = SanitizeFileName(block.Name),
+            Document = block.Document,
         };
 
-        page.Add(block, this.ShouldIncludeEntity);
+        page.Add(block, ShouldIncludeEntity);
         this._pages.Add(page);
     }
 
-    private bool ShouldIncludeEntity(Entity entity)
-    {
-        if (entity is Viewport)
-        {
-            return false;
-        }
-
-        return !this.IsHiddenLayer(entity);
-    }
-
-    private bool IsHiddenLayer(Entity entity)
-    {
-        if (this.Configuration.HiddenLayers.Count == 0)
-        {
-            return false;
-        }
-
-        string? layerName = entity.Layer?.Name;
-        if (string.IsNullOrEmpty(layerName))
-        {
-            return false;
-        }
-
-        return this.Configuration.HiddenLayers.Contains(layerName);
-    }
+    /// <summary>
+    /// Viewports are added through <see cref="ImagePage.AddViewport"/>, never as page entities.
+    /// </summary>
+    /// <param name="entity">The entity being considered.</param>
+    /// <returns>True when the entity belongs on the page.</returns>
+    private static bool ShouldIncludeEntity(Entity entity) => entity is not Viewport;
 
     /// <summary>
-    /// Renders all added pages to image format without saving to disk.
+    /// Renders all added pages without saving to disk.
     /// </summary>
-    /// <returns>A list of rendered image pages.</returns>
+    /// <param name="format">Output format the pages will be saved as. Defaults to PNG.</param>
+    /// <returns>Rendered pages; dispose each when finished.</returns>
     /// <remarks>
-    /// The returned pages must be disposed after use to free resources.
-    /// This method is useful for custom processing or testing without file I/O.
+    /// Rendering temporarily mutates block MLINEs and LEADERs while working around ACadSharp 3.7.1's destructive
+    /// <c>MLine.Clone()</c> and <c>Leader.Clone()</c> (both share their vertex list with their source instead of
+    /// copying it) and restores them before returning; a <see cref="CadDocument"/> must not be rendered concurrently
+    /// by two exporters, and <c>Insert.Explode()</c> itself is not safe for concurrent use either.
     /// </remarks>
-    public IReadOnlyList<RenderedImagePage> Render()
+    public IReadOnlyList<RenderedPage> Render(ImageExportFormat format = ImageExportFormat.Png)
     {
         ImagePageRenderer renderer = new(this.Configuration);
-        RenderedImagePage[] pages = new RenderedImagePage[this._pages.Count];
+        RenderedPage[] pages = new RenderedPage[this._pages.Count];
         for (int i = 0; i < this._pages.Count; i++)
         {
-            pages[i] = renderer.Render(this._pages[i]);
+            pages[i] = renderer.Render(this._pages[i], format);
         }
 
         return pages;
@@ -196,16 +182,11 @@ public sealed class ImageExporter
     /// <summary>
     /// Renders all added pages and saves the output to the specified path.
     /// </summary>
-    /// <param name="outputPath">The file path to save the image to.</param>
-    /// <param name="format">The image format to use. Defaults to PNG.</param>
+    /// <param name="outputPath">A file path when there is one page, or a directory when there are several.</param>
+    /// <param name="format">The output format. Defaults to PNG.</param>
     public void Save(string outputPath, ImageExportFormat format = ImageExportFormat.Png)
     {
-        this.SaveInternal(outputPath, format);
-    }
-
-    private void SaveInternal(string outputPath, ImageExportFormat format)
-    {
-        IReadOnlyList<RenderedImagePage> pages = this.Render();
+        IReadOnlyList<RenderedPage> pages = this.Render(format);
 
         try
         {
@@ -219,8 +200,7 @@ public sealed class ImageExporter
 
             if (pages.Count == 1 && !string.IsNullOrWhiteSpace(extension))
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-                this.SavePage(pages[0], fullPath, format);
+                pages[0].Save(fullPath);
                 return;
             }
 
@@ -232,43 +212,17 @@ public sealed class ImageExporter
                 ? "page"
                 : Path.GetFileNameWithoutExtension(fullPath);
 
-            Directory.CreateDirectory(directory);
-
             for (int i = 0; i < pages.Count; i++)
             {
-                string pagePath = Path.Combine(directory, $"{prefix}-{i + 1:D2}-{pages[i].Name}{format.GetFileExtension()}");
-                this.SavePage(pages[i], pagePath, format);
+                pages[i].Save(Path.Combine(directory, $"{prefix}-{i + 1:D2}-{pages[i].Name}{format.GetFileExtension()}"));
             }
         }
         finally
         {
-            foreach (RenderedImagePage page in pages)
+            foreach (RenderedPage page in pages)
             {
                 page.Dispose();
             }
-        }
-    }
-
-    private void SavePage(RenderedImagePage page, string path, ImageExportFormat format)
-    {
-        switch (format)
-        {
-            case ImageExportFormat.Bmp:
-                page.Canvas.Save(path, new BmpEncoder());
-                break;
-            case ImageExportFormat.Jpeg:
-                page.Canvas.Save(path, new JpegEncoder { Quality = this.Configuration.OutputQuality });
-                break;
-            case ImageExportFormat.Gif:
-                page.Canvas.Save(path, new GifEncoder());
-                break;
-            case ImageExportFormat.Webp:
-                page.Canvas.Save(path, new WebpEncoder { Quality = this.Configuration.OutputQuality });
-                break;
-            case ImageExportFormat.Png:
-            default:
-                page.Canvas.Save(path, new PngEncoder());
-                break;
         }
     }
 

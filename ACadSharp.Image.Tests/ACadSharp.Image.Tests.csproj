@@ -25,6 +25,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\ACadSharp.Image\ACadSharp.Image.csproj" />
+		<ProjectReference Include="..\ACadSharp.Image.Cli\ACadSharp.Image.Cli.csproj" />
 	</ItemGroup>
 
 </Project>

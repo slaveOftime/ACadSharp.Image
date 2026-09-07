@@ -1,0 +1,807 @@
+<svg viewBox="-4.08 -4.08 326.24 176.77" xmlns="http://www.w3.org/2000/svg">
+  <g class="cad-root">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" font-family="'DejaVu Sans', Arial, Helvetica, sans-serif">
+      <rect class="cad-background" x="-4.08" y="-4.08" width="326.24" height="176.77" fill="#ffffff" stroke="none" />
+      <g id="layer-2" class="cad-layer" data-layer="2" stroke="#000000" stroke-width="1">
+        <line x1="269.8" y1="86.07" x2="291.88" y2="86.07" vector-effect="non-scaling-stroke" data-handle="4CCA" data-type="LINE" data-parent="23D6" />
+        <line x1="269.8" y1="102.08" x2="291.88" y2="102.08" vector-effect="non-scaling-stroke" data-handle="4CCB" data-type="LINE" data-parent="23D6" />
+        <line x1="290.88" y1="89.57" x2="290.88" y2="98.58" vector-effect="non-scaling-stroke" data-handle="4CCC" data-type="LINE" data-parent="23D6" />
+        <polygon points="290.3 89.57 291.47 89.57 290.88 86.07 290.88 86.07" fill="#000000" stroke="none" data-handle="4CCD" data-type="SOLID" data-parent="23D6" />
+        <polygon points="290.3 98.58 291.47 98.58 290.88 102.08 290.88 102.08" fill="#000000" stroke="none" data-handle="4CCE" data-type="SOLID" data-parent="23D6" />
+        <text x="287.52" y="94.08" font-size="4.67" xml:space="preserve" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 287.52 94.08)" fill="#000000" stroke="none" data-handle="4CCF" data-type="MTEXT" data-parent="23D6">Ø16</text>
+        <line x1="263.22" y1="75.31" x2="306.88" y2="75.31" vector-effect="non-scaling-stroke" data-handle="4CA6" data-type="LINE" data-parent="23F0" />
+        <line x1="263.22" y1="112.85" x2="306.88" y2="112.85" vector-effect="non-scaling-stroke" data-handle="4CA7" data-type="LINE" data-parent="23F0" />
+        <line x1="305.88" y1="78.81" x2="305.88" y2="109.35" vector-effect="non-scaling-stroke" data-handle="4CA8" data-type="LINE" data-parent="23F0" />
+        <polygon points="305.3 78.81 306.47 78.81 305.88 75.31 305.88 75.31" fill="#000000" stroke="none" data-handle="4CA9" data-type="SOLID" data-parent="23F0" />
+        <polygon points="305.3 109.35 306.47 109.35 305.88 112.85 305.88 112.85" fill="#000000" stroke="none" data-handle="4CAA" data-type="SOLID" data-parent="23F0" />
+        <text x="302.52" y="94.02" font-size="4.67" xml:space="preserve" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 302.52 94.02)" fill="#000000" stroke="none" data-handle="4CAB" data-type="MTEXT" data-parent="23F0">Ø37.54</text>
+        <line x1="220.84" y1="84.88" x2="220.84" y2="52.94" vector-effect="non-scaling-stroke" data-handle="4FBE" data-type="LINE" data-parent="249A" />
+        <line x1="269.84" y1="76.94" x2="269.84" y2="52.94" vector-effect="non-scaling-stroke" data-handle="4FBF" data-type="LINE" data-parent="249A" />
+        <line x1="224.34" y1="53.94" x2="266.34" y2="53.94" vector-effect="non-scaling-stroke" data-handle="4FC0" data-type="LINE" data-parent="249A" />
+        <polygon points="224.34 53.36 224.34 54.53 220.84 53.94 220.84 53.94" fill="#000000" stroke="none" data-handle="4FC1" data-type="SOLID" data-parent="249A" />
+        <polygon points="266.34 53.36 266.34 54.53 269.84 53.94 269.84 53.94" fill="#000000" stroke="none" data-handle="4FC2" data-type="SOLID" data-parent="249A" />
+        <text x="245.34" y="51.03" font-size="4.67" text-anchor="middle" dominant-baseline="central" fill="#000000" stroke="none" data-handle="4FC3" data-type="MTEXT" data-parent="249A">
+          <tspan x="245.34" xml:space="preserve">49</tspan>
+          <tspan x="245.34" xml:space="preserve" dy="5.83">Max Stop length</tspan>
+        </text>
+        <line x1="79.84" y1="53.31" x2="79.84" y2="22.94" vector-effect="non-scaling-stroke" data-handle="4FD0" data-type="LINE" data-parent="24BE" />
+        <line x1="269.84" y1="76.94" x2="269.84" y2="22.94" vector-effect="non-scaling-stroke" data-handle="4FD1" data-type="LINE" data-parent="24BE" />
+        <line x1="83.34" y1="23.94" x2="266.34" y2="23.94" vector-effect="non-scaling-stroke" data-handle="4FD2" data-type="LINE" data-parent="24BE" />
+        <polygon points="83.34 23.36 83.34 24.53 79.84 23.94 79.84 23.94" fill="#000000" stroke="none" data-handle="4FD3" data-type="SOLID" data-parent="24BE" />
+        <polygon points="266.34 23.36 266.34 24.53 269.84 23.94 269.84 23.94" fill="#000000" stroke="none" data-handle="4FD4" data-type="SOLID" data-parent="24BE" />
+        <text x="175.08" y="20.63" font-size="4.67" xml:space="preserve" text-anchor="middle" dominant-baseline="central" fill="#000000" stroke="none" data-handle="4FD5" data-type="MTEXT" data-parent="24BE">190</text>
+        <line x1="144.84" y1="74.17" x2="144.84" y2="37.94" vector-effect="non-scaling-stroke" data-handle="4FC7" data-type="LINE" data-parent="2525" />
+        <line x1="269.84" y1="76.94" x2="269.84" y2="37.94" vector-effect="non-scaling-stroke" data-handle="4FC8" data-type="LINE" data-parent="2525" />
+        <line x1="148.34" y1="38.94" x2="266.34" y2="38.94" vector-effect="non-scaling-stroke" data-handle="4FC9" data-type="LINE" data-parent="2525" />
+        <polygon points="148.34 38.36 148.34 39.53 144.84 38.94 144.84 38.94" fill="#000000" stroke="none" data-handle="4FCA" data-type="SOLID" data-parent="2525" />
+        <polygon points="266.34 38.36 266.34 39.53 269.84 38.94 269.84 38.94" fill="#000000" stroke="none" data-handle="4FCB" data-type="SOLID" data-parent="2525" />
+        <text x="207.34" y="35.63" font-size="4.67" xml:space="preserve" text-anchor="middle" dominant-baseline="central" fill="#000000" stroke="none" data-handle="4FCC" data-type="MTEXT" data-parent="2525">125</text>
+        <line x1="131.19" y1="119" x2="116.68" y2="119" vector-effect="non-scaling-stroke" data-handle="4FB4" data-type="LINE" data-parent="3281" />
+        <line x1="136.94" y1="69.15" x2="116.68" y2="69.15" vector-effect="non-scaling-stroke" data-handle="4FB5" data-type="LINE" data-parent="3281" />
+        <line x1="117.68" y1="115.5" x2="117.68" y2="72.65" vector-effect="non-scaling-stroke" data-handle="4FB6" data-type="LINE" data-parent="3281" />
+        <line x1="117.68" y1="69.15" x2="117.68" y2="44.92" vector-effect="non-scaling-stroke" data-handle="4FB7" data-type="LINE" data-parent="3281" />
+        <polygon points="117.1 115.5 118.26 115.5 117.68 119 117.68 119" fill="#000000" stroke="none" data-handle="4FB8" data-type="SOLID" data-parent="3281" />
+        <polygon points="117.1 72.65 118.26 72.65 117.68 69.15 117.68 69.15" fill="#000000" stroke="none" data-handle="4FB9" data-type="SOLID" data-parent="3281" />
+        <text x="114.32" y="55.28" font-size="4.67" xml:space="preserve" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 114.32 55.28)" fill="#000000" stroke="none" data-handle="4FBA" data-type="MTEXT" data-parent="3281">Ø49.85</text>
+      </g>
+      <g id="layer-sk2" class="cad-layer" data-layer="SK2" stroke="#000000" stroke-width="1">
+        <line x1="79.04" y1="134.05" x2="18.96" y2="134.05" vector-effect="non-scaling-stroke" data-handle="5084" data-type="LINE" data-parent="250B" />
+        <line x1="79.04" y1="54.11" x2="18.96" y2="54.11" vector-effect="non-scaling-stroke" data-handle="5085" data-type="LINE" data-parent="250B" />
+        <line x1="19.96" y1="130.55" x2="19.96" y2="57.61" vector-effect="non-scaling-stroke" data-handle="5086" data-type="LINE" data-parent="250B" />
+        <polygon points="19.37 130.55 20.54 130.55 19.96 134.05 19.96 134.05" fill="#000000" stroke="none" data-handle="5087" data-type="SOLID" data-parent="250B" />
+        <polygon points="19.37 57.61 20.54 57.61 19.96 54.11 19.96 54.11" fill="#000000" stroke="none" data-handle="5088" data-type="SOLID" data-parent="250B" />
+        <text x="16.61" y="94.08" font-size="4.67" xml:space="preserve" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 16.61 94.08)" fill="#000000" stroke="none" data-handle="5089" data-type="MTEXT" data-parent="250B">HSK A-80</text>
+      </g>
+      <g id="layer-inftext61" class="cad-layer" data-layer="INFTEXT61" stroke="#0000ff" stroke-width="1">
+        <text x="144.76" y="144.05" font-size="4.67" dominant-baseline="hanging" fill="#0000ff" stroke="none" data-handle="2B18" data-type="MTEXT">
+          <tspan x="144.76" xml:space="preserve">HYDRAULIC CHUCK</tspan>
+          <tspan x="144.76" xml:space="preserve" dy="5.83">HSK80AHCP16190M</tspan>
+        </text>
+      </g>
+      <g id="layer-sk4" class="cad-layer" data-layer="SK4" stroke="#ffff00" stroke-width="1">
+        <line x1="29.92" y1="94.08" x2="276.06" y2="94.08" stroke-dasharray="29.426 3.678 7.357 3.678" vector-effect="non-scaling-stroke" data-handle="47F4" data-type="LINE" />
+      </g>
+      <g id="layer-1" class="cad-layer" data-layer="1" stroke="#00ffff" stroke-width="1.89">
+        <path d="M140.12 118.19A2.09 2.09 0 0 0 140.14 118.17" vector-effect="non-scaling-stroke" data-handle="47F5" data-type="ARC" />
+        <path d="M140.04 118.23A0.81 0.81 0 0 0 140.12 118.19" vector-effect="non-scaling-stroke" data-handle="47F6" data-type="ARC" />
+        <path d="M139.91 118.28A1.14 1.14 0 0 0 140.04 118.23" vector-effect="non-scaling-stroke" data-handle="47F7" data-type="ARC" />
+        <path d="M139.85 118.3A1.38 1.38 0 0 0 139.91 118.28" vector-effect="non-scaling-stroke" data-handle="47F8" data-type="ARC" />
+        <path d="M81.82 54.11A39.95 39.95 0 0 0 91.87 54.11" vector-effect="non-scaling-stroke" data-handle="47F9" data-type="ARC" />
+        <line x1="132.79" y1="115.48" x2="132.78" y2="115.46" vector-effect="non-scaling-stroke" data-handle="47FA" data-type="LINE" />
+        <line x1="126.84" y1="72.99" x2="126.69" y2="72.86" vector-effect="non-scaling-stroke" data-handle="47FB" data-type="LINE" />
+        <path d="M132.84 115.5A23.77 23.77 0 0 0 132.79 115.48" vector-effect="non-scaling-stroke" data-handle="47FC" data-type="ARC" />
+        <path d="M127.34 71.44A1.82 1.82 0 0 0 126.69 72.86" vector-effect="non-scaling-stroke" data-handle="47FD" data-type="ARC" />
+        <path d="M127.69 71.18A2.6 2.6 0 0 0 127.34 71.44" vector-effect="non-scaling-stroke" data-handle="47FE" data-type="ARC" />
+        <path d="M128.21 70.91A3.68 3.68 0 0 0 127.69 71.18" vector-effect="non-scaling-stroke" data-handle="47FF" data-type="ARC" />
+        <path d="M128.84 70.69A5.46 5.46 0 0 0 128.21 70.91" vector-effect="non-scaling-stroke" data-handle="4800" data-type="ARC" />
+        <path d="M129.55 70.52A7.98 7.98 0 0 0 128.84 70.69" vector-effect="non-scaling-stroke" data-handle="4801" data-type="ARC" />
+        <path d="M130.89 70.33A12.24 12.24 0 0 0 129.55 70.52" vector-effect="non-scaling-stroke" data-handle="4802" data-type="ARC" />
+        <path d="M134.08 70.36A17.44 17.44 0 0 0 130.89 70.33" vector-effect="non-scaling-stroke" data-handle="4803" data-type="ARC" />
+        <path d="M135.14 70.52A11.89 11.89 0 0 0 134.08 70.36" vector-effect="non-scaling-stroke" data-handle="4804" data-type="ARC" />
+        <path d="M135.85 70.69A8.3 8.3 0 0 0 135.14 70.52" vector-effect="non-scaling-stroke" data-handle="4805" data-type="ARC" />
+        <path d="M136.48 70.91A5.7 5.7 0 0 0 135.85 70.69" vector-effect="non-scaling-stroke" data-handle="4806" data-type="ARC" />
+        <path d="M137 71.18A3.84 3.84 0 0 0 136.48 70.91" vector-effect="non-scaling-stroke" data-handle="4807" data-type="ARC" />
+        <path d="M137.75 71.93A2.19 2.19 0 0 0 137 71.18" vector-effect="non-scaling-stroke" data-handle="4808" data-type="ARC" />
+        <path d="M137.99 72.71A1.78 1.78 0 0 0 137.75 71.93" vector-effect="non-scaling-stroke" data-handle="4809" data-type="ARC" />
+        <path d="M137.99 72.86A2.13 2.13 0 0 0 137.99 72.71" vector-effect="non-scaling-stroke" data-handle="480A" data-type="ARC" />
+        <path d="M101.32 125.29A0.19 0.19 0 0 0 101.34 125.33" vector-effect="non-scaling-stroke" data-handle="480B" data-type="ARC" />
+        <path d="M101.34 125.33A0.15 0.15 0 0 0 101.39 125.37" vector-effect="non-scaling-stroke" data-handle="480C" data-type="ARC" />
+        <path d="M101.39 125.37A0.13 0.13 0 0 0 101.44 125.38" vector-effect="non-scaling-stroke" data-handle="480D" data-type="ARC" />
+        <path d="M101.44 125.38A0.12 0.12 0 0 0 101.45 125.38" vector-effect="non-scaling-stroke" data-handle="480E" data-type="ARC" />
+        <path d="M101.35 84.93A0.13 0.13 0 0 0 101.32 84.96" vector-effect="non-scaling-stroke" data-handle="480F" data-type="ARC" />
+        <path d="M101.41 84.9A0.16 0.16 0 0 0 101.35 84.93" vector-effect="non-scaling-stroke" data-handle="4810" data-type="ARC" />
+        <path d="M101.45 84.9A0.18 0.18 0 0 0 101.41 84.9" vector-effect="non-scaling-stroke" data-handle="4811" data-type="ARC" />
+        <path d="M101.39 103.25A0.18 0.18 0 0 0 101.45 103.26" vector-effect="non-scaling-stroke" data-handle="4812" data-type="ARC" />
+        <path d="M101.36 103.23A0.16 0.16 0 0 0 101.39 103.25" vector-effect="non-scaling-stroke" data-handle="4813" data-type="ARC" />
+        <path d="M101.33 103.2A0.14 0.14 0 0 0 101.36 103.23" vector-effect="non-scaling-stroke" data-handle="4814" data-type="ARC" />
+        <path d="M101.32 103.19A0.13 0.13 0 0 0 101.33 103.2" vector-effect="non-scaling-stroke" data-handle="4815" data-type="ARC" />
+        <line x1="105.59" y1="103.09" x2="99.76" y2="103.09" vector-effect="non-scaling-stroke" data-handle="4816" data-type="LINE" />
+        <line x1="101.25" y1="103.09" x2="101.32" y2="103.19" vector-effect="non-scaling-stroke" data-handle="4817" data-type="LINE" />
+        <path d="M99.76 121.74A213.05 213.05 0 0 0 101.32 125.29" vector-effect="non-scaling-stroke" data-handle="4818" data-type="ARC" />
+        <line x1="99.76" y1="85.06" x2="105.59" y2="85.06" vector-effect="non-scaling-stroke" data-handle="4819" data-type="LINE" />
+        <line x1="101.32" y1="84.96" x2="101.25" y2="85.06" vector-effect="non-scaling-stroke" data-handle="481A" data-type="LINE" />
+        <path d="M99.12 85.43A2.87 2.87 0 0 0 99.21 85.38" vector-effect="non-scaling-stroke" data-handle="481B" data-type="ARC" />
+        <path d="M99.21 85.38A4.85 4.85 0 0 0 99.3 85.32" vector-effect="non-scaling-stroke" data-handle="481C" data-type="ARC" />
+        <path d="M99.3 85.32A195.27 195.27 0 0 0 99.42 85.23" vector-effect="non-scaling-stroke" data-handle="481D" data-type="ARC" />
+        <path d="M99.49 85.17A8.01 8.01 0 0 0 99.42 85.23" vector-effect="non-scaling-stroke" data-handle="481E" data-type="ARC" />
+        <path d="M99.56 85.12A2.42 2.42 0 0 0 99.49 85.17" vector-effect="non-scaling-stroke" data-handle="481F" data-type="ARC" />
+        <path d="M99.61 85.09A0.95 0.95 0 0 0 99.56 85.12" vector-effect="non-scaling-stroke" data-handle="4820" data-type="ARC" />
+        <path d="M99.66 85.07A0.36 0.36 0 0 0 99.61 85.09" vector-effect="non-scaling-stroke" data-handle="4821" data-type="ARC" />
+        <path d="M99.69 85.06A0.15 0.15 0 0 0 99.66 85.07" vector-effect="non-scaling-stroke" data-handle="4822" data-type="ARC" />
+        <path d="M99.7 85.06A0.09 0.09 0 0 0 99.69 85.06" vector-effect="non-scaling-stroke" data-handle="4823" data-type="ARC" />
+        <path d="M99.01 85.47A0.19 0.19 0 0 0 99.06 85.46" vector-effect="non-scaling-stroke" data-handle="4824" data-type="ARC" />
+        <path d="M99.06 85.46A0.23 0.23 0 0 0 99.1 85.45" vector-effect="non-scaling-stroke" data-handle="4825" data-type="ARC" />
+        <path d="M99.1 85.45A0.28 0.28 0 0 0 99.12 85.43" vector-effect="non-scaling-stroke" data-handle="4826" data-type="ARC" />
+        <path d="M99.69 103.09A0.08 0.08 0 0 0 99.7 103.09" vector-effect="non-scaling-stroke" data-handle="4827" data-type="ARC" />
+        <path d="M99.67 103.09A0.13 0.13 0 0 0 99.69 103.09" vector-effect="non-scaling-stroke" data-handle="4828" data-type="ARC" />
+        <path d="M99.64 103.08A0.25 0.25 0 0 0 99.67 103.09" vector-effect="non-scaling-stroke" data-handle="4829" data-type="ARC" />
+        <path d="M99.61 103.06A0.46 0.46 0 0 0 99.64 103.08" vector-effect="non-scaling-stroke" data-handle="482A" data-type="ARC" />
+        <path d="M99.58 103.04A0.8 0.8 0 0 0 99.61 103.06" vector-effect="non-scaling-stroke" data-handle="482B" data-type="ARC" />
+        <path d="M99.53 103.01A1.49 1.49 0 0 0 99.58 103.04" vector-effect="non-scaling-stroke" data-handle="482C" data-type="ARC" />
+        <path d="M99.45 102.95A5.24 5.24 0 0 0 99.53 103.01" vector-effect="non-scaling-stroke" data-handle="482D" data-type="ARC" />
+        <path d="M99.38 102.9A8.94 8.94 0 0 0 99.45 102.95" vector-effect="non-scaling-stroke" data-handle="482E" data-type="ARC" />
+        <path d="M99.38 102.9A9.18 9.18 0 0 0 99.25 102.81" vector-effect="non-scaling-stroke" data-handle="482F" data-type="ARC" />
+        <path d="M99.25 102.81A3.33 3.33 0 0 0 99.12 102.72" vector-effect="non-scaling-stroke" data-handle="4830" data-type="ARC" />
+        <path d="M99.12 102.72A0.27 0.27 0 0 0 99.09 102.7" vector-effect="non-scaling-stroke" data-handle="4831" data-type="ARC" />
+        <path d="M99.09 102.7A0.21 0.21 0 0 0 99.03 102.68" vector-effect="non-scaling-stroke" data-handle="4832" data-type="ARC" />
+        <path d="M99.03 102.68A0.18 0.18 0 0 0 99.01 102.68" vector-effect="non-scaling-stroke" data-handle="4833" data-type="ARC" />
+        <path d="M99.66 119.23A4.61 4.61 0 0 0 99.69 119.3" vector-effect="non-scaling-stroke" data-handle="4834" data-type="ARC" />
+        <path d="M99.65 119.18A1.81 1.81 0 0 0 99.66 119.23" vector-effect="non-scaling-stroke" data-handle="4835" data-type="ARC" />
+        <path d="M99.64 119.14A1.08 1.08 0 0 0 99.65 119.18" vector-effect="non-scaling-stroke" data-handle="4836" data-type="ARC" />
+        <path d="M99.63 119.09A0.64 0.64 0 0 0 99.64 119.14" vector-effect="non-scaling-stroke" data-handle="4837" data-type="ARC" />
+        <path d="M99.62 119.05A0.38 0.38 0 0 0 99.63 119.09" vector-effect="non-scaling-stroke" data-handle="4838" data-type="ARC" />
+        <path d="M99.63 119A0.23 0.23 0 0 0 99.62 119.05" vector-effect="non-scaling-stroke" data-handle="4839" data-type="ARC" />
+        <path d="M99.64 118.97A0.15 0.15 0 0 0 99.63 119" vector-effect="non-scaling-stroke" data-handle="483A" data-type="ARC" />
+        <path d="M99.65 118.94A0.09 0.09 0 0 0 99.64 118.97" vector-effect="non-scaling-stroke" data-handle="483B" data-type="ARC" />
+        <path d="M99.67 118.93A0.06 0.06 0 0 0 99.65 118.94" vector-effect="non-scaling-stroke" data-handle="483C" data-type="ARC" />
+        <path d="M99.69 118.93A0.04 0.04 0 0 0 99.67 118.93" vector-effect="non-scaling-stroke" data-handle="483D" data-type="ARC" />
+        <path d="M99.76 119.74A1.42 1.42 0 0 0 99.69 119.3" vector-effect="non-scaling-stroke" data-handle="483E" data-type="ARC" />
+        <path d="M96 85.06A0.08 0.08 0 0 0 95.99 85.06" vector-effect="non-scaling-stroke" data-handle="483F" data-type="ARC" />
+        <path d="M96.02 85.06A0.13 0.13 0 0 0 96 85.06" vector-effect="non-scaling-stroke" data-handle="4840" data-type="ARC" />
+        <path d="M96.05 85.08A0.25 0.25 0 0 0 96.02 85.06" vector-effect="non-scaling-stroke" data-handle="4841" data-type="ARC" />
+        <path d="M96.08 85.09A0.46 0.46 0 0 0 96.05 85.08" vector-effect="non-scaling-stroke" data-handle="4842" data-type="ARC" />
+        <path d="M96.11 85.11A0.8 0.8 0 0 0 96.08 85.09" vector-effect="non-scaling-stroke" data-handle="4843" data-type="ARC" />
+        <path d="M96.16 85.15A1.49 1.49 0 0 0 96.11 85.11" vector-effect="non-scaling-stroke" data-handle="4844" data-type="ARC" />
+        <path d="M96.23 85.2A5.24 5.24 0 0 0 96.16 85.15" vector-effect="non-scaling-stroke" data-handle="4845" data-type="ARC" />
+        <path d="M96.31 85.26A8.94 8.94 0 0 0 96.23 85.2" vector-effect="non-scaling-stroke" data-handle="4846" data-type="ARC" />
+        <path d="M96.31 85.26A9.18 9.18 0 0 0 96.43 85.35" vector-effect="non-scaling-stroke" data-handle="4847" data-type="ARC" />
+        <path d="M96.43 85.35A3.33 3.33 0 0 0 96.56 85.43" vector-effect="non-scaling-stroke" data-handle="4848" data-type="ARC" />
+        <path d="M96.56 85.43A0.27 0.27 0 0 0 96.6 85.45" vector-effect="non-scaling-stroke" data-handle="4849" data-type="ARC" />
+        <path d="M96.6 85.45A0.21 0.21 0 0 0 96.65 85.47" vector-effect="non-scaling-stroke" data-handle="484A" data-type="ARC" />
+        <path d="M96.65 85.47A0.19 0.19 0 0 0 96.68 85.47" vector-effect="non-scaling-stroke" data-handle="484B" data-type="ARC" />
+        <path d="M96.56 102.72A2.87 2.87 0 0 0 96.48 102.78" vector-effect="non-scaling-stroke" data-handle="484C" data-type="ARC" />
+        <path d="M96.48 102.78A4.85 4.85 0 0 0 96.39 102.84" vector-effect="non-scaling-stroke" data-handle="484D" data-type="ARC" />
+        <path d="M96.39 102.84A195.27 195.27 0 0 0 96.27 102.93" vector-effect="non-scaling-stroke" data-handle="484E" data-type="ARC" />
+        <path d="M96.2 102.98A8.01 8.01 0 0 0 96.27 102.93" vector-effect="non-scaling-stroke" data-handle="484F" data-type="ARC" />
+        <path d="M96.12 103.03A2.42 2.42 0 0 0 96.2 102.98" vector-effect="non-scaling-stroke" data-handle="4850" data-type="ARC" />
+        <path d="M96.08 103.06A0.95 0.95 0 0 0 96.12 103.03" vector-effect="non-scaling-stroke" data-handle="4851" data-type="ARC" />
+        <path d="M96.03 103.08A0.36 0.36 0 0 0 96.08 103.06" vector-effect="non-scaling-stroke" data-handle="4852" data-type="ARC" />
+        <path d="M96 103.09A0.15 0.15 0 0 0 96.03 103.08" vector-effect="non-scaling-stroke" data-handle="4853" data-type="ARC" />
+        <path d="M95.99 103.09A0.09 0.09 0 0 0 96 103.09" vector-effect="non-scaling-stroke" data-handle="4854" data-type="ARC" />
+        <path d="M96 119.3A1.41 1.41 0 0 0 95.93 119.74" vector-effect="non-scaling-stroke" data-handle="4855" data-type="ARC" />
+        <path d="M96.02 118.93A0.04 0.04 0 0 0 96 118.93" vector-effect="non-scaling-stroke" data-handle="4856" data-type="ARC" />
+        <path d="M96.04 118.94A0.06 0.06 0 0 0 96.02 118.93" vector-effect="non-scaling-stroke" data-handle="4857" data-type="ARC" />
+        <path d="M96.05 118.96A0.09 0.09 0 0 0 96.04 118.94" vector-effect="non-scaling-stroke" data-handle="4858" data-type="ARC" />
+        <path d="M96.06 118.98A0.12 0.12 0 0 0 96.05 118.96" vector-effect="non-scaling-stroke" data-handle="4859" data-type="ARC" />
+        <path d="M96.06 119.02A0.17 0.17 0 0 0 96.06 118.98" vector-effect="non-scaling-stroke" data-handle="485A" data-type="ARC" />
+        <path d="M96.06 119.05A0.23 0.23 0 0 0 96.06 119.02" vector-effect="non-scaling-stroke" data-handle="485B" data-type="ARC" />
+        <path d="M96.06 119.09A0.37 0.37 0 0 0 96.06 119.05" vector-effect="non-scaling-stroke" data-handle="485C" data-type="ARC" />
+        <path d="M96.05 119.13A0.59 0.59 0 0 0 96.06 119.09" vector-effect="non-scaling-stroke" data-handle="485D" data-type="ARC" />
+        <path d="M96.05 119.16A0.9 0.9 0 0 0 96.05 119.13" vector-effect="non-scaling-stroke" data-handle="485E" data-type="ARC" />
+        <path d="M96.03 119.21A1.38 1.38 0 0 0 96.05 119.16" vector-effect="non-scaling-stroke" data-handle="485F" data-type="ARC" />
+        <path d="M96.01 119.26A2.67 2.67 0 0 0 96.03 119.21" vector-effect="non-scaling-stroke" data-handle="4860" data-type="ARC" />
+        <path d="M96 119.3A5.25 5.25 0 0 0 96.01 119.26" vector-effect="non-scaling-stroke" data-handle="4861" data-type="ARC" />
+        <path d="M96.68 102.68A0.19 0.19 0 0 0 96.63 102.69" vector-effect="non-scaling-stroke" data-handle="4862" data-type="ARC" />
+        <path d="M96.63 102.69A0.23 0.23 0 0 0 96.59 102.7" vector-effect="non-scaling-stroke" data-handle="4863" data-type="ARC" />
+        <path d="M96.59 102.7A0.28 0.28 0 0 0 96.56 102.72" vector-effect="non-scaling-stroke" data-handle="4864" data-type="ARC" />
+        <line x1="94.44" y1="85.06" x2="94.37" y2="84.96" vector-effect="non-scaling-stroke" data-handle="4865" data-type="LINE" />
+        <line x1="94.37" y1="103.19" x2="94.44" y2="103.09" vector-effect="non-scaling-stroke" data-handle="4866" data-type="LINE" />
+        <path d="M94.29 84.9A0.18 0.18 0 0 0 94.24 84.9" vector-effect="non-scaling-stroke" data-handle="4867" data-type="ARC" />
+        <path d="M94.33 84.92A0.16 0.16 0 0 0 94.29 84.9" vector-effect="non-scaling-stroke" data-handle="4868" data-type="ARC" />
+        <path d="M94.36 84.95A0.14 0.14 0 0 0 94.33 84.92" vector-effect="non-scaling-stroke" data-handle="4869" data-type="ARC" />
+        <path d="M94.37 84.96A0.13 0.13 0 0 0 94.36 84.95" vector-effect="non-scaling-stroke" data-handle="486A" data-type="ARC" />
+        <path d="M94.24 125.38A0.12 0.12 0 0 0 94.3 125.36" vector-effect="non-scaling-stroke" data-handle="486B" data-type="ARC" />
+        <path d="M94.3 125.36A0.15 0.15 0 0 0 94.34 125.33" vector-effect="non-scaling-stroke" data-handle="486C" data-type="ARC" />
+        <path d="M94.34 125.33A0.19 0.19 0 0 0 94.36 125.3" vector-effect="non-scaling-stroke" data-handle="486D" data-type="ARC" />
+        <path d="M94.36 125.3A0.21 0.21 0 0 0 94.37 125.29" vector-effect="non-scaling-stroke" data-handle="486E" data-type="ARC" />
+        <line x1="83.59" y1="94.09" x2="83.79" y2="94.09" vector-effect="non-scaling-stroke" data-handle="486F" data-type="LINE" />
+        <line x1="92.79" y1="103.26" x2="92.79" y2="102.72" vector-effect="non-scaling-stroke" data-handle="4870" data-type="LINE" />
+        <line x1="83.59" y1="94.06" x2="83.79" y2="94.06" vector-effect="non-scaling-stroke" data-handle="4871" data-type="LINE" />
+        <line x1="137.84" y1="72.99" x2="137.99" y2="72.86" vector-effect="non-scaling-stroke" data-handle="487A" data-type="LINE" />
+        <path d="M137.84 72.99A1.82 1.82 0 0 0 137.22 71.58" vector-effect="non-scaling-stroke" data-handle="487B" data-type="ARC" />
+        <path d="M137.22 71.58A2.54 2.54 0 0 0 136.88 71.32" vector-effect="non-scaling-stroke" data-handle="487C" data-type="ARC" />
+        <path d="M136.88 71.32A3.55 3.55 0 0 0 136.37 71.05" vector-effect="non-scaling-stroke" data-handle="487D" data-type="ARC" />
+        <path d="M136.37 71.05A5.25 5.25 0 0 0 135.76 70.83" vector-effect="non-scaling-stroke" data-handle="487E" data-type="ARC" />
+        <path d="M135.76 70.83A7.61 7.61 0 0 0 135.06 70.66" vector-effect="non-scaling-stroke" data-handle="487F" data-type="ARC" />
+        <path d="M135.06 70.66A11.68 11.68 0 0 0 133.76 70.48" vector-effect="non-scaling-stroke" data-handle="4880" data-type="ARC" />
+        <path d="M133.76 70.48A16.62 16.62 0 0 0 130.66 70.5" vector-effect="non-scaling-stroke" data-handle="4881" data-type="ARC" />
+        <path d="M130.66 70.5A11.35 11.35 0 0 0 129.62 70.66" vector-effect="non-scaling-stroke" data-handle="4882" data-type="ARC" />
+        <path d="M129.62 70.66A7.92 7.92 0 0 0 128.93 70.83" vector-effect="non-scaling-stroke" data-handle="4883" data-type="ARC" />
+        <path d="M128.93 70.83A5.49 5.49 0 0 0 128.32 71.05" vector-effect="non-scaling-stroke" data-handle="4884" data-type="ARC" />
+        <path d="M128.32 71.05A3.7 3.7 0 0 0 127.81 71.32" vector-effect="non-scaling-stroke" data-handle="4885" data-type="ARC" />
+        <path d="M127.81 71.32A2.08 2.08 0 0 0 127.01 72.2" vector-effect="non-scaling-stroke" data-handle="4886" data-type="ARC" />
+        <path d="M127.01 72.2A1.82 1.82 0 0 0 126.85 72.83" vector-effect="non-scaling-stroke" data-handle="4887" data-type="ARC" />
+        <path d="M126.85 72.83A2.16 2.16 0 0 0 126.84 72.99" vector-effect="non-scaling-stroke" data-handle="4888" data-type="ARC" />
+        <line x1="99.76" y1="118.93" x2="105.79" y2="118.93" vector-effect="non-scaling-stroke" data-handle="4889" data-type="LINE" />
+        <path d="M94.37 125.29A204.85 204.85 0 0 0 95.93 121.74" vector-effect="non-scaling-stroke" data-handle="488A" data-type="ARC" />
+        <path d="M94.34 103.23A0.13 0.13 0 0 0 94.37 103.19" vector-effect="non-scaling-stroke" data-handle="488B" data-type="ARC" />
+        <path d="M94.28 103.25A0.16 0.16 0 0 0 94.34 103.23" vector-effect="non-scaling-stroke" data-handle="488C" data-type="ARC" />
+        <path d="M94.24 103.26A0.18 0.18 0 0 0 94.28 103.25" vector-effect="non-scaling-stroke" data-handle="488D" data-type="ARC" />
+        <path d="M140.03 118.22A5.54 5.54 0 0 0 140.49 117.94" vector-effect="non-scaling-stroke" data-handle="48E4" data-type="ARC" />
+        <path d="M140.49 117.94A3.2 3.2 0 0 0 140.8 117.7" vector-effect="non-scaling-stroke" data-handle="48E5" data-type="ARC" />
+        <path d="M140.8 117.7A1.99 1.99 0 0 0 141 117.49" vector-effect="non-scaling-stroke" data-handle="48E6" data-type="ARC" />
+        <path d="M141 117.49A1.3 1.3 0 0 0 141.11 117.33" vector-effect="non-scaling-stroke" data-handle="48E7" data-type="ARC" />
+        <path d="M141.11 117.33A0.92 0.92 0 0 0 141.21 117.12" vector-effect="non-scaling-stroke" data-handle="48E8" data-type="ARC" />
+        <path d="M141.21 117.12A0.7 0.7 0 0 0 141.2 116.71" vector-effect="non-scaling-stroke" data-handle="48E9" data-type="ARC" />
+        <path d="M141.2 116.71A0.91 0.91 0 0 0 141.11 116.5" vector-effect="non-scaling-stroke" data-handle="48EA" data-type="ARC" />
+        <path d="M141.11 116.5A1.36 1.36 0 0 0 140.96 116.3" vector-effect="non-scaling-stroke" data-handle="48EB" data-type="ARC" />
+        <path d="M140.96 116.3A2.12 2.12 0 0 0 140.75 116.1" vector-effect="non-scaling-stroke" data-handle="48EC" data-type="ARC" />
+        <path d="M140.75 116.1A3.3 3.3 0 0 0 140.48 115.9" vector-effect="non-scaling-stroke" data-handle="48ED" data-type="ARC" />
+        <path d="M140.48 115.9A5.26 5.26 0 0 0 140.03 115.61" vector-effect="non-scaling-stroke" data-handle="48EE" data-type="ARC" />
+        <path d="M132.34 118.62A7.87 7.87 0 0 0 132.52 118.53" vector-effect="non-scaling-stroke" data-handle="48EF" data-type="ARC" />
+        <path d="M132.52 118.53A10.35 10.35 0 0 0 132.78 118.38" vector-effect="non-scaling-stroke" data-handle="48F0" data-type="ARC" />
+        <path d="M132.78 118.38A11.91 11.91 0 0 0 132.84 118.34" vector-effect="non-scaling-stroke" data-handle="48F1" data-type="ARC" />
+        <line x1="140.03" y1="115.61" x2="140.14" y2="115.55" vector-effect="non-scaling-stroke" data-handle="48F2" data-type="LINE" />
+        <line x1="140.14" y1="118.17" x2="140.03" y2="118.22" vector-effect="non-scaling-stroke" data-handle="48F3" data-type="LINE" />
+        <path d="M140.66 115.87A5.28 5.28 0 0 0 140.14 115.55" vector-effect="non-scaling-stroke" data-handle="48F4" data-type="ARC" />
+        <path d="M140.95 116.12A2.96 2.96 0 0 0 140.66 115.87" vector-effect="non-scaling-stroke" data-handle="48F5" data-type="ARC" />
+        <path d="M141.14 116.33A1.84 1.84 0 0 0 140.95 116.12" vector-effect="non-scaling-stroke" data-handle="48F6" data-type="ARC" />
+        <path d="M141.27 116.53A1.18 1.18 0 0 0 141.14 116.33" vector-effect="non-scaling-stroke" data-handle="48F7" data-type="ARC" />
+        <path d="M141.34 116.74A0.82 0.82 0 0 0 141.27 116.53" vector-effect="non-scaling-stroke" data-handle="48F8" data-type="ARC" />
+        <path d="M141.32 117.07A0.7 0.7 0 0 0 141.34 116.74" vector-effect="non-scaling-stroke" data-handle="48F9" data-type="ARC" />
+        <path d="M141.23 117.28A0.91 0.91 0 0 0 141.32 117.07" vector-effect="non-scaling-stroke" data-handle="48FA" data-type="ARC" />
+        <path d="M141.07 117.48A1.35 1.35 0 0 0 141.23 117.28" vector-effect="non-scaling-stroke" data-handle="48FB" data-type="ARC" />
+        <path d="M140.86 117.69A2.11 2.11 0 0 0 141.07 117.48" vector-effect="non-scaling-stroke" data-handle="48FC" data-type="ARC" />
+        <path d="M140.6 117.89A3.27 3.27 0 0 0 140.86 117.69" vector-effect="non-scaling-stroke" data-handle="48FD" data-type="ARC" />
+        <path d="M140.28 118.09A5.01 5.01 0 0 0 140.6 117.89" vector-effect="non-scaling-stroke" data-handle="48FE" data-type="ARC" />
+        <path d="M140.14 118.17A6.54 6.54 0 0 0 140.28 118.09" vector-effect="non-scaling-stroke" data-handle="48FF" data-type="ARC" />
+        <line x1="139.37" y1="115.48" x2="139.37" y2="69.15" vector-effect="non-scaling-stroke" data-handle="4900" data-type="LINE" />
+        <path d="M139.49 115.46A5.57 5.57 0 0 0 139.37 115.46" vector-effect="non-scaling-stroke" data-handle="4901" data-type="ARC" />
+        <path d="M139.83 115.49A3.65 3.65 0 0 0 139.49 115.46" vector-effect="non-scaling-stroke" data-handle="4902" data-type="ARC" />
+        <path d="M139.96 115.51A2.49 2.49 0 0 0 139.83 115.49" vector-effect="non-scaling-stroke" data-handle="4903" data-type="ARC" />
+        <path d="M140.06 115.53A1.81 1.81 0 0 0 139.96 115.51" vector-effect="non-scaling-stroke" data-handle="4904" data-type="ARC" />
+        <path d="M140.12 115.54A1.13 1.13 0 0 0 140.06 115.53" vector-effect="non-scaling-stroke" data-handle="4905" data-type="ARC" />
+        <path d="M140.14 115.55A1.69 1.69 0 0 0 140.12 115.54" vector-effect="non-scaling-stroke" data-handle="4906" data-type="ARC" />
+        <path d="M132.84 115.5A34.22 34.22 0 0 0 132.34 116.2" vector-effect="non-scaling-stroke" data-handle="4907" data-type="ARC" />
+        <path d="M140.03 115.61A0.78 0.78 0 0 0 139.92 115.57" vector-effect="non-scaling-stroke" data-handle="4908" data-type="ARC" />
+        <path d="M139.92 115.57A1.11 1.11 0 0 0 139.81 115.53" vector-effect="non-scaling-stroke" data-handle="4909" data-type="ARC" />
+        <path d="M139.81 115.53A1.49 1.49 0 0 0 139.66 115.5" vector-effect="non-scaling-stroke" data-handle="490A" data-type="ARC" />
+        <path d="M139.66 115.5A1.91 1.91 0 0 0 139.41 115.48" vector-effect="non-scaling-stroke" data-handle="490B" data-type="ARC" />
+        <path d="M139.41 115.48A2.04 2.04 0 0 0 139.37 115.48" vector-effect="non-scaling-stroke" data-handle="490C" data-type="ARC" />
+        <path d="M139.37 118.36A1.94 1.94 0 0 0 139.66 118.34" vector-effect="non-scaling-stroke" data-handle="490D" data-type="ARC" />
+        <path d="M139.66 118.34A1.45 1.45 0 0 0 139.85 118.3" vector-effect="non-scaling-stroke" data-handle="490E" data-type="ARC" />
+        <path d="M139.85 118.3A0.99 0.99 0 0 0 139.97 118.25" vector-effect="non-scaling-stroke" data-handle="490F" data-type="ARC" />
+        <path d="M139.97 118.25A0.75 0.75 0 0 0 140.03 118.22" vector-effect="non-scaling-stroke" data-handle="4910" data-type="ARC" />
+        <path d="M132.4 115.99A38.65 38.65 0 0 0 132.19 116.3" vector-effect="non-scaling-stroke" data-handle="4911" data-type="ARC" />
+        <path d="M132.63 115.68A28.62 28.62 0 0 0 132.4 115.99" vector-effect="non-scaling-stroke" data-handle="4912" data-type="ARC" />
+        <path d="M132.78 115.46A50.98 50.98 0 0 0 132.63 115.68" vector-effect="non-scaling-stroke" data-handle="4913" data-type="ARC" />
+        <path d="M105.72 84.93A0.21 0.21 0 0 0 105.67 84.91" vector-effect="non-scaling-stroke" data-handle="4914" data-type="ARC" />
+        <path d="M105.67 84.91A0.23 0.23 0 0 0 105.59 84.9" vector-effect="non-scaling-stroke" data-handle="4915" data-type="ARC" />
+        <line x1="105.79" y1="84.86" x2="105.72" y2="84.93" vector-effect="non-scaling-stroke" data-handle="4916" data-type="LINE" />
+        <path d="M83.79 94.09A9 9 0 0 0 92.79 103.09" vector-effect="non-scaling-stroke" data-handle="4917" data-type="ARC" />
+        <path d="M92.79 85.06A9 9 0 0 0 83.79 94.06" vector-effect="non-scaling-stroke" data-handle="4918" data-type="ARC" />
+        <line x1="105.72" y1="103.22" x2="105.79" y2="103.29" vector-effect="non-scaling-stroke" data-handle="4919" data-type="LINE" />
+        <path d="M105.59 103.26A0.23 0.23 0 0 0 105.69 103.24" vector-effect="non-scaling-stroke" data-handle="491A" data-type="ARC" />
+        <path d="M105.69 103.24A0.21 0.21 0 0 0 105.72 103.22" vector-effect="non-scaling-stroke" data-handle="491B" data-type="ARC" />
+        <line x1="83.59" y1="94.09" x2="83.59" y2="94.06" vector-effect="non-scaling-stroke" data-handle="491C" data-type="LINE" />
+        <path d="M92.79 84.9A9.18 9.18 0 0 0 83.59 94.06" vector-effect="non-scaling-stroke" data-handle="491D" data-type="ARC" />
+        <path d="M83.89 125.08A0.24 0.24 0 0 0 83.88 125.15" vector-effect="non-scaling-stroke" data-handle="491E" data-type="ARC" />
+        <path d="M83.88 125.15A0.19 0.19 0 0 0 83.91 125.27" vector-effect="non-scaling-stroke" data-handle="491F" data-type="ARC" />
+        <path d="M83.91 125.27A0.2 0.2 0 0 0 83.95 125.31" vector-effect="non-scaling-stroke" data-handle="4920" data-type="ARC" />
+        <path d="M83.95 125.31A0.28 0.28 0 0 0 84 125.34" vector-effect="non-scaling-stroke" data-handle="4921" data-type="ARC" />
+        <path d="M84 125.34A0.37 0.37 0 0 0 84.08 125.37" vector-effect="non-scaling-stroke" data-handle="4922" data-type="ARC" />
+        <path d="M84.08 125.37A0.44 0.44 0 0 0 84.19 125.38" vector-effect="non-scaling-stroke" data-handle="4923" data-type="ARC" />
+        <path d="M92.43 118.93A9 9 0 0 0 83.89 125.08" vector-effect="non-scaling-stroke" data-handle="4924" data-type="ARC" />
+        <path d="M83.59 94.09A9.19 9.19 0 0 0 92.79 103.26" vector-effect="non-scaling-stroke" data-handle="4925" data-type="ARC" />
+        <path d="M105.77 125.26A0.31 0.31 0 0 0 105.79 125.13" vector-effect="non-scaling-stroke" data-handle="4926" data-type="ARC" />
+        <path d="M105.71 125.33A0.24 0.24 0 0 0 105.77 125.26" vector-effect="non-scaling-stroke" data-handle="4927" data-type="ARC" />
+        <path d="M105.65 125.37A0.19 0.19 0 0 0 105.71 125.33" vector-effect="non-scaling-stroke" data-handle="4928" data-type="ARC" />
+        <path d="M105.59 125.38A0.16 0.16 0 0 0 105.65 125.37" vector-effect="non-scaling-stroke" data-handle="4929" data-type="ARC" />
+        <path d="M132.34 116.2A26.72 26.72 0 0 0 132.29 116.28" vector-effect="non-scaling-stroke" data-handle="492A" data-type="ARC" />
+        <path d="M132.29 116.28A34.84 34.84 0 0 0 132.24 116.35" vector-effect="non-scaling-stroke" data-handle="492B" data-type="ARC" />
+        <line x1="132.24" y1="116.35" x2="132.34" y2="116.25" vector-effect="non-scaling-stroke" data-handle="492C" data-type="LINE" />
+        <line x1="132.19" y1="116.3" x2="132.24" y2="116.35" vector-effect="non-scaling-stroke" data-handle="492D" data-type="LINE" />
+        <path d="M105.79 54.31A0.2 0.2 0 0 0 105.59 54.11" vector-effect="non-scaling-stroke" data-handle="492E" data-type="ARC" />
+        <path d="M105.79 68.4A0.75 0.75 0 0 0 106.54 69.15" vector-effect="non-scaling-stroke" data-handle="492F" data-type="ARC" />
+        <path d="M106.54 119A0.75 0.75 0 0 0 105.79 119.75" vector-effect="non-scaling-stroke" data-handle="4930" data-type="ARC" />
+        <path d="M105.59 134.05A0.2 0.2 0 0 0 105.79 133.85" vector-effect="non-scaling-stroke" data-handle="4931" data-type="ARC" />
+        <path d="M140.14 69.52A1 1 0 0 0 139.37 69.15" vector-effect="non-scaling-stroke" data-handle="4932" data-type="ARC" />
+        <path d="M145.32 112.85A1 1 0 0 0 144.54 113.22" vector-effect="non-scaling-stroke" data-handle="4933" data-type="ARC" />
+        <path d="M144.54 74.94A1 1 0 0 0 145.32 75.31" vector-effect="non-scaling-stroke" data-handle="4934" data-type="ARC" />
+        <path d="M262.46 75.33A1 1 0 0 0 262.22 75.31" vector-effect="non-scaling-stroke" data-handle="4935" data-type="ARC" />
+        <path d="M262.22 112.85A1 1 0 0 0 262.46 112.82" vector-effect="non-scaling-stroke" data-handle="4936" data-type="ARC" />
+        <path d="M269.84 77.94A1 1 0 0 0 269.08 76.97" vector-effect="non-scaling-stroke" data-handle="4937" data-type="ARC" />
+        <path d="M269.08 111.18A1 1 0 0 0 269.84 110.21" vector-effect="non-scaling-stroke" data-handle="4938" data-type="ARC" />
+        <path d="M79.84 133.85A0.2 0.2 0 0 0 80.04 134.05" vector-effect="non-scaling-stroke" data-handle="493F" data-type="ARC" />
+        <path d="M80.04 54.11A0.2 0.2 0 0 0 79.84 54.31" vector-effect="non-scaling-stroke" data-handle="4940" data-type="ARC" />
+        <path d="M94.24 134.05A0.15 0.15 0 0 0 94.37 133.97" vector-effect="non-scaling-stroke" data-handle="495C" data-type="ARC" />
+        <path d="M101.32 133.97A0.15 0.15 0 0 0 101.45 134.05" vector-effect="non-scaling-stroke" data-handle="495D" data-type="ARC" />
+        <path d="M96.68 129.05A0.75 0.75 0 0 0 95.93 129.8" vector-effect="non-scaling-stroke" data-handle="495E" data-type="ARC" />
+        <path d="M99.76 129.8A0.75 0.75 0 0 0 99.01 129.05" vector-effect="non-scaling-stroke" data-handle="495F" data-type="ARC" />
+        <path d="M101.45 54.11A0.15 0.15 0 0 0 101.32 54.18" vector-effect="non-scaling-stroke" data-handle="4960" data-type="ARC" />
+        <path d="M94.37 54.18A0.15 0.15 0 0 0 94.24 54.11" vector-effect="non-scaling-stroke" data-handle="4961" data-type="ARC" />
+        <path d="M99.01 59.1A0.75 0.75 0 0 0 99.76 58.35" vector-effect="non-scaling-stroke" data-handle="4962" data-type="ARC" />
+        <path d="M95.93 58.35A0.75 0.75 0 0 0 96.68 59.1" vector-effect="non-scaling-stroke" data-handle="4963" data-type="ARC" />
+        <path d="M84.17 94.09A8.63 8.63 0 0 0 92.79 102.72" vector-effect="non-scaling-stroke" data-handle="496F" data-type="ARC" />
+        <path d="M92.79 85.43A8.63 8.63 0 0 0 84.17 94.06" vector-effect="non-scaling-stroke" data-handle="4970" data-type="ARC" />
+        <path d="M92.43 119.3A8.63 8.63 0 0 0 84.19 125.38" vector-effect="non-scaling-stroke" data-handle="4971" data-type="ARC" />
+        <line x1="105.59" y1="54.11" x2="101.45" y2="54.11" vector-effect="non-scaling-stroke" data-handle="4976" data-type="LINE" />
+        <line x1="101.45" y1="134.05" x2="105.59" y2="134.05" vector-effect="non-scaling-stroke" data-handle="4977" data-type="LINE" />
+        <line x1="144.54" y1="74.94" x2="140.14" y2="69.52" vector-effect="non-scaling-stroke" data-handle="4978" data-type="LINE" />
+        <line x1="262.46" y1="112.82" x2="269.08" y2="111.18" vector-effect="non-scaling-stroke" data-handle="4979" data-type="LINE" />
+        <line x1="269.08" y1="76.97" x2="262.46" y2="75.33" vector-effect="non-scaling-stroke" data-handle="497A" data-type="LINE" />
+        <line x1="81.84" y1="54.11" x2="80.04" y2="54.11" vector-effect="non-scaling-stroke" data-handle="499A" data-type="LINE" />
+        <line x1="94.24" y1="54.11" x2="91.87" y2="54.11" vector-effect="non-scaling-stroke" data-handle="499B" data-type="LINE" />
+        <line x1="80.04" y1="134.05" x2="94.24" y2="134.05" vector-effect="non-scaling-stroke" data-handle="499C" data-type="LINE" />
+        <line x1="139.37" y1="69.15" x2="106.54" y2="69.15" vector-effect="non-scaling-stroke" data-handle="49A2" data-type="LINE" />
+        <line x1="106.54" y1="119" x2="132.19" y2="119" vector-effect="non-scaling-stroke" data-handle="49A8" data-type="LINE" />
+        <line x1="132.19" y1="119" x2="132.34" y2="118.85" vector-effect="non-scaling-stroke" data-handle="49A9" data-type="LINE" />
+        <line x1="141.11" y1="117.44" x2="144.54" y2="113.22" vector-effect="non-scaling-stroke" data-handle="49AA" data-type="LINE" />
+        <line x1="94.37" y1="133.97" x2="95.93" y2="131.26" vector-effect="non-scaling-stroke" data-handle="49B7" data-type="LINE" />
+        <line x1="99.76" y1="131.26" x2="101.32" y2="133.97" vector-effect="non-scaling-stroke" data-handle="49B8" data-type="LINE" />
+        <line x1="99.01" y1="59.1" x2="96.68" y2="59.1" vector-effect="non-scaling-stroke" data-handle="49B9" data-type="LINE" />
+        <line x1="95.93" y1="56.89" x2="94.37" y2="54.18" vector-effect="non-scaling-stroke" data-handle="49BA" data-type="LINE" />
+        <line x1="101.32" y1="54.18" x2="99.76" y2="56.89" vector-effect="non-scaling-stroke" data-handle="49BB" data-type="LINE" />
+        <line x1="96.68" y1="129.05" x2="99.01" y2="129.05" vector-effect="non-scaling-stroke" data-handle="49BC" data-type="LINE" />
+        <line x1="145.32" y1="112.85" x2="262.22" y2="112.85" vector-effect="non-scaling-stroke" data-handle="4A02" data-type="LINE" />
+        <line x1="262.22" y1="75.31" x2="145.32" y2="75.31" vector-effect="non-scaling-stroke" data-handle="4A03" data-type="LINE" />
+        <line x1="269.84" y1="110.21" x2="269.84" y2="77.94" vector-effect="non-scaling-stroke" data-handle="4A09" data-type="LINE" />
+        <line x1="105.59" y1="54.11" x2="105.59" y2="84.9" vector-effect="non-scaling-stroke" data-handle="4A0A" data-type="LINE" />
+        <line x1="262.46" y1="112.82" x2="262.46" y2="75.33" vector-effect="non-scaling-stroke" data-handle="4A0B" data-type="LINE" />
+        <line x1="106.54" y1="119" x2="106.54" y2="69.15" vector-effect="non-scaling-stroke" data-handle="4A0F" data-type="LINE" />
+        <line x1="140.14" y1="115.55" x2="140.14" y2="69.52" vector-effect="non-scaling-stroke" data-handle="4A10" data-type="LINE" />
+        <line x1="132.34" y1="116.25" x2="132.34" y2="118.85" vector-effect="non-scaling-stroke" data-handle="4A12" data-type="LINE" />
+        <line x1="145.32" y1="75.31" x2="145.32" y2="112.85" vector-effect="non-scaling-stroke" data-handle="4A13" data-type="LINE" />
+        <line x1="144.54" y1="113.22" x2="144.54" y2="74.94" vector-effect="non-scaling-stroke" data-handle="4A1B" data-type="LINE" />
+        <line x1="269.08" y1="76.97" x2="269.08" y2="111.18" vector-effect="non-scaling-stroke" data-handle="4A29" data-type="LINE" />
+        <line x1="262.22" y1="75.31" x2="262.22" y2="112.85" vector-effect="non-scaling-stroke" data-handle="4A33" data-type="LINE" />
+        <line x1="99.76" y1="85.06" x2="99.76" y2="56.89" vector-effect="non-scaling-stroke" data-handle="4A37" data-type="LINE" />
+        <line x1="99.76" y1="119.74" x2="99.76" y2="131.26" vector-effect="non-scaling-stroke" data-handle="4A3C" data-type="LINE" />
+        <line x1="101.32" y1="54.18" x2="101.32" y2="84.96" vector-effect="non-scaling-stroke" data-handle="4A3E" data-type="LINE" />
+        <line x1="94.37" y1="84.96" x2="94.37" y2="54.18" vector-effect="non-scaling-stroke" data-handle="4A3F" data-type="LINE" />
+        <line x1="95.93" y1="85.06" x2="95.93" y2="56.89" vector-effect="non-scaling-stroke" data-handle="4A40" data-type="LINE" />
+        <line x1="96.68" y1="102.68" x2="96.68" y2="129.05" vector-effect="non-scaling-stroke" data-handle="4A41" data-type="LINE" />
+        <line x1="99.01" y1="129.05" x2="99.01" y2="102.68" vector-effect="non-scaling-stroke" data-handle="4A42" data-type="LINE" />
+        <line x1="99.01" y1="85.47" x2="99.01" y2="59.1" vector-effect="non-scaling-stroke" data-handle="4A43" data-type="LINE" />
+        <line x1="96.68" y1="59.1" x2="96.68" y2="85.47" vector-effect="non-scaling-stroke" data-handle="4A44" data-type="LINE" />
+        <line x1="101.32" y1="133.97" x2="101.32" y2="125.29" vector-effect="non-scaling-stroke" data-handle="4A45" data-type="LINE" />
+        <line x1="94.37" y1="125.29" x2="94.37" y2="133.97" vector-effect="non-scaling-stroke" data-handle="4A46" data-type="LINE" />
+        <line x1="95.93" y1="119.74" x2="95.93" y2="131.26" vector-effect="non-scaling-stroke" data-handle="4A47" data-type="LINE" />
+        <line x1="80.04" y1="54.11" x2="80.04" y2="134.05" vector-effect="non-scaling-stroke" data-handle="4A49" data-type="LINE" />
+        <line x1="94.24" y1="54.11" x2="94.24" y2="84.9" vector-effect="non-scaling-stroke" data-handle="4A4A" data-type="LINE" />
+        <line x1="101.45" y1="84.9" x2="101.45" y2="54.11" vector-effect="non-scaling-stroke" data-handle="4A58" data-type="LINE" />
+        <line x1="105.79" y1="133.85" x2="105.79" y2="54.31" vector-effect="non-scaling-stroke" data-handle="4A5B" data-type="LINE" />
+        <line x1="101.45" y1="125.38" x2="101.45" y2="134.05" vector-effect="non-scaling-stroke" data-handle="4A61" data-type="LINE" />
+        <line x1="105.59" y1="134.05" x2="105.59" y2="125.38" vector-effect="non-scaling-stroke" data-handle="4A62" data-type="LINE" />
+        <line x1="94.24" y1="134.05" x2="94.24" y2="125.38" vector-effect="non-scaling-stroke" data-handle="4A63" data-type="LINE" />
+        <line x1="79.84" y1="54.31" x2="79.84" y2="133.85" vector-effect="non-scaling-stroke" data-handle="4A6D" data-type="LINE" />
+        <line x1="132.19" y1="119" x2="132.19" y2="116.3" vector-effect="non-scaling-stroke" data-handle="4A6E" data-type="LINE" />
+        <line x1="105.59" y1="103.26" x2="101.45" y2="103.26" vector-effect="non-scaling-stroke" data-handle="4A73" data-type="LINE" />
+        <line x1="139.37" y1="115.48" x2="132.79" y2="115.48" vector-effect="non-scaling-stroke" data-handle="4A74" data-type="LINE" />
+        <line x1="126.84" y1="72.99" x2="126.84" y2="77.58" vector-effect="non-scaling-stroke" data-handle="4A75" data-type="LINE" />
+        <line x1="132.78" y1="115.46" x2="139.37" y2="115.46" vector-effect="non-scaling-stroke" data-handle="4A76" data-type="LINE" />
+        <line x1="94.24" y1="125.38" x2="84.19" y2="125.38" vector-effect="non-scaling-stroke" data-handle="4A77" data-type="LINE" />
+        <line x1="126.69" y1="77.58" x2="126.69" y2="72.86" vector-effect="non-scaling-stroke" data-handle="4A78" data-type="LINE" />
+        <line x1="137.99" y1="72.86" x2="137.99" y2="77.58" vector-effect="non-scaling-stroke" data-handle="4A79" data-type="LINE" />
+        <line x1="101.45" y1="84.9" x2="105.59" y2="84.9" vector-effect="non-scaling-stroke" data-handle="4A7A" data-type="LINE" />
+        <line x1="105.59" y1="125.38" x2="101.45" y2="125.38" vector-effect="non-scaling-stroke" data-handle="4A7B" data-type="LINE" />
+        <line x1="132.84" y1="115.5" x2="132.84" y2="118.34" vector-effect="non-scaling-stroke" data-handle="4A7C" data-type="LINE" />
+        <line x1="132.79" y1="118.36" x2="139.37" y2="118.36" vector-effect="non-scaling-stroke" data-handle="4A7D" data-type="LINE" />
+        <line x1="137.99" y1="77.58" x2="126.69" y2="77.58" vector-effect="non-scaling-stroke" data-handle="4A7E" data-type="LINE" />
+        <line x1="99.69" y1="119.3" x2="105.79" y2="119.3" vector-effect="non-scaling-stroke" data-handle="4A7F" data-type="LINE" />
+        <line x1="105.75" y1="85.43" x2="105.79" y2="85.39" vector-effect="non-scaling-stroke" data-handle="4A80" data-type="LINE" />
+        <line x1="105.79" y1="102.76" x2="105.75" y2="102.72" vector-effect="non-scaling-stroke" data-handle="4A81" data-type="LINE" />
+        <line x1="105.75" y1="102.72" x2="99.12" y2="102.72" vector-effect="non-scaling-stroke" data-handle="4A82" data-type="LINE" />
+        <line x1="99.12" y1="85.43" x2="105.75" y2="85.43" vector-effect="non-scaling-stroke" data-handle="4A83" data-type="LINE" />
+        <line x1="101.32" y1="103.19" x2="101.32" y2="118.93" vector-effect="non-scaling-stroke" data-handle="4A84" data-type="LINE" />
+        <line x1="96.68" y1="85.47" x2="99.01" y2="85.47" vector-effect="non-scaling-stroke" data-handle="4A85" data-type="LINE" />
+        <line x1="99.01" y1="102.68" x2="96.68" y2="102.68" vector-effect="non-scaling-stroke" data-handle="4A86" data-type="LINE" />
+        <line x1="96.56" y1="102.72" x2="92.79" y2="102.72" vector-effect="non-scaling-stroke" data-handle="4A87" data-type="LINE" />
+        <line x1="92.79" y1="85.43" x2="96.56" y2="85.43" vector-effect="non-scaling-stroke" data-handle="4A88" data-type="LINE" />
+        <line x1="92.43" y1="119.3" x2="96" y2="119.3" vector-effect="non-scaling-stroke" data-handle="4A89" data-type="LINE" />
+        <line x1="95.93" y1="118.93" x2="95.93" y2="103.09" vector-effect="non-scaling-stroke" data-handle="4A8A" data-type="LINE" />
+        <line x1="94.37" y1="118.93" x2="94.37" y2="103.19" vector-effect="non-scaling-stroke" data-handle="4A8B" data-type="LINE" />
+        <line x1="95.93" y1="103.09" x2="92.79" y2="103.09" vector-effect="non-scaling-stroke" data-handle="4A8C" data-type="LINE" />
+        <line x1="92.79" y1="85.06" x2="95.93" y2="85.06" vector-effect="non-scaling-stroke" data-handle="4A8D" data-type="LINE" />
+        <line x1="84.17" y1="94.09" x2="83.79" y2="94.09" vector-effect="non-scaling-stroke" data-handle="4A8E" data-type="LINE" />
+        <line x1="84.17" y1="94.06" x2="83.79" y2="94.06" vector-effect="non-scaling-stroke" data-handle="4A8F" data-type="LINE" />
+        <line x1="92.79" y1="85.43" x2="92.79" y2="84.9" vector-effect="non-scaling-stroke" data-handle="4A90" data-type="LINE" />
+        <line x1="92.43" y1="119.3" x2="92.43" y2="118.93" vector-effect="non-scaling-stroke" data-handle="4A91" data-type="LINE" />
+        <line x1="84.17" y1="94.09" x2="84.17" y2="94.06" vector-effect="non-scaling-stroke" data-handle="4A92" data-type="LINE" />
+        <line x1="94.24" y1="103.26" x2="94.24" y2="118.93" vector-effect="non-scaling-stroke" data-handle="4A93" data-type="LINE" />
+        <line x1="101.45" y1="118.93" x2="101.45" y2="103.26" vector-effect="non-scaling-stroke" data-handle="4A94" data-type="LINE" />
+        <line x1="92.79" y1="84.9" x2="94.24" y2="84.9" vector-effect="non-scaling-stroke" data-handle="4A95" data-type="LINE" />
+        <line x1="92.43" y1="118.93" x2="95.93" y2="118.93" vector-effect="non-scaling-stroke" data-handle="4A9E" data-type="LINE" />
+        <line x1="94.24" y1="103.26" x2="92.79" y2="103.26" vector-effect="non-scaling-stroke" data-handle="4A9F" data-type="LINE" />
+        <line x1="137.84" y1="77.58" x2="137.84" y2="72.99" vector-effect="non-scaling-stroke" data-handle="4AA0" data-type="LINE" />
+        <line x1="99.76" y1="118.93" x2="99.76" y2="103.09" vector-effect="non-scaling-stroke" data-handle="4AA1" data-type="LINE" />
+        <line x1="105.75" y1="102.72" x2="105.59" y2="103.09" vector-effect="non-scaling-stroke" data-handle="4AA6" data-type="LINE" />
+        <line x1="105.59" y1="103.09" x2="105.72" y2="103.22" vector-effect="non-scaling-stroke" data-handle="4AA7" data-type="LINE" />
+        <line x1="105.59" y1="85.06" x2="105.75" y2="85.43" vector-effect="non-scaling-stroke" data-handle="4AA8" data-type="LINE" />
+        <line x1="105.72" y1="84.93" x2="105.59" y2="85.06" vector-effect="non-scaling-stroke" data-handle="4AA9" data-type="LINE" />
+        <line x1="83.79" y1="94.09" x2="83.79" y2="94.06" vector-effect="non-scaling-stroke" data-handle="4AAA" data-type="LINE" />
+        <line x1="105.59" y1="103.26" x2="105.59" y2="118.93" vector-effect="non-scaling-stroke" data-handle="4AAB" data-type="LINE" />
+      </g>
+      <g id="layer-sk1" class="cad-layer" data-layer="SK1" stroke="#00ffff" stroke-width="1.89">
+        <path d="M42.74 106.34A93.6 93.6 0 0 0 41.59 106.18" vector-effect="non-scaling-stroke" data-handle="4872" data-type="ARC" />
+        <path d="M44.45 106.61A65.84 65.84 0 0 0 42.74 106.34" vector-effect="non-scaling-stroke" data-handle="4873" data-type="ARC" />
+        <path d="M45.3 106.77A38.1 38.1 0 0 0 44.45 106.61" vector-effect="non-scaling-stroke" data-handle="4874" data-type="ARC" />
+        <path d="M46.14 106.95A27.41 27.41 0 0 0 45.3 106.77" vector-effect="non-scaling-stroke" data-handle="4875" data-type="ARC" />
+        <path d="M45.3 81.38A25.63 25.63 0 0 0 46.14 81.2" vector-effect="non-scaling-stroke" data-handle="4876" data-type="ARC" />
+        <path d="M44.45 81.54A36.32 36.32 0 0 0 45.3 81.38" vector-effect="non-scaling-stroke" data-handle="4877" data-type="ARC" />
+        <path d="M42.74 81.81A64.97 64.97 0 0 0 44.45 81.54" vector-effect="non-scaling-stroke" data-handle="4878" data-type="ARC" />
+        <path d="M41.59 81.97A93.6 93.6 0 0 0 42.74 81.81" vector-effect="non-scaling-stroke" data-handle="4879" data-type="ARC" />
+        <path d="M73.07 92.61A4.83 4.83 0 0 0 71.52 90.45" vector-effect="non-scaling-stroke" data-handle="488E" data-type="ARC" />
+        <path d="M72.53 96.61A4.46 4.46 0 0 0 73.07 92.61" vector-effect="non-scaling-stroke" data-handle="488F" data-type="ARC" />
+        <path d="M70.05 98.54A5.16 5.16 0 0 0 72.53 96.61" vector-effect="non-scaling-stroke" data-handle="4890" data-type="ARC" />
+        <path d="M64.89 97.87A5.54 5.54 0 0 0 70.05 98.54" vector-effect="non-scaling-stroke" data-handle="4891" data-type="ARC" />
+        <path d="M63.23 95.78A4.89 4.89 0 0 0 64.89 97.87" vector-effect="non-scaling-stroke" data-handle="4892" data-type="ARC" />
+        <path d="M63.82 91.34A4.51 4.51 0 0 0 63.23 95.78" vector-effect="non-scaling-stroke" data-handle="4893" data-type="ARC" />
+        <path d="M66.4 89.52A5.17 5.17 0 0 0 63.82 91.34" vector-effect="non-scaling-stroke" data-handle="4894" data-type="ARC" />
+        <path d="M71.52 90.45A5.56 5.56 0 0 0 66.4 89.52" vector-effect="non-scaling-stroke" data-handle="4895" data-type="ARC" />
+        <path d="M46.14 106.95A0.48 0.48 0 0 0 46.45 106.92" vector-effect="non-scaling-stroke" data-handle="4896" data-type="ARC" />
+        <path d="M46.45 106.92A0.79 0.79 0 0 0 46.59 106.84" vector-effect="non-scaling-stroke" data-handle="4897" data-type="ARC" />
+        <path d="M46.59 106.84A1.7 1.7 0 0 0 46.83 106.62" vector-effect="non-scaling-stroke" data-handle="4898" data-type="ARC" />
+        <path d="M46.83 106.62A3.1 3.1 0 0 0 47 106.43" vector-effect="non-scaling-stroke" data-handle="4899" data-type="ARC" />
+        <path d="M47 106.43A4.66 4.66 0 0 0 47.43 105.8" vector-effect="non-scaling-stroke" data-handle="489A" data-type="ARC" />
+        <path d="M47.43 105.8A5.18 5.18 0 0 0 47.79 104.99" vector-effect="non-scaling-stroke" data-handle="489B" data-type="ARC" />
+        <path d="M47.79 104.99A4.12 4.12 0 0 0 48.04 103.61" vector-effect="non-scaling-stroke" data-handle="489C" data-type="ARC" />
+        <path d="M48.04 84.54A3.88 3.88 0 0 0 47.97 83.77" vector-effect="non-scaling-stroke" data-handle="489D" data-type="ARC" />
+        <path d="M47.97 83.77A4.57 4.57 0 0 0 47.7 82.92" vector-effect="non-scaling-stroke" data-handle="489E" data-type="ARC" />
+        <path d="M47.7 82.92A5.28 5.28 0 0 0 47.23 82.03" vector-effect="non-scaling-stroke" data-handle="489F" data-type="ARC" />
+        <path d="M47.23 82.03A4.14 4.14 0 0 0 46.88 81.58" vector-effect="non-scaling-stroke" data-handle="48A0" data-type="ARC" />
+        <path d="M46.88 81.58A1.96 1.96 0 0 0 46.64 81.36" vector-effect="non-scaling-stroke" data-handle="48A1" data-type="ARC" />
+        <path d="M46.64 81.36A0.96 0.96 0 0 0 46.48 81.25" vector-effect="non-scaling-stroke" data-handle="48A2" data-type="ARC" />
+        <path d="M46.48 81.25A0.62 0.62 0 0 0 46.38 81.21" vector-effect="non-scaling-stroke" data-handle="48A3" data-type="ARC" />
+        <path d="M46.38 81.21A0.48 0.48 0 0 0 46.14 81.2" vector-effect="non-scaling-stroke" data-handle="48A4" data-type="ARC" />
+        <path d="M41.4 81.44A6.1 6.1 0 0 0 41.46 81.64" vector-effect="non-scaling-stroke" data-handle="48A5" data-type="ARC" />
+        <path d="M41.28 81.01A3.88 3.88 0 0 0 41.4 81.44" vector-effect="non-scaling-stroke" data-handle="48A6" data-type="ARC" />
+        <path d="M41.23 80.58A2.73 2.73 0 0 0 41.28 81.01" vector-effect="non-scaling-stroke" data-handle="48A7" data-type="ARC" />
+        <path d="M39.97 81.34A9.21 9.21 0 0 0 39.97 81.15" vector-effect="non-scaling-stroke" data-handle="48A8" data-type="ARC" />
+        <path d="M39.96 81.55A18.15 18.15 0 0 0 39.97 81.34" vector-effect="non-scaling-stroke" data-handle="48A9" data-type="ARC" />
+        <path d="M39.96 81.55A1459.19 1459.19 0 0 0 39.95 81.82" vector-effect="non-scaling-stroke" data-handle="48AA" data-type="ARC" />
+        <path d="M39.95 81.82A13.87 13.87 0 0 0 39.95 82.11" vector-effect="non-scaling-stroke" data-handle="48AB" data-type="ARC" />
+        <path d="M39.95 82.11A8.22 8.22 0 0 0 39.94 82.25" vector-effect="non-scaling-stroke" data-handle="48AC" data-type="ARC" />
+        <path d="M41.46 81.64A4.99 4.99 0 0 0 41.59 81.97" vector-effect="non-scaling-stroke" data-handle="48AD" data-type="ARC" />
+        <path d="M39.97 107A63.28 63.28 0 0 0 39.99 107.96" vector-effect="non-scaling-stroke" data-handle="48AE" data-type="ARC" />
+        <path d="M39.99 107.96A30.81 30.81 0 0 0 40.02 108.92" vector-effect="non-scaling-stroke" data-handle="48AF" data-type="ARC" />
+        <path d="M40.02 108.92A16.28 16.28 0 0 0 40.05 109.41" vector-effect="non-scaling-stroke" data-handle="48B0" data-type="ARC" />
+        <path d="M40.05 109.41A8.6 8.6 0 0 0 40.13 110.03" vector-effect="non-scaling-stroke" data-handle="48B1" data-type="ARC" />
+        <path d="M40.13 110.03A3.15 3.15 0 0 0 40.21 110.41" vector-effect="non-scaling-stroke" data-handle="48B2" data-type="ARC" />
+        <path d="M40.21 110.41A1.47 1.47 0 0 0 40.26 110.56" vector-effect="non-scaling-stroke" data-handle="48B3" data-type="ARC" />
+        <path d="M40.26 110.56A0.72 0.72 0 0 0 40.32 110.68" vector-effect="non-scaling-stroke" data-handle="48B4" data-type="ARC" />
+        <path d="M40.32 110.68A0.36 0.36 0 0 0 40.36 110.73" vector-effect="non-scaling-stroke" data-handle="48B5" data-type="ARC" />
+        <path d="M40.36 110.73A0.16 0.16 0 0 0 40.46 110.78" vector-effect="non-scaling-stroke" data-handle="48B6" data-type="ARC" />
+        <path d="M40.46 110.78A0.12 0.12 0 0 0 40.5 110.78" vector-effect="non-scaling-stroke" data-handle="48B7" data-type="ARC" />
+        <path d="M40.5 110.78A0.16 0.16 0 0 0 40.56 110.76" vector-effect="non-scaling-stroke" data-handle="48B8" data-type="ARC" />
+        <path d="M40.56 110.76A0.29 0.29 0 0 0 40.61 110.71" vector-effect="non-scaling-stroke" data-handle="48B9" data-type="ARC" />
+        <path d="M40.61 110.71A0.59 0.59 0 0 0 40.68 110.62" vector-effect="non-scaling-stroke" data-handle="48BA" data-type="ARC" />
+        <path d="M40.68 110.62A1.14 1.14 0 0 0 40.75 110.5" vector-effect="non-scaling-stroke" data-handle="48BB" data-type="ARC" />
+        <path d="M40.75 110.5A1.83 1.83 0 0 0 40.81 110.37" vector-effect="non-scaling-stroke" data-handle="48BC" data-type="ARC" />
+        <path d="M40.81 110.37A2.96 2.96 0 0 0 40.87 110.18" vector-effect="non-scaling-stroke" data-handle="48BD" data-type="ARC" />
+        <path d="M40.87 110.18A4.81 4.81 0 0 0 40.98 109.78" vector-effect="non-scaling-stroke" data-handle="48BE" data-type="ARC" />
+        <path d="M40.98 109.78A7.9 7.9 0 0 0 41.08 109.25" vector-effect="non-scaling-stroke" data-handle="48BF" data-type="ARC" />
+        <path d="M41.08 109.25A11.43 11.43 0 0 0 41.18 108.49" vector-effect="non-scaling-stroke" data-handle="48C0" data-type="ARC" />
+        <path d="M41.18 108.49A14.74 14.74 0 0 0 41.22 107.8" vector-effect="non-scaling-stroke" data-handle="48C1" data-type="ARC" />
+        <path d="M41.22 107.8A16.9 16.9 0 0 0 41.23 107.57" vector-effect="non-scaling-stroke" data-handle="48C2" data-type="ARC" />
+        <path d="M39.94 105.91A8.99 8.99 0 0 0 39.95 106.12" vector-effect="non-scaling-stroke" data-handle="48C3" data-type="ARC" />
+        <path d="M39.95 106.12A15.39 15.39 0 0 0 39.95 106.33" vector-effect="non-scaling-stroke" data-handle="48C4" data-type="ARC" />
+        <path d="M39.95 106.33A108.07 108.07 0 0 0 39.96 106.61" vector-effect="non-scaling-stroke" data-handle="48C5" data-type="ARC" />
+        <path d="M39.97 106.87A16.74 16.74 0 0 0 39.96 106.61" vector-effect="non-scaling-stroke" data-handle="48C6" data-type="ARC" />
+        <path d="M39.97 107A7.98 7.98 0 0 0 39.97 106.87" vector-effect="non-scaling-stroke" data-handle="48C7" data-type="ARC" />
+        <path d="M41.28 107.14A2.69 2.69 0 0 0 41.23 107.57" vector-effect="non-scaling-stroke" data-handle="48C8" data-type="ARC" />
+        <path d="M41.36 106.84A3.63 3.63 0 0 0 41.28 107.14" vector-effect="non-scaling-stroke" data-handle="48C9" data-type="ARC" />
+        <path d="M41.42 106.64A4.82 4.82 0 0 0 41.36 106.84" vector-effect="non-scaling-stroke" data-handle="48CA" data-type="ARC" />
+        <path d="M41.46 106.51A6.26 6.26 0 0 0 41.42 106.64" vector-effect="non-scaling-stroke" data-handle="48CB" data-type="ARC" />
+        <path d="M41.58 106.22A4.9 4.9 0 0 0 41.46 106.51" vector-effect="non-scaling-stroke" data-handle="48CC" data-type="ARC" />
+        <path d="M41.59 106.18A5.41 5.41 0 0 0 41.58 106.22" vector-effect="non-scaling-stroke" data-handle="48CD" data-type="ARC" />
+        <path d="M41.23 80.58A16.48 16.48 0 0 0 41.2 79.89" vector-effect="non-scaling-stroke" data-handle="48CE" data-type="ARC" />
+        <path d="M41.2 79.89A11.37 11.37 0 0 0 41.04 78.68" vector-effect="non-scaling-stroke" data-handle="48CF" data-type="ARC" />
+        <path d="M41.04 78.68A6.65 6.65 0 0 0 40.95 78.26" vector-effect="non-scaling-stroke" data-handle="48D0" data-type="ARC" />
+        <path d="M40.95 78.26A4.54 4.54 0 0 0 40.87 77.96" vector-effect="non-scaling-stroke" data-handle="48D1" data-type="ARC" />
+        <path d="M40.87 77.96A2.44 2.44 0 0 0 40.76 77.68" vector-effect="non-scaling-stroke" data-handle="48D2" data-type="ARC" />
+        <path d="M40.76 77.68A1.39 1.39 0 0 0 40.69 77.55" vector-effect="non-scaling-stroke" data-handle="48D3" data-type="ARC" />
+        <path d="M40.69 77.55A0.72 0.72 0 0 0 40.64 77.47" vector-effect="non-scaling-stroke" data-handle="48D4" data-type="ARC" />
+        <path d="M40.64 77.47A0.46 0.46 0 0 0 40.58 77.41" vector-effect="non-scaling-stroke" data-handle="48D5" data-type="ARC" />
+        <path d="M40.58 77.41A0.21 0.21 0 0 0 40.52 77.38" vector-effect="non-scaling-stroke" data-handle="48D6" data-type="ARC" />
+        <path d="M40.52 77.38A0.13 0.13 0 0 0 40.4 77.39" vector-effect="non-scaling-stroke" data-handle="48D7" data-type="ARC" />
+        <path d="M40.4 77.39A0.2 0.2 0 0 0 40.37 77.42" vector-effect="non-scaling-stroke" data-handle="48D8" data-type="ARC" />
+        <path d="M40.37 77.42A0.34 0.34 0 0 0 40.33 77.47" vector-effect="non-scaling-stroke" data-handle="48D9" data-type="ARC" />
+        <path d="M40.33 77.47A0.61 0.61 0 0 0 40.28 77.56" vector-effect="non-scaling-stroke" data-handle="48DA" data-type="ARC" />
+        <path d="M40.28 77.56A1.02 1.02 0 0 0 40.24 77.65" vector-effect="non-scaling-stroke" data-handle="48DB" data-type="ARC" />
+        <path d="M40.24 77.65A1.75 1.75 0 0 0 40.2 77.77" vector-effect="non-scaling-stroke" data-handle="48DC" data-type="ARC" />
+        <path d="M40.2 77.77A3.03 3.03 0 0 0 40.14 78.02" vector-effect="non-scaling-stroke" data-handle="48DD" data-type="ARC" />
+        <path d="M40.14 78.02A5.31 5.31 0 0 0 40.1 78.27" vector-effect="non-scaling-stroke" data-handle="48DE" data-type="ARC" />
+        <path d="M40.1 78.27A9.47 9.47 0 0 0 40.04 78.88" vector-effect="non-scaling-stroke" data-handle="48DF" data-type="ARC" />
+        <path d="M40.04 78.88A17.81 17.81 0 0 0 40.02 79.25" vector-effect="non-scaling-stroke" data-handle="48E0" data-type="ARC" />
+        <path d="M40.02 79.25A31.08 31.08 0 0 0 39.99 80.2" vector-effect="non-scaling-stroke" data-handle="48E1" data-type="ARC" />
+        <path d="M39.99 80.2A50.01 50.01 0 0 0 39.98 80.68" vector-effect="non-scaling-stroke" data-handle="48E2" data-type="ARC" />
+        <path d="M39.98 80.68A69.64 69.64 0 0 0 39.97 81.15" vector-effect="non-scaling-stroke" data-handle="48E3" data-type="ARC" />
+        <path d="M78.97 64.04A1 1 0 0 0 79.84 63.53" vector-effect="non-scaling-stroke" data-handle="4941" data-type="ARC" />
+        <path d="M78.15 64.01A1 1 0 0 0 78.41 64.04" vector-effect="non-scaling-stroke" data-handle="4943" data-type="ARC" />
+        <path d="M79.84 124.62A1 1 0 0 0 78.97 124.11" vector-effect="non-scaling-stroke" data-handle="4946" data-type="ARC" />
+        <path d="M78.41 124.11A1 1 0 0 0 78.15 124.14" vector-effect="non-scaling-stroke" data-handle="4947" data-type="ARC" />
+        <path d="M41.46 65.59A1.6 1.6 0 0 0 39.94 67.19" vector-effect="non-scaling-stroke" data-handle="495B" data-type="ARC" />
+        <path d="M39.94 120.96A1.6 1.6 0 0 0 41.46 122.56" vector-effect="non-scaling-stroke" data-handle="496E" data-type="ARC" />
+        <path d="M48.04 87.96A1.9 1.9 0 0 0 46.14 86.06" vector-effect="non-scaling-stroke" data-handle="4972" data-type="ARC" />
+        <path d="M46.14 102.1A1.9 1.9 0 0 0 48.04 100.2" vector-effect="non-scaling-stroke" data-handle="4973" data-type="ARC" />
+        <circle cx="67.84" cy="94.08" r="4.25" vector-effect="non-scaling-stroke" data-handle="4974" data-type="CIRCLE" />
+        <line x1="77.34" y1="63.79" x2="41.46" y2="65.59" vector-effect="non-scaling-stroke" data-handle="4975" data-type="LINE" />
+        <line x1="78.15" y1="64.01" x2="77.34" y2="63.79" vector-effect="non-scaling-stroke" data-handle="499E" data-type="LINE" />
+        <line x1="78.97" y1="64.04" x2="78.41" y2="64.04" vector-effect="non-scaling-stroke" data-handle="499F" data-type="LINE" />
+        <line x1="77.34" y1="124.36" x2="78.15" y2="124.14" vector-effect="non-scaling-stroke" data-handle="49A6" data-type="LINE" />
+        <line x1="78.41" y1="124.11" x2="78.97" y2="124.11" vector-effect="non-scaling-stroke" data-handle="49A7" data-type="LINE" />
+        <line x1="41.46" y1="122.56" x2="77.34" y2="124.36" vector-effect="non-scaling-stroke" data-handle="4A04" data-type="LINE" />
+        <line x1="41.46" y1="106.51" x2="41.46" y2="122.56" vector-effect="non-scaling-stroke" data-handle="4A27" data-type="LINE" />
+        <line x1="39.94" y1="120.96" x2="39.94" y2="103.75" vector-effect="non-scaling-stroke" data-handle="4A4B" data-type="LINE" />
+        <line x1="41.46" y1="65.59" x2="41.46" y2="81.64" vector-effect="non-scaling-stroke" data-handle="4A5A" data-type="LINE" />
+        <line x1="78.41" y1="124.11" x2="78.41" y2="64.04" vector-effect="non-scaling-stroke" data-handle="4A6C" data-type="LINE" />
+        <line x1="78.97" y1="124.11" x2="78.97" y2="64.04" vector-effect="non-scaling-stroke" data-handle="4A70" data-type="LINE" />
+        <line x1="77.34" y1="63.79" x2="77.34" y2="124.36" vector-effect="non-scaling-stroke" data-handle="4A71" data-type="LINE" />
+        <line x1="78.15" y1="124.14" x2="78.15" y2="64.01" vector-effect="non-scaling-stroke" data-handle="4A72" data-type="LINE" />
+        <line x1="41.59" y1="102.1" x2="46.14" y2="102.1" vector-effect="non-scaling-stroke" data-handle="4A96" data-type="LINE" />
+        <line x1="46.14" y1="86.06" x2="41.59" y2="86.06" vector-effect="non-scaling-stroke" data-handle="4A97" data-type="LINE" />
+        <line x1="39.94" y1="103.75" x2="41.59" y2="102.1" vector-effect="non-scaling-stroke" data-handle="4A98" data-type="LINE" />
+        <line x1="41.59" y1="102.1" x2="41.59" y2="106.18" vector-effect="non-scaling-stroke" data-handle="4A99" data-type="LINE" />
+        <line x1="41.59" y1="86.06" x2="39.94" y2="84.41" vector-effect="non-scaling-stroke" data-handle="4A9A" data-type="LINE" />
+        <line x1="41.59" y1="86.06" x2="41.59" y2="81.97" vector-effect="non-scaling-stroke" data-handle="4A9B" data-type="LINE" />
+        <line x1="39.97" y1="107" x2="41.23" y2="107.57" vector-effect="non-scaling-stroke" data-handle="4A9C" data-type="LINE" />
+        <line x1="41.23" y1="80.58" x2="39.97" y2="81.15" vector-effect="non-scaling-stroke" data-handle="4A9D" data-type="LINE" />
+        <line x1="46.14" y1="102.1" x2="46.14" y2="106.95" vector-effect="non-scaling-stroke" data-handle="4AA2" data-type="LINE" />
+        <line x1="46.14" y1="81.2" x2="46.14" y2="86.06" vector-effect="non-scaling-stroke" data-handle="4AA3" data-type="LINE" />
+        <line x1="48.04" y1="84.54" x2="48.04" y2="103.61" vector-effect="non-scaling-stroke" data-handle="4AA4" data-type="LINE" />
+        <line x1="39.94" y1="84.41" x2="39.94" y2="67.19" vector-effect="non-scaling-stroke" data-handle="4AA5" data-type="LINE" />
+      </g>
+      <g id="layer-3" class="cad-layer" data-layer="3" stroke="#ff0000" stroke-width="1.323">
+        <path d="M135.52 90.2A0.6 0.6 0 0 0 135.35 90.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4939" data-type="ARC" />
+        <path d="M129.34 90.62A0.6 0.6 0 0 0 129.16 90.2" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493A" data-type="ARC" />
+        <path d="M264.74 78.81A0.4 0.4 0 0 0 264.34 79.21" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493B" data-type="ARC" />
+        <path d="M264.34 108.94A0.4 0.4 0 0 0 264.74 109.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493C" data-type="ARC" />
+        <path d="M223.24 83.99A0.4 0.4 0 0 0 222.84 84.39" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493D" data-type="ARC" />
+        <path d="M222.84 103.77A0.4 0.4 0 0 0 223.24 104.17" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="493E" data-type="ARC" />
+        <path d="M79.84 63.53A1 1 0 0 0 79.96 62.91" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4942" data-type="ARC" />
+        <path d="M81.82 58.81A0.3 0.3 0 0 0 82.12 59.11" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4944" data-type="ARC" />
+        <path d="M79.96 125.25A1 1 0 0 0 79.84 124.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4945" data-type="ARC" />
+        <path d="M265.09 109.1A0.2 0.2 0 0 0 265.29 109.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4949" data-type="ARC" />
+        <path d="M265.29 78.85A0.2 0.2 0 0 0 265.09 79.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494A" data-type="ARC" />
+        <path d="M265.09 108.93A0.4 0.4 0 0 0 264.76 108.54" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494B" data-type="ARC" />
+        <path d="M264.76 79.61A0.4 0.4 0 0 0 265.09 79.22" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494C" data-type="ARC" />
+        <path d="M264.39 108.31A0.2 0.2 0 0 0 264.55 108.5" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494D" data-type="ARC" />
+        <path d="M264.55 79.65A0.2 0.2 0 0 0 264.39 79.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494E" data-type="ARC" />
+        <path d="M264.34 104.24A0.8 0.8 0 0 0 263.54 103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="494F" data-type="ARC" />
+        <path d="M263.54 84.71A0.8 0.8 0 0 0 264.34 83.91" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4950" data-type="ARC" />
+        <path d="M223.59 103.92A0.2 0.2 0 0 0 223.79 104.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4951" data-type="ARC" />
+        <path d="M223.79 84.03A0.2 0.2 0 0 0 223.59 84.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4952" data-type="ARC" />
+        <path d="M229.34 84.21A0.5 0.5 0 0 0 229.84 84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4953" data-type="ARC" />
+        <path d="M229.84 103.44A0.5 0.5 0 0 0 229.34 103.94" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4954" data-type="ARC" />
+        <path d="M223.59 103.7A0.4 0.4 0 0 0 223.33 103.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4955" data-type="ARC" />
+        <path d="M223.33 84.82A0.4 0.4 0 0 0 223.59 84.45" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4956" data-type="ARC" />
+        <path d="M222.94 103.05A0.2 0.2 0 0 0 223.08 103.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4957" data-type="ARC" />
+        <path d="M223.08 84.92A0.2 0.2 0 0 0 222.94 85.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4958" data-type="ARC" />
+        <path d="M134.76 106.88A0.75 0.75 0 0 0 135.49 106.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4959" data-type="ARC" />
+        <path d="M129.2 106.31A0.75 0.75 0 0 0 129.93 106.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="495A" data-type="ARC" />
+        <path d="M91.57 59.11A0.3 0.3 0 0 0 91.87 58.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4964" data-type="ARC" />
+        <path d="M106.14 84.3A0.5 0.5 0 0 0 105.64 83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4967" data-type="ARC" />
+        <path d="M105.64 104.35A0.5 0.5 0 0 0 106.14 103.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4968" data-type="ARC" />
+        <path d="M89.42 115.1A2 2 0 0 0 92.29 113.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496A" data-type="ARC" />
+        <path d="M92.29 74.85A2 2 0 0 0 89.42 73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496B" data-type="ARC" />
+        <path d="M102.34 83.8A0.5 0.5 0 0 0 102.1 83.86" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496C" data-type="ARC" />
+        <path d="M102.1 104.29A0.5 0.5 0 0 0 102.34 104.35" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="496D" data-type="ARC" />
+        <line x1="137.49" y1="89.63" x2="137.49" y2="86.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497B" data-type="LINE" />
+        <line x1="127.19" y1="86.03" x2="127.19" y2="89.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497C" data-type="LINE" />
+        <line x1="137.49" y1="86.03" x2="136.6" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497D" data-type="LINE" />
+        <line x1="128.09" y1="85.13" x2="127.19" y2="86.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497E" data-type="LINE" />
+        <line x1="127.34" y1="77.58" x2="128.09" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="497F" data-type="LINE" />
+        <line x1="136.6" y1="78.32" x2="137.34" y2="77.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4980" data-type="LINE" />
+        <line x1="136.6" y1="85.13" x2="136.6" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4981" data-type="LINE" />
+        <line x1="128.09" y1="78.32" x2="128.09" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4982" data-type="LINE" />
+        <line x1="128.59" y1="89.63" x2="129.34" y2="90.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4983" data-type="LINE" />
+        <line x1="135.52" y1="90.2" x2="136.09" y2="89.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4984" data-type="LINE" />
+        <line x1="135.35" y1="107.63" x2="135.35" y2="90.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4985" data-type="LINE" />
+        <line x1="129.34" y1="90.62" x2="129.34" y2="107.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4986" data-type="LINE" />
+        <line x1="135.25" y1="109.88" x2="135.25" y2="107.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4987" data-type="LINE" />
+        <line x1="129.44" y1="107.63" x2="129.44" y2="109.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4988" data-type="LINE" />
+        <line x1="129.44" y1="109.88" x2="132.34" y2="111.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4989" data-type="LINE" />
+        <line x1="132.34" y1="111.62" x2="135.25" y2="109.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498A" data-type="LINE" />
+        <line x1="269.84" y1="78.71" x2="269.74" y2="78.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498B" data-type="LINE" />
+        <line x1="269.74" y1="109.34" x2="269.84" y2="109.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498C" data-type="LINE" />
+        <line x1="269.74" y1="78.81" x2="264.74" y2="78.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498D" data-type="LINE" />
+        <line x1="264.74" y1="109.34" x2="269.74" y2="109.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498E" data-type="LINE" />
+        <line x1="264.34" y1="83.79" x2="229.34" y2="83.79" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="498F" data-type="LINE" />
+        <line x1="259.84" y1="104.37" x2="264.34" y2="104.37" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4990" data-type="LINE" />
+        <line x1="229.34" y1="104.37" x2="256.84" y2="104.37" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4991" data-type="LINE" />
+        <line x1="229.34" y1="83.99" x2="223.24" y2="83.99" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4992" data-type="LINE" />
+        <line x1="223.24" y1="104.17" x2="229.34" y2="104.17" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4993" data-type="LINE" />
+        <line x1="222.84" y1="85.88" x2="220.84" y2="85.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4994" data-type="LINE" />
+        <line x1="220.84" y1="102.28" x2="222.84" y2="102.28" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4995" data-type="LINE" />
+        <line x1="256.84" y1="104.32" x2="135.35" y2="104.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4996" data-type="LINE" />
+        <line x1="264.34" y1="104.32" x2="259.84" y2="104.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4997" data-type="LINE" />
+        <line x1="133.77" y1="107.32" x2="264.34" y2="107.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4998" data-type="LINE" />
+        <line x1="256.84" y1="105.49" x2="259.84" y2="105.49" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4999" data-type="LINE" />
+        <line x1="79.96" y1="62.91" x2="79.84" y2="62.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="499D" data-type="LINE" />
+        <line x1="91.87" y1="58.81" x2="91.87" y2="54.11" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A0" data-type="LINE" />
+        <line x1="81.82" y1="54.11" x2="81.82" y2="58.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A1" data-type="LINE" />
+        <line x1="135.59" y1="89.78" x2="135.59" y2="87.96" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A3" data-type="LINE" />
+        <line x1="129.09" y1="87.96" x2="129.09" y2="89.78" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A4" data-type="LINE" />
+        <line x1="79.84" y1="126.07" x2="79.96" y2="125.25" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49A5" data-type="LINE" />
+        <line x1="220.84" y1="99.08" x2="202.84" y2="99.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AB" data-type="LINE" />
+        <line x1="202.84" y1="89.08" x2="202.84" y2="99.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AC" data-type="LINE" />
+        <line x1="220.84" y1="89.08" x2="202.84" y2="89.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AD" data-type="LINE" />
+        <line x1="202.84" y1="99.08" x2="201.55" y2="98.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AE" data-type="LINE" />
+        <line x1="202.84" y1="89.08" x2="201.55" y2="89.83" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49AF" data-type="LINE" />
+        <line x1="135.34" y1="89.78" x2="135.34" y2="93.59" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B0" data-type="LINE" />
+        <line x1="129.34" y1="89.78" x2="129.34" y2="93.59" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B1" data-type="LINE" />
+        <line x1="136.59" y1="78.94" x2="136.59" y2="88.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B2" data-type="LINE" />
+        <line x1="128.09" y1="78.94" x2="128.09" y2="88.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B3" data-type="LINE" />
+        <line x1="137.34" y1="85.08" x2="127.34" y2="85.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B4" data-type="LINE" />
+        <line x1="137.34" y1="85.08" x2="137.31" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B5" data-type="LINE" />
+        <line x1="127.34" y1="85.08" x2="127.37" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49B6" data-type="LINE" />
+        <line x1="79.84" y1="115.1" x2="89.42" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C4" data-type="LINE" />
+        <line x1="89.42" y1="73.05" x2="79.84" y2="73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C5" data-type="LINE" />
+        <line x1="92.29" y1="104.43" x2="93.38" y2="103.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C6" data-type="LINE" />
+        <line x1="93.38" y1="84.81" x2="92.29" y2="83.73" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C7" data-type="LINE" />
+        <line x1="102.34" y1="104.35" x2="105.64" y2="104.35" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C8" data-type="LINE" />
+        <line x1="105.64" y1="83.8" x2="102.34" y2="83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C9" data-type="LINE" />
+        <line x1="102.1" y1="83.86" x2="100.34" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CA" data-type="LINE" />
+        <line x1="100.34" y1="103.34" x2="102.1" y2="104.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CB" data-type="LINE" />
+        <line x1="100.34" y1="84.81" x2="93.38" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CC" data-type="LINE" />
+        <line x1="93.38" y1="103.34" x2="100.34" y2="103.34" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CD" data-type="LINE" />
+        <line x1="106.54" y1="98.33" x2="220.84" y2="98.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CE" data-type="LINE" />
+        <line x1="220.84" y1="89.83" x2="106.54" y2="89.83" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49CF" data-type="LINE" />
+        <line x1="265.29" y1="109.3" x2="269.74" y2="109.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D1" data-type="LINE" />
+        <line x1="269.74" y1="78.85" x2="265.29" y2="78.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D2" data-type="LINE" />
+        <line x1="269.74" y1="109.3" x2="269.84" y2="109.2" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D3" data-type="LINE" />
+        <line x1="269.84" y1="78.95" x2="269.74" y2="78.85" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D4" data-type="LINE" />
+        <line x1="264.76" y1="79.61" x2="264.55" y2="79.65" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D5" data-type="LINE" />
+        <line x1="264.55" y1="108.5" x2="264.76" y2="108.54" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D6" data-type="LINE" />
+        <line x1="264.39" y1="82.65" x2="264.34" y2="82.73" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D7" data-type="LINE" />
+        <line x1="264.34" y1="105.42" x2="264.39" y2="105.5" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D8" data-type="LINE" />
+        <line x1="223.79" y1="104.12" x2="229.34" y2="104.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D9" data-type="LINE" />
+        <line x1="229.34" y1="84.03" x2="223.79" y2="84.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DA" data-type="LINE" />
+        <line x1="238.83" y1="103.87" x2="254.85" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DB" data-type="LINE" />
+        <line x1="254.85" y1="84.29" x2="238.83" y2="84.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DC" data-type="LINE" />
+        <line x1="238.83" y1="84.29" x2="238.09" y2="84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DD" data-type="LINE" />
+        <line x1="238.09" y1="103.44" x2="238.83" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DE" data-type="LINE" />
+        <line x1="254.85" y1="103.87" x2="255.59" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49DF" data-type="LINE" />
+        <line x1="255.59" y1="84.71" x2="254.85" y2="84.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E0" data-type="LINE" />
+        <line x1="255.59" y1="103.44" x2="263.54" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E1" data-type="LINE" />
+        <line x1="263.54" y1="84.71" x2="255.59" y2="84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E2" data-type="LINE" />
+        <line x1="229.84" y1="103.44" x2="238.09" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E3" data-type="LINE" />
+        <line x1="238.09" y1="84.71" x2="229.84" y2="84.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E4" data-type="LINE" />
+        <line x1="223.33" y1="84.82" x2="223.08" y2="84.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E5" data-type="LINE" />
+        <line x1="223.08" y1="103.23" x2="223.33" y2="103.33" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E6" data-type="LINE" />
+        <line x1="269.84" y1="85.47" x2="268.8" y2="86.07" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E7" data-type="LINE" />
+        <line x1="268.8" y1="102.08" x2="269.84" y2="102.68" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E8" data-type="LINE" />
+        <line x1="222.94" y1="102.23" x2="228.44" y2="102.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49E9" data-type="LINE" />
+        <line x1="228.44" y1="85.92" x2="222.94" y2="85.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EA" data-type="LINE" />
+        <line x1="137.34" y1="88.01" x2="137.34" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EB" data-type="LINE" />
+        <line x1="127.34" y1="78.32" x2="127.34" y2="88.01" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EC" data-type="LINE" />
+        <line x1="129.84" y1="84.38" x2="132.34" y2="85.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49ED" data-type="LINE" />
+        <line x1="132.34" y1="85.88" x2="134.84" y2="84.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EE" data-type="LINE" />
+        <line x1="135.67" y1="105.58" x2="135.67" y2="104.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49EF" data-type="LINE" />
+        <line x1="129.02" y1="104.88" x2="129.02" y2="105.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F0" data-type="LINE" />
+        <line x1="129.02" y1="105.58" x2="129.2" y2="106.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F1" data-type="LINE" />
+        <line x1="135.49" y1="106.31" x2="135.67" y2="105.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F2" data-type="LINE" />
+        <line x1="135.67" y1="104.88" x2="135.34" y2="103.53" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F3" data-type="LINE" />
+        <line x1="129.34" y1="103.53" x2="129.02" y2="104.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F4" data-type="LINE" />
+        <line x1="135.34" y1="103.53" x2="135.34" y2="100.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F5" data-type="LINE" />
+        <line x1="129.34" y1="100.88" x2="129.34" y2="103.53" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F6" data-type="LINE" />
+        <line x1="135.34" y1="100.88" x2="135.34" y2="90.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F7" data-type="LINE" />
+        <line x1="129.35" y1="90.38" x2="129.35" y2="100.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F8" data-type="LINE" />
+        <line x1="127.34" y1="88.01" x2="128.84" y2="88.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49F9" data-type="LINE" />
+        <line x1="135.84" y1="88.88" x2="137.34" y2="88.01" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FA" data-type="LINE" />
+        <line x1="137.34" y1="79.38" x2="135.61" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FB" data-type="LINE" />
+        <line x1="129.08" y1="78.38" x2="127.34" y2="79.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FC" data-type="LINE" />
+        <line x1="128.84" y1="88.88" x2="128.84" y2="89.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FD" data-type="LINE" />
+        <line x1="135.84" y1="89.88" x2="135.84" y2="88.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FE" data-type="LINE" />
+        <line x1="135.34" y1="90.38" x2="135.84" y2="89.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49FF" data-type="LINE" />
+        <line x1="228.44" y1="102.08" x2="268.8" y2="102.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A00" data-type="LINE" />
+        <line x1="268.8" y1="86.07" x2="228.44" y2="86.07" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A01" data-type="LINE" />
+        <line x1="79.97" y1="125.11" x2="79.97" y2="63.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A05" data-type="LINE" />
+        <line x1="129.44" y1="109.88" x2="135.25" y2="109.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A06" data-type="LINE" />
+        <line x1="128.84" y1="88.88" x2="135.84" y2="88.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A07" data-type="LINE" />
+        <line x1="268.8" y1="86.07" x2="268.8" y2="102.08" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A08" data-type="LINE" />
+        <line x1="129.34" y1="90.62" x2="135.35" y2="90.62" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A0C" data-type="LINE" />
+        <line x1="269.74" y1="109.34" x2="269.74" y2="78.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A0D" data-type="LINE" />
+        <line x1="127.19" y1="89.63" x2="137.49" y2="89.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A0E" data-type="LINE" />
+        <line x1="228.44" y1="85.92" x2="228.44" y2="102.23" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A11" data-type="LINE" />
+        <line x1="254.85" y1="84.29" x2="254.85" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A14" data-type="LINE" />
+        <line x1="256.84" y1="104.37" x2="259.84" y2="104.37" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A15" data-type="LINE" />
+        <line x1="222.84" y1="103.77" x2="222.84" y2="84.39" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A16" data-type="LINE" />
+        <line x1="129.34" y1="107.63" x2="135.35" y2="107.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A17" data-type="LINE" />
+        <line x1="223.24" y1="104.17" x2="223.24" y2="83.99" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A18" data-type="LINE" />
+        <line x1="127.19" y1="86.03" x2="137.49" y2="86.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A19" data-type="LINE" />
+        <line x1="128.09" y1="85.13" x2="136.6" y2="85.13" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1A" data-type="LINE" />
+        <line x1="229.34" y1="104.37" x2="229.34" y2="83.79" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1C" data-type="LINE" />
+        <line x1="256.84" y1="105.49" x2="256.84" y2="101.9" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1D" data-type="LINE" />
+        <line x1="129.02" y1="105.58" x2="135.67" y2="105.58" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1E" data-type="LINE" />
+        <line x1="264.34" y1="108.94" x2="264.34" y2="79.21" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A1F" data-type="LINE" />
+        <line x1="265.09" y1="79.05" x2="265.09" y2="109.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A20" data-type="LINE" />
+        <line x1="128.09" y1="78.32" x2="136.6" y2="78.32" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A21" data-type="LINE" />
+        <line x1="259.84" y1="104.63" x2="256.84" y2="104.63" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A22" data-type="LINE" />
+        <line x1="220.84" y1="102.28" x2="220.84" y2="85.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A23" data-type="LINE" />
+        <line x1="238.09" y1="84.71" x2="238.09" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A24" data-type="LINE" />
+        <line x1="256.84" y1="105.49" x2="259.84" y2="105.49" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A25" data-type="LINE" />
+        <line x1="259.84" y1="105.49" x2="259.84" y2="101.9" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A26" data-type="LINE" />
+        <line x1="127.34" y1="88.01" x2="137.34" y2="88.01" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A28" data-type="LINE" />
+        <line x1="133.65" y1="84.38" x2="133.65" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2A" data-type="LINE" />
+        <line x1="130.77" y1="84.38" x2="130.77" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2B" data-type="LINE" />
+        <line x1="129.46" y1="84.38" x2="135.23" y2="84.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2C" data-type="LINE" />
+        <line x1="133.92" y1="84.38" x2="133.92" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2D" data-type="LINE" />
+        <line x1="135.23" y1="84.38" x2="135.23" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2E" data-type="LINE" />
+        <line x1="131.04" y1="84.38" x2="131.04" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A2F" data-type="LINE" />
+        <line x1="129.46" y1="84.38" x2="129.46" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A30" data-type="LINE" />
+        <line x1="223.59" y1="84.23" x2="223.59" y2="103.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A31" data-type="LINE" />
+        <line x1="137.34" y1="79.38" x2="127.34" y2="79.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A32" data-type="LINE" />
+        <line x1="129.16" y1="90.2" x2="135.52" y2="90.2" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A34" data-type="LINE" />
+        <line x1="129.02" y1="104.88" x2="135.67" y2="104.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A35" data-type="LINE" />
+        <line x1="129.93" y1="106.88" x2="134.76" y2="106.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A36" data-type="LINE" />
+        <line x1="129.08" y1="78.38" x2="135.61" y2="78.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A38" data-type="LINE" />
+        <line x1="128.84" y1="89.88" x2="135.84" y2="89.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A39" data-type="LINE" />
+        <line x1="129.2" y1="106.31" x2="135.49" y2="106.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A3A" data-type="LINE" />
+        <line x1="129.34" y1="90.38" x2="135.34" y2="90.38" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A3B" data-type="LINE" />
+        <line x1="81.82" y1="58.81" x2="91.87" y2="58.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A48" data-type="LINE" />
+        <line x1="89.42" y1="73.05" x2="89.42" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A50" data-type="LINE" />
+        <line x1="92.29" y1="74.85" x2="92.29" y2="113.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A51" data-type="LINE" />
+        <line x1="93.38" y1="103.34" x2="93.38" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A52" data-type="LINE" />
+        <line x1="105.64" y1="104.35" x2="105.64" y2="83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A53" data-type="LINE" />
+        <line x1="102.34" y1="104.35" x2="102.34" y2="83.8" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A54" data-type="LINE" />
+        <line x1="106.14" y1="103.85" x2="106.14" y2="84.3" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A55" data-type="LINE" />
+        <line x1="102.1" y1="83.86" x2="102.1" y2="104.29" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A56" data-type="LINE" />
+        <line x1="100.34" y1="103.34" x2="100.34" y2="84.81" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A57" data-type="LINE" />
+        <line x1="222.94" y1="85.1" x2="222.94" y2="103.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A59" data-type="LINE" />
+        <line x1="223.08" y1="103.23" x2="223.08" y2="84.92" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5D" data-type="LINE" />
+        <line x1="135.34" y1="100.88" x2="129.34" y2="100.88" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5E" data-type="LINE" />
+        <line x1="82.12" y1="59.11" x2="91.57" y2="59.11" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A60" data-type="LINE" />
+        <line x1="264.39" y1="79.85" x2="264.39" y2="108.31" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A64" data-type="LINE" />
+        <line x1="263.54" y1="84.71" x2="263.54" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A65" data-type="LINE" />
+        <line x1="223.79" y1="104.12" x2="223.79" y2="84.03" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A66" data-type="LINE" />
+        <line x1="229.84" y1="84.71" x2="229.84" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A67" data-type="LINE" />
+        <line x1="255.59" y1="84.71" x2="255.59" y2="103.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A68" data-type="LINE" />
+        <line x1="238.83" y1="84.29" x2="238.83" y2="103.87" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A69" data-type="LINE" />
+        <line x1="223.33" y1="103.33" x2="223.33" y2="84.82" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A6A" data-type="LINE" />
+        <line x1="129.34" y1="103.53" x2="135.34" y2="103.53" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A6B" data-type="LINE" />
+        <line x1="79.96" y1="125.25" x2="79.96" y2="62.91" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A6F" data-type="LINE" />
+      </g>
+      <g id="layer-sk3" class="cad-layer" data-layer="SK3" stroke="#ff0000" stroke-width="1.323">
+        <path d="M71.83 119.12A10 10 0 0 0 79.84 115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4948" data-type="ARC" />
+        <path d="M58.62 69.04A0.8 0.8 0 0 0 57.93 69.44" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4965" data-type="ARC" />
+        <path d="M57.93 118.71A0.8 0.8 0 0 0 58.62 119.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4966" data-type="ARC" />
+        <path d="M79.84 73.05A10 10 0 0 0 71.83 69.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4969" data-type="ARC" />
+        <line x1="58.62" y1="119.12" x2="71.83" y2="119.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49BD" data-type="LINE" />
+        <line x1="71.83" y1="69.04" x2="58.62" y2="69.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49BE" data-type="LINE" />
+        <line x1="57.93" y1="69.44" x2="55.87" y2="73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49BF" data-type="LINE" />
+        <line x1="55.87" y1="115.1" x2="57.93" y2="118.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C0" data-type="LINE" />
+        <line x1="41.59" y1="73.05" x2="39.94" y2="72.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C1" data-type="LINE" />
+        <line x1="41.59" y1="115.1" x2="55.87" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C2" data-type="LINE" />
+        <line x1="55.87" y1="73.05" x2="41.59" y2="73.05" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49C3" data-type="LINE" />
+        <line x1="39.94" y1="116.05" x2="41.59" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="49D0" data-type="LINE" />
+        <line x1="71.83" y1="95.54" x2="71.83" y2="119.12" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A3D" data-type="LINE" />
+        <line x1="58.62" y1="119.12" x2="58.62" y2="69.04" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4C" data-type="LINE" />
+        <line x1="71.83" y1="69.04" x2="71.83" y2="92.61" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4D" data-type="LINE" />
+        <line x1="57.93" y1="69.44" x2="57.93" y2="118.71" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4E" data-type="LINE" />
+        <line x1="55.87" y1="73.05" x2="55.87" y2="115.1" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A4F" data-type="LINE" />
+        <line x1="41.59" y1="73.05" x2="41.59" y2="81.97" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5C" data-type="LINE" />
+        <line x1="41.59" y1="115.1" x2="41.59" y2="106.18" stroke-dasharray="14.713 3.678" vector-effect="non-scaling-stroke" data-handle="4A5F" data-type="LINE" />
+      </g>
+      <g id="layer-4" class="cad-layer" data-layer="4" stroke="#ffff00" stroke-width="1">
+        <line x1="79.84" y1="94.08" x2="269.84" y2="94.08" stroke-dasharray="29.426 3.678 7.357 3.678" vector-effect="non-scaling-stroke" data-handle="4AB2" data-type="LINE" />
+      </g>
+      <g id="layer-inftotal" class="cad-layer" data-layer="INFTOTAL" stroke="#c0c0c0" stroke-width="1">
+        <line x1="0" y1="0" x2="318.08" y2="0" vector-effect="non-scaling-stroke" data-handle="4E40" data-type="LINE" />
+        <line x1="318.08" y1="0" x2="318.08" y2="168.61" vector-effect="non-scaling-stroke" data-handle="4E41" data-type="LINE" />
+        <line x1="318.08" y1="168.61" x2="0" y2="168.61" vector-effect="non-scaling-stroke" data-handle="4E42" data-type="LINE" />
+        <line x1="0" y1="168.61" x2="0" y2="0" vector-effect="non-scaling-stroke" data-handle="4E43" data-type="LINE" />
+      </g>
+      <g id="layer-nocut" class="cad-layer" data-layer="NOCUT" stroke="#000000" stroke-width="1">
+        <path d="M95.93 58.35A0.75 0.75 0 0 0 96.68 59.1" vector-effect="non-scaling-stroke" data-handle="509E" data-type="ARC" />
+        <line x1="95.93" y1="58.35" x2="95.93" y2="56.89" vector-effect="non-scaling-stroke" data-handle="509F" data-type="LINE" />
+        <line x1="95.93" y1="56.89" x2="94.37" y2="54.18" vector-effect="non-scaling-stroke" data-handle="50A0" data-type="LINE" />
+        <path d="M94.37 54.18A0.15 0.15 0 0 0 94.24 54.11" vector-effect="non-scaling-stroke" data-handle="50A1" data-type="ARC" />
+        <line x1="94.24" y1="54.11" x2="81.84" y2="54.11" vector-effect="non-scaling-stroke" data-handle="50A2" data-type="LINE" />
+        <line x1="81.84" y1="54.11" x2="80.04" y2="54.11" vector-effect="non-scaling-stroke" data-handle="50A3" data-type="LINE" />
+        <path d="M80.04 54.11A0.2 0.2 0 0 0 79.84 54.31" vector-effect="non-scaling-stroke" data-handle="50A4" data-type="ARC" />
+        <line x1="79.84" y1="54.31" x2="79.84" y2="94.08" vector-effect="non-scaling-stroke" data-handle="50A5" data-type="LINE" />
+        <line x1="79.84" y1="94.08" x2="269.84" y2="94.08" vector-effect="non-scaling-stroke" data-handle="50A6" data-type="LINE" />
+        <line x1="269.84" y1="94.08" x2="269.84" y2="77.94" vector-effect="non-scaling-stroke" data-handle="50A7" data-type="LINE" />
+        <path d="M269.84 77.94A1 1 0 0 0 269.08 76.97" vector-effect="non-scaling-stroke" data-handle="50A8" data-type="ARC" />
+        <line x1="269.08" y1="76.97" x2="262.46" y2="75.33" vector-effect="non-scaling-stroke" data-handle="50A9" data-type="LINE" />
+        <path d="M262.46 75.33A1 1 0 0 0 262.22 75.31" vector-effect="non-scaling-stroke" data-handle="50AA" data-type="ARC" />
+        <line x1="262.22" y1="75.31" x2="145.32" y2="75.31" vector-effect="non-scaling-stroke" data-handle="50AB" data-type="LINE" />
+        <path d="M144.54 74.94A1 1 0 0 0 145.32 75.31" vector-effect="non-scaling-stroke" data-handle="50AC" data-type="ARC" />
+        <line x1="144.54" y1="74.94" x2="140.14" y2="69.52" vector-effect="non-scaling-stroke" data-handle="50AD" data-type="LINE" />
+        <path d="M140.14 69.52A1 1 0 0 0 139.37 69.15" vector-effect="non-scaling-stroke" data-handle="50AE" data-type="ARC" />
+        <line x1="139.37" y1="69.15" x2="106.54" y2="69.15" vector-effect="non-scaling-stroke" data-handle="50AF" data-type="LINE" />
+        <path d="M105.79 68.4A0.75 0.75 0 0 0 106.54 69.15" vector-effect="non-scaling-stroke" data-handle="50B0" data-type="ARC" />
+        <line x1="105.79" y1="68.4" x2="105.79" y2="54.31" vector-effect="non-scaling-stroke" data-handle="50B1" data-type="LINE" />
+        <path d="M105.79 54.31A0.2 0.2 0 0 0 105.59 54.11" vector-effect="non-scaling-stroke" data-handle="50B2" data-type="ARC" />
+        <line x1="105.59" y1="54.11" x2="101.45" y2="54.11" vector-effect="non-scaling-stroke" data-handle="50B3" data-type="LINE" />
+        <path d="M101.45 54.11A0.15 0.15 0 0 0 101.32 54.18" vector-effect="non-scaling-stroke" data-handle="50B4" data-type="ARC" />
+        <line x1="101.32" y1="54.18" x2="99.76" y2="56.89" vector-effect="non-scaling-stroke" data-handle="50B5" data-type="LINE" />
+        <line x1="99.76" y1="58.35" x2="99.76" y2="56.89" vector-effect="non-scaling-stroke" data-handle="50B6" data-type="LINE" />
+        <path d="M99.01 59.1A0.75 0.75 0 0 0 99.76 58.35" vector-effect="non-scaling-stroke" data-handle="50B7" data-type="ARC" />
+        <line x1="96.68" y1="59.1" x2="99.01" y2="59.1" vector-effect="non-scaling-stroke" data-handle="50B8" data-type="LINE" />
+      </g>
+    </g>
+  </g>
+</svg>

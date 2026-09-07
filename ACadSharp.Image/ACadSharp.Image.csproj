@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-		<TargetFrameworks Condition="'$(PublishAot)' != 'true'">net6.0;net8.0;net10.0</TargetFrameworks>
+		<TargetFrameworks Condition="'$(PublishAot)' != 'true'">net8.0;net10.0</TargetFrameworks>
 		<TargetFrameworks Condition="'$(PublishAot)' == 'true'">net10.0</TargetFrameworks>
 		<BaseIntermediateOutputPath Condition="'$(PublishAot)' == 'true'">obj\publish-aot\</BaseIntermediateOutputPath>
 		<IsPackable>true</IsPackable>
 		<PackageId>ACadSharp.Image</PackageId>
 		<Title>ACadSharp.Image</Title>
-		<Description>Raster image exporter for ACadSharp DXF and DWG documents using SixLabors.ImageSharp.</Description>
-		<PackageTags>acadsharp;cad;dxf;dwg;imagesharp;rendering</PackageTags>
+		<Description>Raster and SVG exporter for ACadSharp DXF and DWG documents.</Description>
+		<PackageTags>acadsharp;cad;dxf;dwg;imagesharp;svg;rendering</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>

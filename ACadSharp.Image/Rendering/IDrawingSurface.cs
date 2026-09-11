@@ -67,6 +67,16 @@ internal interface IDrawingSurface : IDisposable
 
     void FillCircle(ImageStyle style, SurfacePoint center, double radius);
 
+    /// <summary>
+    /// Draws a point marker, retaining its pixel size on interactive SVG surfaces.
+    /// </summary>
+    /// <param name="style">Marker colour and opacity.</param>
+    /// <param name="center">Marker centre in surface coordinates.</param>
+    /// <param name="radius">Radius in surface units for raster and scaling output.</param>
+    /// <param name="radiusPixels">Radius in display pixels for non-scaling output.</param>
+    void DrawPointMarker(ImageStyle style, SurfacePoint center, double radius, double radiusPixels)
+        => this.FillCircle(style, center, radius);
+
     void DrawText(ImageStyle style, SurfaceText text);
 
     /// <summary>

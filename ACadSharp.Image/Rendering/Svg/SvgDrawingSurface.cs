@@ -371,6 +371,33 @@ internal sealed class SvgDrawingSurface : IDrawingSurface
             new XAttribute("cx", this.N(center.X)), new XAttribute("cy", this.N(center.Y)), new XAttribute("r", this.N(Math.Abs(radius)))), style));
     }
 
+    public void DrawPointMarker(ImageStyle style, SurfacePoint center, double radius, double radiusPixels)
+    {
+        if (!this._options.NonScalingStroke)
+        {
+            this.FillCircle(style, center, radius);
+            return;
+        }
+
+        if (!IsFinite(center) || !IsFinite(radiusPixels) || radiusPixels <= 0d)
+        {
+            this.NotifyNonFinite();
+            return;
+        }
+
+        // A zero-length round-capped stroke is a dot. Unlike a filled circle,
+        // its non-scaling stroke keeps the configured diameter during zoom.
+        ImageStyle markerStyle = style with { StrokeWidth = (float)(2d * radiusPixels), DashPattern = null };
+        XElement marker = new(Ns + "line",
+            new XAttribute("x1", this.N(center.X)), new XAttribute("y1", this.N(center.Y)),
+            new XAttribute("x2", this.N(center.X)), new XAttribute("y2", this.N(center.Y)),
+            new XAttribute("stroke-linecap", "round"));
+        marker = this.Stroked(marker, markerStyle);
+        marker.SetAttributeValue("stroke-width", this.S(markerStyle.StrokeWidth));
+        marker.SetAttributeValue("stroke-dasharray", "none");
+        this.Append(marker);
+    }
+
     public void DrawText(ImageStyle style, SurfaceText text)
     {
         if (string.IsNullOrWhiteSpace(text.Text))

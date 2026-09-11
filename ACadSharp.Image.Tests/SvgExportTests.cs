@@ -46,7 +46,7 @@ public sealed class SvgExportTests
     }
 
     [Fact]
-    public void PointRadiusIsConvertedFromPixelsIntoDrawingUnits()
+    public void ScalingPointRadiusIsConvertedFromPixelsIntoDrawingUnits()
     {
         BlockRecord block = new("points");
         block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(100, 50, 0)));
@@ -55,6 +55,7 @@ public sealed class SvgExportTests
         exporter.Configuration.Width = 1000;
         exporter.Configuration.Height = 500;
         exporter.Configuration.SetPadding(0);
+        exporter.Configuration.Svg.NonScalingStroke = false;
         exporter.Add(block);
 
         using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Svg));
@@ -64,6 +65,32 @@ public sealed class SvgExportTests
         // The dot is DotSizePixels / 2 = 2 pixels; the page fits 100 x 50 drawing units into 1000 x 500 pixels,
         // so a pixel is a tenth of a drawing unit and the radius is 0.2 units, not 2.
         Assert.Equal("0.2", (string?)circle.Attribute("r"));
+    }
+
+    [Theory]
+    [InlineData(100)]
+    [InlineData(216101.36407904)]
+    public void NonScalingPointMarkerKeepsItsPixelDiameterIndependentOfDrawingExtents(double extent)
+    {
+        BlockRecord block = new("point-marker");
+        block.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(extent, 100, 0)));
+        block.Entities.Add(new Point { Location = new XYZ(extent / 2, 50, 0) });
+        ImageExporter exporter = new();
+        exporter.Configuration.Width = 2000;
+        exporter.Configuration.Height = 2000;
+        exporter.Configuration.SetPadding(0);
+        exporter.Add(block);
+
+        using RenderedPage page = Assert.Single(exporter.Render(ImageExportFormat.Svg));
+        XElement marker = Assert.Single(XDocument.Parse(((RenderedSvgPage)page).Content).Descendants(),
+            element => element.Attribute("data-type")?.Value == "POINT");
+        Assert.Equal("line", marker.Name.LocalName);
+        Assert.Equal(marker.Attribute("x1")?.Value, marker.Attribute("x2")?.Value);
+        Assert.Equal(marker.Attribute("y1")?.Value, marker.Attribute("y2")?.Value);
+        Assert.Equal("4", marker.Attribute("stroke-width")?.Value);
+        Assert.Equal("round", marker.Attribute("stroke-linecap")?.Value);
+        Assert.Equal("none", marker.Attribute("stroke-dasharray")?.Value);
+        Assert.Equal("non-scaling-stroke", marker.Attribute("vector-effect")?.Value);
     }
 
     [Fact]

@@ -256,7 +256,7 @@ internal sealed class EntityRenderDispatcher
     {
         // DotSizePixels is a pixel size; SVG surface units are drawing units, so it has to be converted.
         float radius = Math.Max(1f, this._configuration.DotSizePixels / 2f);
-        context.Surface.FillCircle(style, context.ToSurfacePoint(point.Location), context.ToSurfacePixels(radius));
+        context.Surface.DrawPointMarker(style, context.ToSurfacePoint(point.Location), context.ToSurfacePixels(radius), radius);
     }
 
     /// <summary>

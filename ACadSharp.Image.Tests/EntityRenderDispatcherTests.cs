@@ -391,6 +391,24 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
+    public void PredefinedPatternHatchDrawsItsPatternRatherThanAFill()
+    {
+        // DXF group 76 (Hatch.PatternType) is 0 = user-defined, 1 = predefined, 2 = custom. ACadSharp names the value
+        // 1 "SolidFill", but a hatch read from a file with a predefined pattern such as ANSI31 carries exactly that
+        // value with IsSolid (group 70) false. Group 70 alone says whether a hatch is a solid fill.
+        RecordingDrawingSurface surface = new();
+        ImageConfiguration configuration = new();
+        EntityRenderDispatcher dispatcher = new(configuration);
+        Hatch hatch = SquareHatch(solid: false);
+        hatch.PatternType = HatchPatternType.SolidFill;
+
+        dispatcher.Draw(CreateContext(surface, configuration), hatch);
+
+        Assert.DoesNotContain(surface.Calls, c => c.StartsWith("FillPath", StringComparison.Ordinal));
+        Assert.InRange(surface.Calls.Count(c => c.StartsWith("DrawLine", StringComparison.Ordinal)), 5, 9);
+    }
+
+    [Fact]
     public void PatternHatchIsCappedWithWarning()
     {
         // A dashed pattern emits several segments per scan line, so the segment cap trips even though the scan-line

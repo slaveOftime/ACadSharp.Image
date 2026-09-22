@@ -1689,7 +1689,10 @@ internal sealed class EntityRenderDispatcher
         OcsTransform? toWorld = IsWorldPlane(hatch.Normal) ? null : OcsTransform.For(hatch.Normal);
         SurfacePoint ToSurface(XYZ point) => context.ToSurfacePoint(InsertPlacement.MapOcsPoint(placement, toWorld, hatch.Elevation, point));
 
-        if (hatch.IsSolid || hatch.PatternType == HatchPatternType.SolidFill)
+        // Only the solid-fill flag (DXF group 70) says a hatch is a fill. Hatch.PatternType is DXF group 76, whose value
+        // 1 means "predefined pattern" even though ACadSharp names it SolidFill: every hatch read from a file with a
+        // stock pattern such as ANSI31 carries it, and testing for it here filled all of those solid.
+        if (hatch.IsSolid)
         {
             List<IReadOnlyList<SurfacePoint>> rings = new();
             foreach (Hatch.BoundaryPath path in hatch.Paths)

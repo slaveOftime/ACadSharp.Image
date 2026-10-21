@@ -1,6 +1,7 @@
 using System.Xml.Linq;
 using ACadSharp.Image.Rendering;
 using ACadSharp.Image.Rendering.Svg;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace ACadSharp.Image.Tests;
 
@@ -20,7 +21,7 @@ public sealed class SvgDrawingSurfaceTests
     private static EntityRenderInfo Entity(string layer, string type = "LINE", ulong handle = 0x10, ulong? parent = null, string? block = null)
         => new(layer, type, handle, parent, block);
 
-    private static LayerRenderInfo Layer(string name) => new(name, Color.FromRgb(255, 0, 0), 1f);
+    private static LayerRenderInfo Layer(string name) => new(name, Color.FromPixel(new Rgba32(255, 0, 0)), 1f);
 
     [Theory]
     [InlineData(null, 3)]
@@ -81,7 +82,7 @@ public sealed class SvgDrawingSurfaceTests
     public void EntitiesAreGroupedByEffectiveLayerInOrderOfFirstAppearance()
     {
         using SvgDrawingSurface surface = CreateSurface(c => c.Svg.IdPrefix = "p-");
-        ImageStyle style = new(Color.FromRgb(255, 0, 0), 1f);
+        ImageStyle style = new(Color.FromPixel(new Rgba32(255, 0, 0)), 1f);
 
         surface.BeginEntity(Entity("Walls", handle: 0x1F3), Layer("Walls"));
         surface.DrawLine(style, new SurfacePoint(0, 0), new SurfacePoint(10, 0));
@@ -115,7 +116,7 @@ public sealed class SvgDrawingSurfaceTests
     public void NestedEntityCarriesParentAndBlock()
     {
         using SvgDrawingSurface surface = CreateSurface();
-        ImageStyle style = new(Color.FromRgb(255, 0, 0), 1f);
+        ImageStyle style = new(Color.FromPixel(new Rgba32(255, 0, 0)), 1f);
 
         surface.BeginEntity(Entity("Doors", "INSERT", 0xA0), Layer("Doors"));
         surface.BeginEntity(Entity("Doors", "LINE", 0xA1, 0xA0, "DOOR"), Layer("Doors"));
@@ -133,9 +134,9 @@ public sealed class SvgDrawingSurfaceTests
     {
         using SvgDrawingSurface surface = CreateSurface();
 
-        // Exploded block contents are clones with handle 0 (ACadSharp 3.7.1); no data-handle is written for them.
+        // Exploded block contents are clones with handle 0 (ACadSharp 3.8.0); no data-handle is written for them.
         surface.BeginEntity(Entity("Doors", "LINE", 0, 0xA0, "DOOR"), Layer("Doors"));
-        surface.DrawLine(new ImageStyle(Color.FromRgb(255, 0, 0), 1f), new SurfacePoint(0, 0), new SurfacePoint(1, 1));
+        surface.DrawLine(new ImageStyle(Color.FromPixel(new Rgba32(255, 0, 0)), 1f), new SurfacePoint(0, 0), new SurfacePoint(1, 1));
         surface.EndEntity();
 
         XElement line = Assert.Single(surface.ToDocument().Descendants(Ns + "line"));
@@ -150,7 +151,7 @@ public sealed class SvgDrawingSurfaceTests
         using SvgDrawingSurface surface = CreateSurface(c => c.Svg.EmitEntityAttributes = false);
 
         surface.BeginEntity(Entity("L"), Layer("L"));
-        surface.DrawLine(new ImageStyle(Color.FromRgb(0, 0, 255), 2.5f, [4f, 2f], 0.5f), new SurfacePoint(0, 0), new SurfacePoint(1, 1));
+        surface.DrawLine(new ImageStyle(Color.FromPixel(new Rgba32(0, 0, 255)), 2.5f, [4f, 2f], 0.5f), new SurfacePoint(0, 0), new SurfacePoint(1, 1));
         surface.EndEntity();
 
         XElement line = Assert.Single(surface.ToDocument().Descendants(Ns + "line"));
@@ -496,7 +497,7 @@ public sealed class SvgDrawingSurfaceTests
     [Fact]
     public void TranslucentBackgroundKeepsItsAlphaAsFillOpacity()
     {
-        using SvgDrawingSurface surface = CreateSurface(c => c.BackgroundColor = Color.FromRgba(0, 0, 0, 128));
+        using SvgDrawingSurface surface = CreateSurface(c => c.BackgroundColor = Color.FromPixel(new Rgba32(0, 0, 0, 128)));
 
         XElement rect = Assert.Single(surface.ToDocument().Descendants(Ns + "rect"));
         Assert.Equal("#000000", (string?)rect.Attribute("fill"));

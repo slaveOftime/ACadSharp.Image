@@ -22,7 +22,7 @@ internal sealed class TextRenderer
     /// <param name="placement">The transform of the insert that placed the entity, or null at top level.</param>
     /// <remarks>
     /// An MTEXT insertion point and X axis are WCS in DXF. The insert transform is applied here, by the renderer,
-    /// because ACadSharp 3.7.1's <c>Insert.Explode()</c> moves the insertion point but leaves the X axis untouched,
+    /// because ACadSharp 3.8.0's <c>Insert.Explode()</c> moves the insertion point but leaves the X axis untouched,
     /// so an MTEXT inside a rotated insert would otherwise be drawn unrotated.
     /// </remarks>
     public void Draw(ImageRenderContext context, ImageStyle style, MText mtext, Transform? placement)
@@ -76,7 +76,7 @@ internal sealed class TextRenderer
     /// <param name="attribute">The multi-line attribute or attribute definition.</param>
     /// <param name="placement">The transform of the insert that placed the entity, or null at top level.</param>
     /// <remarks>
-    /// When the embedded object is missing the single-line value is drawn instead, with a warning: ACadSharp 3.7.1's
+    /// When the embedded object is missing the single-line value is drawn instead, with a warning: ACadSharp 3.8.0's
     /// DWG reader only reads the attribute type for R2018 and later files, so an older drawing reports every
     /// attribute as single-line and never populates the embedded object.
     /// </remarks>
@@ -103,7 +103,7 @@ internal sealed class TextRenderer
     /// <param name="placement">The transform of the insert that placed the entity, or null at top level.</param>
     /// <remarks>
     /// A TEXT entity's points and rotation live in its own OCS; the insert transform is applied after the OCS, by the
-    /// renderer, because ACadSharp 3.7.1's <c>Insert.Explode()</c> transforms the insertion point but not the
+    /// renderer, because ACadSharp 3.8.0's <c>Insert.Explode()</c> transforms the insertion point but not the
     /// alignment point, and mixes world points with a mirrored normal.
     /// </remarks>
     public void Draw(ImageRenderContext context, ImageStyle style, TextEntity textEntity, Transform? placement)
@@ -293,7 +293,8 @@ internal sealed class TextRenderer
     {
         string value = mtext.Value ?? string.Empty;
         string decoded = UnicodeEscape.Replace(value, m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
-        return decoded == value ? mtext.PlainText : new MText { Value = decoded }.PlainText;
+        string plain = decoded == value ? mtext.PlainText : new MText { Value = decoded }.PlainText;
+        return NormalizeLineEndings(plain);
     }
 
     /// <summary>
@@ -309,7 +310,7 @@ internal sealed class TextRenderer
         }
 
         string text = UnicodeEscape.Replace(value, m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
-        return text
+        return NormalizeLineEndings(text
             .Replace("%%%", "\u0001", StringComparison.Ordinal)
             .Replace("%%C", "Ø", StringComparison.OrdinalIgnoreCase)
             .Replace("%%D", "°", StringComparison.OrdinalIgnoreCase)
@@ -317,6 +318,15 @@ internal sealed class TextRenderer
             .Replace("%%U", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("%%O", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("\u0001", "%", StringComparison.Ordinal)
-            .Replace("\\P", "\n", StringComparison.OrdinalIgnoreCase);
+            .Replace("\\P", "\n", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Collapses the Windows line endings ACadSharp 3.8 emits for MTEXT paragraphs to the single <c>\n</c> the
+    /// layout backends expect. A stray <c>\r</c> is treated as a line break as well.
+    /// </summary>
+    private static string NormalizeLineEndings(string value)
+    {
+        return value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
     }
 }

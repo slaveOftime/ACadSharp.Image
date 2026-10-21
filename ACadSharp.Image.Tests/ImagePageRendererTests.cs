@@ -243,7 +243,6 @@ public sealed class ImagePageRendererTests
             VVector = new XYZ(-5, 0, 0),
             Size = new XY(1, 1),
             ClippingState = true,
-            ClipType = ClipType.Rectangular,
         };
         wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
         document.Entities.Add(wipeout);
@@ -309,7 +308,6 @@ public sealed class ImagePageRendererTests
             VVector = new XYZ(0, 5, 0),
             Size = new XY(1, 1),
             ClippingState = true,
-            ClipType = ClipType.Rectangular,
             ClipMode = ClipMode.Inside,
         };
         // Strictly inside the frame, not equal to it (this wipeout's own default frame is (-0.5,-0.5)..(0.5,0.5)),
@@ -461,6 +459,7 @@ public sealed class ImagePageRendererTests
         renderer.RenderTo(surface, page);
 
         Assert.Equal(2, mline.Vertices.Count);
+        Assert.All(mline.Vertices, vertex => Assert.Equal(2, vertex.Segments.Count));
         Assert.Equal(2, surface.Polylines.Count);
     }
 
@@ -470,11 +469,11 @@ public sealed class ImagePageRendererTests
         // Same staleness hazard as the MLINE case above, for a LEADER: Insert.Clone() shares a LEADER's vertex list
         // with its source too (see EntityRenderDispatcher remarks on DrawBlockContents), so it must be found by the
         // same cached subtree scan and must not be missed once it is added after the block was first seen clean.
-        // The insert carries a non-zero placement deliberately: a LEADER's shared list is not emptied by Clone() the
-        // way an MLINE's is, it is overwritten in place by Explode()'s ApplyTransform, so under an identity
-        // placement that in-place write puts back the very same coordinates and the assertions below would hold
-        // whether or not the stale-cache bug is present. A real translation makes the un-healed path write world
-        // coordinates into the shared list instead, so both assertions genuinely discriminate.
+        // The insert carries a non-zero placement deliberately: a LEADER's shared vertex list is not emptied by
+        // Clone() the way an MLINE's segment lists are; it is overwritten in place by Explode()'s ApplyTransform, so
+        // under an identity placement that in-place write puts back the very same coordinates and the assertions
+        // below would hold whether or not the stale-cache bug is present. A real translation makes the un-healed path
+        // write world coordinates into the shared list instead, so both assertions genuinely discriminate.
         BlockRecord wall = new("WALLL");
         wall.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(10, 0, 0)));
         BlockRecord plan = new("PLANL");

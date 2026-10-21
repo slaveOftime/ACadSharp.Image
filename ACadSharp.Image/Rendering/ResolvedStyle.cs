@@ -11,7 +11,7 @@ namespace ACadSharp.Image.Rendering;
 /// <remarks>
 /// The record doubles as the inheritance source for the entity's children: block contents and dimension geometry
 /// resolve their ByBlock attributes against the placing entity's resolved values, and inherit its document header,
-/// since the clones <c>Insert.Explode()</c> produces in ACadSharp 3.7.1 belong to no document.
+/// since the clones <c>Insert.Explode()</c> produces in ACadSharp 3.8.0 belong to no document.
 /// </remarks>
 /// <param name="Color">Resolved colour; never ByLayer or ByBlock.</param>
 /// <param name="LineWeight">Resolved line weight; never ByLayer or ByBlock.</param>

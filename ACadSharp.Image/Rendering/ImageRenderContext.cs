@@ -333,7 +333,7 @@ internal sealed class ImageRenderContext
     /// <returns>The point in surface coordinates.</returns>
     public SurfacePoint ToSurfacePoint(XYZ point)
     {
-        return this.ToSurfacePoint(point.Convert<XY>());
+        return this.ToSurfacePoint((XY)point);
     }
 
     /// <summary>

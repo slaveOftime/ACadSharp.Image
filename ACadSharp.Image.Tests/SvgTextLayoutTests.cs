@@ -100,9 +100,7 @@ public sealed class SvgTextLayoutTests
     }
 
     /// <summary>
-    /// Counts the lines ImageSharp lays the text out on, independently of the wrapper: consecutive baselines are one
-    /// em apart at line spacing 1, and no glyph's top strays a whole em from its own line's top, so the distinct
-    /// <c>floor(top / em)</c> values are the lines.
+    /// Counts the lines ImageSharp lays the text out on, independently of the wrapper.
     /// </summary>
     private static int ImageSharpLineCount(string text, double width, double emSize)
     {
@@ -113,13 +111,6 @@ public sealed class SvgTextLayoutTests
             WrappingLength = (float)(width * ReferenceSize / emSize),
         };
 
-        Assert.True(TextMeasurer.TryMeasureCharacterBounds(text, options, out ReadOnlySpan<GlyphBounds> glyphs));
-        HashSet<int> rows = new();
-        foreach (GlyphBounds glyph in glyphs)
-        {
-            rows.Add((int)Math.Floor(glyph.Bounds.Y / ReferenceSize));
-        }
-
-        return rows.Count;
+        return TextMeasurer.CountLines(text, options);
     }
 }

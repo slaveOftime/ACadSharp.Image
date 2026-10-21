@@ -19,7 +19,7 @@ public sealed class RenderedPageTests
     [InlineData(ImageExportFormat.Webp, new byte[] { 0x52, 0x49, 0x46, 0x46 }, "WEBP")]
     public void RasterPagesEncodeInTheirFormat(ImageExportFormat format, byte[] signature, string? fourcc)
     {
-        using Image<Rgba32> canvas = new(8, 8, SixLabors.ImageSharp.Color.White);
+        using Image<Rgba32> canvas = new(8, 8, SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>());
         using RenderedImagePage page = new("p", canvas, format, 80);
         using MemoryStream stream = new();
 

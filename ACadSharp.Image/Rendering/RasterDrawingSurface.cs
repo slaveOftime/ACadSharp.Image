@@ -46,7 +46,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
     public void DrawLine(ImageStyle style, SurfacePoint start, SurfacePoint end)
     {
         Pen pen = CreatePen(style);
-        this.Canvas.Mutate(x => x.DrawLine(pen, ToPointF(start), ToPointF(end)));
+        RasterCanvasCompat.DrawLine(this.Canvas, pen, [ToPointF(start), ToPointF(end)]);
     }
 
     public void DrawPolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, bool closed)
@@ -68,7 +68,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
         }
 
         Pen pen = CreatePen(style);
-        this.Canvas.Mutate(x => x.DrawLine(pen, pixels));
+        RasterCanvasCompat.DrawLine(this.Canvas, pen, pixels);
     }
 
     public void DrawArc(ImageStyle style, SurfacePoint center, double radiusX, double radiusY, double rotation, double startAngle, double sweepAngle)
@@ -101,7 +101,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
         IPath path = builder.Build();
         Pen pen = CreatePen(style);
-        this.Canvas.Mutate(x => x.Draw(pen, path));
+        RasterCanvasCompat.DrawPath(this.Canvas, pen, path);
     }
 
     public void DrawBulgePolyline(ImageStyle style, IReadOnlyList<SurfacePoint> points, IReadOnlyList<double> bulges, bool closed)
@@ -144,7 +144,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
         PointF[] pixels = finite.Select(ToPointF).ToArray();
         ImageColor color = style.EffectiveColor;
-        this.Canvas.Mutate(x => x.FillPolygon(color, pixels));
+        RasterCanvasCompat.FillPolygon(this.Canvas, color, pixels);
     }
 
     public void FillPath(ImageStyle style, IReadOnlyList<IReadOnlyList<SurfacePoint>> rings)
@@ -161,11 +161,8 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
         IPath shape = polygons.Length == 1 ? polygons[0] : new ComplexPolygon(polygons);
         ImageColor color = style.EffectiveColor;
-        DrawingOptions options = new()
-        {
-            ShapeOptions = { IntersectionRule = IntersectionRule.EvenOdd },
-        };
-        this.Canvas.Mutate(x => x.Fill(options, color, shape));
+        DrawingOptions options = RasterCanvasCompat.CreateDrawingOptions(evenOdd: true);
+        RasterCanvasCompat.FillPath(this.Canvas, options, color, shape);
     }
 
     public void FillCircle(ImageStyle style, SurfacePoint center, double radius)
@@ -178,7 +175,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
         PointF pixel = ToPointF(center);
         ImageColor color = style.EffectiveColor;
-        this.Canvas.Mutate(x => x.Fill(color, new EllipsePolygon(pixel.X, pixel.Y, (float)radius)));
+        RasterCanvasCompat.FillEllipse(this.Canvas, color, pixel, (float)radius);
     }
 
     public void DrawText(ImageStyle style, SurfaceText text)
@@ -224,7 +221,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
         TextOptions options = new(font)
         {
             Dpi = 72f,
-            Origin = new PointF(origin.X, origin.Y + (float)leadingOffset),
+            Origin = new Vector2(origin.X, origin.Y + (float)leadingOffset),
             HorizontalAlignment = text.Anchor switch
             {
                 SurfaceTextAnchor.Middle => HorizontalAlignment.Center,
@@ -241,8 +238,8 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
             LineSpacing = lineSpacing,
         };
 
-        IPathCollection glyphs = TextBuilder.GenerateGlyphs(text.Text, options);
-        DrawingOptions drawingOptions = new();
+        IPathCollection glyphs = RasterCanvasCompat.GenerateTextPaths(text.Text, options);
+        Matrix3x2? transform = null;
         bool stretched = Math.Abs(text.WidthScale - 1d) > 1e-9;
         bool rotated = Math.Abs(text.Rotation) > double.Epsilon;
         if (stretched || rotated)
@@ -251,17 +248,18 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
             // origin first widens the run along its own reading axis, and the rotation that follows carries the
             // widened run to its final orientation, so the stretch travels with the text instead of the canvas.
             Vector2 pivot = new(origin.X, origin.Y);
-            Matrix3x2 transform = stretched ? Matrix3x2.CreateScale((float)text.WidthScale, 1f, pivot) : Matrix3x2.Identity;
+            Matrix3x2 value = stretched ? Matrix3x2.CreateScale((float)text.WidthScale, 1f, pivot) : Matrix3x2.Identity;
             if (rotated)
             {
-                transform *= Matrix3x2.CreateRotation((float)-text.Rotation, pivot);
+                value *= Matrix3x2.CreateRotation((float)-text.Rotation, pivot);
             }
 
-            drawingOptions.Transform = transform;
+            transform = value;
         }
 
+        DrawingOptions drawingOptions = RasterCanvasCompat.CreateDrawingOptions(transform);
         ImageColor color = style.EffectiveColor;
-        this.Canvas.Mutate(x => x.Fill(drawingOptions, color, glyphs));
+        RasterCanvasCompat.FillGlyphs(this.Canvas, drawingOptions, color, glyphs);
     }
 
     public ViewportSurface BeginViewport(SurfaceRect bounds)
@@ -275,7 +273,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
         double fractionY = bounds.Y - top;
         int width = Math.Max(1, (int)Math.Ceiling(fractionX + bounds.Width));
         int height = Math.Max(1, (int)Math.Ceiling(fractionY + bounds.Height));
-        Image<Rgba32> image = new(width, height, ImageColor.Transparent);
+        Image<Rgba32> image = RasterCanvasCompat.CreateImage(width, height, ImageColor.Transparent);
         RasterDrawingSurface child = new(image, this._configuration, ownsCanvas: true);
         ViewportSurface viewport = new(child, fractionX, fractionY + bounds.Height);
         this._viewports[viewport] = (image, new SurfaceRect(left, top, width, height));
@@ -291,7 +289,7 @@ internal sealed class RasterDrawingSurface : IDrawingSurface
 
         // Bounds were floored to whole pixels in BeginViewport.
         ImagePoint destination = new((int)entry.Bounds.X, (int)entry.Bounds.Y);
-        this.Canvas.Mutate(x => x.DrawImage(entry.Image, destination, 1f));
+        RasterCanvasCompat.DrawImage(this.Canvas, entry.Image, destination);
         viewport.Surface.Dispose();
     }
 

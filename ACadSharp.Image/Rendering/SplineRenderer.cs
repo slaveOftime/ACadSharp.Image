@@ -53,14 +53,14 @@ internal sealed class SplineRenderer(ImageConfiguration configuration)
             SurfacePoint[] points = new SurfacePoint[polygonalPoints.Count];
             for (int i = 0; i < polygonalPoints.Count; i++)
             {
-                points[i] = context.ToSurfacePoint(polygonalPoints[i].Convert<XY>());
+                points[i] = context.ToSurfacePoint((XY)polygonalPoints[i]);
             }
 
             context.Surface.DrawPolyline(style, points, ShouldClosePoints(points, spline.IsClosed || spline.IsPeriodic));
             return true;
         }
 
-        // ACadSharp 3.7.1's UpdateFromFitPoints fills the knot vector but no control points, and DXF allows a spline
+        // ACadSharp 3.8.0's UpdateFromFitPoints fills the knot vector but no control points, and DXF allows a spline
         // defined by fit points alone; joining the fit points is a coarse but honest stand-in for the curve.
         if (spline.ControlPoints.Count == 0 && spline.FitPoints.Count > 1)
         {

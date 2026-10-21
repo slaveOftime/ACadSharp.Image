@@ -10,5 +10,12 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/slaveoftime/ACadSharp.Image.git</RepositoryUrl>
+
+    <!--
+      Six Labors' build-time license check searches each project directory, so point it at the
+      repository-level sixlabors.lic instead. The community license is assembly-scoped and may
+      be committed to this public repository.
+    -->
+    <SixLaborsLicenseFile Condition="'$(SixLaborsLicenseFile)' == '' and Exists('$(MSBuildThisFileDirectory)sixlabors.lic')">$(MSBuildThisFileDirectory)sixlabors.lic</SixLaborsLicenseFile>
   </PropertyGroup>
 </Project>

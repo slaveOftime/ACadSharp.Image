@@ -41,7 +41,9 @@ public sealed class FeatureGoldenTests
         exporter.Configuration.OnNotification += (_, e) => notifications.Add(e);
 
         RenderedSvgPage page = Assert.IsType<RenderedSvgPage>(Assert.Single(exporter.Render(ImageExportFormat.Svg)));
-        GoldenAssert.Svg("features.model.01", page.Content);
+        // ACadSharp's pattern-hatch intersections can land on either side of a two-decimal half-way value depending on
+        // platform floating point, so allow one printed unit of drift for this golden.
+        GoldenAssert.Svg("features.model.01", page.Content, 0.011);
 
         Assert.DoesNotContain(notifications, n => n.NotificationType is NotificationType.Warning or NotificationType.NotImplemented);
         XDocument document = XDocument.Parse(page.Content);

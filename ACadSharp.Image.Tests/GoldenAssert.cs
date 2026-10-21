@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using ACadSharp.Image.Rendering;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -12,6 +14,8 @@ namespace ACadSharp.Image.Tests;
 internal static class GoldenAssert
 {
     public static bool Updating => Environment.GetEnvironmentVariable("ACADSHARP_IMAGE_UPDATE_BASELINES") == "1";
+
+    private static readonly Regex SvgNumber = new(@"[-+]?(?:\d+\.\d+|\d+)", RegexOptions.CultureInvariant);
 
     private static string BaselineDirectory
     {
@@ -37,7 +41,13 @@ internal static class GoldenAssert
         SampleParityTests.AssertPixelsEqual(expected, actual, path);
     }
 
-    public static void Svg(string baseName, string actual)
+    /// <param name="baseName">Baseline file name without the <c>.svg</c> extension.</param>
+    /// <param name="actual">The rendered SVG.</param>
+    /// <param name="numberTolerance">
+    /// Absolute tolerance for numeric tokens. Zero keeps the comparison exact; a small value absorbs platform floating-point
+    /// drift in values that are otherwise printed at the same precision.
+    /// </param>
+    public static void Svg(string baseName, string actual, double numberTolerance = 0d)
     {
         string path = Path.Combine(BaselineDirectory, baseName + ".svg");
         string normalized = actual.Replace("\r\n", "\n");
@@ -50,7 +60,59 @@ internal static class GoldenAssert
         }
 
         Assert.True(File.Exists(path), $"Missing golden {path}. Run with ACADSHARP_IMAGE_UPDATE_BASELINES=1 to create it.");
-        Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n"), normalized);
+        string expected = File.ReadAllText(path).Replace("\r\n", "\n");
+        if (numberTolerance <= 0d)
+        {
+            Assert.Equal(expected, normalized);
+            return;
+        }
+
+        AssertSvgNumbersEqual(expected, normalized, path, numberTolerance);
+    }
+
+    private static void AssertSvgNumbersEqual(string expected, string actual, string path, double tolerance)
+    {
+        List<(bool IsNumber, string Text)> expectedTokens = TokenizeSvg(expected);
+        List<(bool IsNumber, string Text)> actualTokens = TokenizeSvg(actual);
+        Assert.Equal(expectedTokens.Count, actualTokens.Count);
+        for (int i = 0; i < expectedTokens.Count; i++)
+        {
+            Assert.Equal(expectedTokens[i].IsNumber, actualTokens[i].IsNumber);
+            if (!expectedTokens[i].IsNumber)
+            {
+                Assert.Equal(expectedTokens[i].Text, actualTokens[i].Text);
+                continue;
+            }
+
+            double expectedNumber = double.Parse(expectedTokens[i].Text, CultureInfo.InvariantCulture);
+            double actualNumber = double.Parse(actualTokens[i].Text, CultureInfo.InvariantCulture);
+            Assert.True(
+                Math.Abs(expectedNumber - actualNumber) <= tolerance,
+                $"SVG number differs in {path} at token {i}: expected {expectedNumber.ToString(CultureInfo.InvariantCulture)}, actual {actualNumber.ToString(CultureInfo.InvariantCulture)}.");
+        }
+    }
+
+    private static List<(bool IsNumber, string Text)> TokenizeSvg(string svg)
+    {
+        List<(bool IsNumber, string Text)> tokens = [];
+        int position = 0;
+        foreach (Match match in SvgNumber.Matches(svg))
+        {
+            if (match.Index > position)
+            {
+                tokens.Add((false, svg[position..match.Index]));
+            }
+
+            tokens.Add((true, match.Value));
+            position = match.Index + match.Length;
+        }
+
+        if (position < svg.Length)
+        {
+            tokens.Add((false, svg[position..]));
+        }
+
+        return tokens;
     }
 
     /// <summary>

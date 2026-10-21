@@ -15,7 +15,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void DrawLinePaintsPixelsAlongTheLine()
     {
-        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using Image<Rgba32> canvas = new(20, 20, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
 
         surface.DrawLine(new ImageStyle(ImageColor.Black, 2f), new SurfacePoint(2, 10), new SurfacePoint(18, 10));
@@ -27,7 +27,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void DrawPolylineClosedConnectsLastPointToFirst()
     {
-        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using Image<Rgba32> canvas = new(20, 20, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
         SurfacePoint[] points = [new(2, 2), new(18, 2), new(18, 18)];
 
@@ -40,7 +40,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void FillPathUsesEvenOddRuleForHoles()
     {
-        using Image<Rgba32> canvas = new(40, 40, ImageColor.White);
+        using Image<Rgba32> canvas = new(40, 40, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
         SurfacePoint[] outer = [new(2, 2), new(38, 2), new(38, 38), new(2, 38)];
         SurfacePoint[] hole = [new(15, 15), new(25, 15), new(25, 25), new(15, 25)];
@@ -54,7 +54,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void OpacityBlendsWithBackground()
     {
-        using Image<Rgba32> canvas = new(10, 10, ImageColor.White);
+        using Image<Rgba32> canvas = new(10, 10, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
 
         surface.FillPolygon(new ImageStyle(ImageColor.Black, 1f, null, 0.5f), [new(0, 0), new(10, 0), new(10, 10), new(0, 10)]);
@@ -68,7 +68,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void DashPatternLeavesGaps()
     {
-        using Image<Rgba32> canvas = new(60, 10, ImageColor.White);
+        using Image<Rgba32> canvas = new(60, 10, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
 
         // 10 px dash, 10 px gap.
@@ -82,7 +82,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void ViewportDrawsIntoChildAndCompositesAtBounds()
     {
-        using Image<Rgba32> canvas = new(40, 40, ImageColor.White);
+        using Image<Rgba32> canvas = new(40, 40, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
 
         ViewportSurface viewport = surface.BeginViewport(new SurfaceRect(20, 20, 10, 10));
@@ -141,7 +141,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void ViewportFlipOriginIsTheExactHeightNotTheRoundedImageHeight()
     {
-        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using Image<Rgba32> canvas = new(20, 20, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
 
         // A viewport 9.3 px tall gets a 10-row image; its content must still be placed against 9.3, not 10.
@@ -160,7 +160,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void ViewportFractionalPositionIsCarriedIntoTheChildOffsets()
     {
-        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using Image<Rgba32> canvas = new(20, 20, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
 
         // Viewport at (3.6, 2.4): the image is pasted at (3, 2) and the child draws 0.6 / 0.4 px further in.
@@ -240,7 +240,7 @@ public sealed class RasterDrawingSurfaceTests
     /// <summary>Draws one text run of height 10 at the canvas centre and returns the canvas.</summary>
     private static Image<Rgba32> DrawnText(string value, SurfaceTextBaseline baseline, double lineSpacingFactor, double rotation, float dpi = 96f, double widthScale = 1d)
     {
-        Image<Rgba32> canvas = new(200, 200, ImageColor.White);
+        Image<Rgba32> canvas = new(200, 200, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration { Dpi = dpi }, ownsCanvas: false);
         surface.DrawText(
             new ImageStyle(ImageColor.Black, 1f),
@@ -299,7 +299,7 @@ public sealed class RasterDrawingSurfaceTests
     [Fact]
     public void FillsDropNonFiniteGeometryInsteadOfThrowing()
     {
-        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using Image<Rgba32> canvas = new(20, 20, White);
         using RasterDrawingSurface surface = new(canvas, new ImageConfiguration(), ownsCanvas: false);
         ImageStyle style = new(ImageColor.Black, 1f);
         SurfacePoint[] ring = [new(2, 2), new(18, 2), new(double.PositiveInfinity, 18)];
@@ -440,7 +440,7 @@ public sealed class RasterDrawingSurfaceTests
         // Matches SvgDrawingSurface.DrawText's guard: Matrix3x2.CreateScale(0f, 1f, pivot) would otherwise collapse
         // the run to nothing silently instead of being rejected the same way a direct caller cannot reach through
         // TextRenderer (both Place overloads guard length >= 1e-12).
-        using Image<Rgba32> canvas = new(20, 20, ImageColor.White);
+        using Image<Rgba32> canvas = new(20, 20, White);
         ImageConfiguration configuration = new();
         List<NotificationEventArgs> notifications = new();
         configuration.OnNotification += (_, e) => notifications.Add(e);

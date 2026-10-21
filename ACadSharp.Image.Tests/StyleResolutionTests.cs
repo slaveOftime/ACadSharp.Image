@@ -12,7 +12,7 @@ public sealed class StyleResolutionTests
     [Fact]
     public void OpacityMapping()
     {
-        Assert.Equal(1f, ImageStyleResolver.ResolveOpacity(new Line(), 1f)); // ByLayer default -> opaque (Layer has no transparency in ACadSharp 3.7.1)
+        Assert.Equal(1f, ImageStyleResolver.ResolveOpacity(new Line(), 1f)); // ByLayer default -> opaque (Layer has no transparency in ACadSharp 3.8.0)
         Assert.Equal(0.3f, ImageStyleResolver.ResolveOpacity(new Line { Transparency = new Transparency(70) }, 1f), 3);
         Assert.Equal(0.5f, ImageStyleResolver.ResolveOpacity(new Line { Transparency = Transparency.ByBlock }, 0.5f));
         Assert.Equal(1f, ImageStyleResolver.ResolveOpacity(new Line { Transparency = Transparency.ByBlock }, 1f));

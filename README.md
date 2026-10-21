@@ -223,7 +223,7 @@ exporter.Configuration.HideLayer("A-DOOR");                    // then remove on
 exporter.AddModelSpace(document);
 ```
 
-Filtering happens when rendering, so it also applies to block contents, dimension geometry and paper-space viewport contents. Entities on layer `0` inside a block take the layer of the insert that placed them, including its colour, line weight and linetype when theirs are ByLayer; ByBlock attributes resolve to the placing insert's own (colour 7 and defaults at top level). Text inside block references is placed through the insert's transform from the original entity, because ACadSharp 3.7.1 leaves TEXT alignment points and MTEXT directions untransformed when exploding. Rendering never modifies the pages, so changing filters between renders is safe.
+Filtering happens when rendering, so it also applies to block contents, dimension geometry and paper-space viewport contents. Entities on layer `0` inside a block take the layer of the insert that placed them, including its colour, line weight and linetype when theirs are ByLayer; ByBlock attributes resolve to the placing insert's own (colour 7 and defaults at top level). Text inside block references is placed through the insert's transform from the original entity, because ACadSharp 3.8.0 leaves TEXT alignment points and MTEXT directions untransformed when exploding. Rendering never modifies the pages, so changing filters between renders is safe.
 
 ### Layer visibility
 
@@ -253,7 +253,7 @@ The SVG has a drawing-unit `viewBox`, no `width`/`height` unless `Svg.EmitSize` 
 
 SVG and PNG are built from the same geometry and never disagree on it, but they intentionally differ in fidelity: SVG keeps native arcs, Beziers and `<text>`, while raster output tessellates curves and outlines glyphs. SVG text is sized and wrapped to match the PNG output; glyph shapes still depend on the viewer's fonts. Repeated spaces inside text are preserved in both outputs. `ImageConfiguration.Dpi` affects only line weights; text is sized from the drawing on both backends. Entities with a non-world extrusion normal (an OCS other than the default) are brought into world coordinates first: arcs, circles and ellipses through ACadSharp's own tessellation, polylines, hatches and solids through the renderer's OCS transform. Single-line TEXT on another plane is placed on the mirrored extent with readable glyphs; AutoCAD would draw the glyphs themselves mirrored, so this is a deliberate readability choice, not a parity guarantee. Text height follows the transformed up axis and width the transformed reading axis of whatever places the text, block reference or OCS plane. MTEXT and dimension geometry are already world coordinates in DXF; MTEXT is placed through the same projection (its height likewise follows the projected up-axis length) and dimensions need no transform. The available `Svg` options are `NonScalingStroke`, `EmitEntityAttributes`, `EmitSize`, `IdPrefix`, and `Precision`.
 
-**Thread safety:** Rendering temporarily mutates block MLINEs and LEADERs while working around ACadSharp 3.7.1's destructive `MLine.Clone()` and `Leader.Clone()` and restores them before returning; a `CadDocument` must not be rendered concurrently by two exporters, and `Insert.Explode()` itself is not safe for concurrent use either.
+**Thread safety:** Rendering temporarily mutates block MLINEs and LEADERs while working around ACadSharp 3.8.0's destructive `MLine.Clone()` and `Leader.Clone()` and restores them before returning; a `CadDocument` must not be rendered concurrently by two exporters, and `Insert.Explode()` itself is not safe for concurrent use either.
 
 ### Custom Line Weights
 
@@ -357,6 +357,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This project is released under the [MIT License](LICENSE).
+
+The raster backend depends on Six Labors ImageSharp, Fonts, and ImageSharp.Drawing. Their build-time license check reads the repository-level [`sixlabors.lic`](sixlabors.lic) community license, which is separate from this project's MIT license.
 
 ---
 

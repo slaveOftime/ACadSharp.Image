@@ -8,7 +8,7 @@ namespace ACadSharp.Image.Rendering;
 /// </summary>
 /// <remarks>
 /// Points and vectors map differently: a translation moves a point but must not change a direction, so a vector is
-/// mapped by transforming its head and tail and subtracting. ACadSharp 3.7.1 gets this wrong in places of its own
+/// mapped by transforming its head and tail and subtracting. ACadSharp 3.8.0 gets this wrong in places of its own
 /// (<c>Wipeout.ApplyTransform</c> transforms its U and V vectors as points), which is why the renderer maps from the
 /// original entity through these helpers instead of trusting a transformed clone.
 /// </remarks>

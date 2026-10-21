@@ -61,7 +61,7 @@ internal sealed class ImagePageRenderer
             return this.RenderSvg(page);
         }
 
-        Image<Rgba32> image = new(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);
+        Image<Rgba32> image = RasterCanvasCompat.CreateImage(this._configuration.Width, this._configuration.Height, this._configuration.BackgroundColor);
         try
         {
             using RasterDrawingSurface surface = new(image, this._configuration, ownsCanvas: false);
@@ -198,7 +198,7 @@ internal sealed class ImagePageRenderer
     /// <remarks>
     /// The branch is on the raw DXF value of <c>$PSLTSCALE</c> (0 = model-space lengths, 1 = paper-space lengths, and the
     /// AutoCAD default) rather than on the name of the <see cref="SpaceLineTypeScaling"/> member, because the ACadSharp
-    /// 3.7.1 names are swapped with respect to those semantics: <c>SpaceLineTypeScaling.Viewport</c> is 0 and
+    /// 3.8.0 names are swapped with respect to those semantics: <c>SpaceLineTypeScaling.Viewport</c> is 0 and
     /// <c>SpaceLineTypeScaling.Normal</c> is 1.
     /// </remarks>
     internal static double ResolveViewportLineTypeScale(CadHeader? header, double pageLineTypeScale, double viewportScaleFactor)

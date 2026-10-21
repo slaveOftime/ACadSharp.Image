@@ -8,6 +8,7 @@ on:
       - 'ACadSharp.Image.Tests/**'
       - 'Directory.Packages.props'
       - 'Directory.Build.props'
+      - 'sixlabors.lic'
       - '*.sln'
       - '.github/workflows/ci.yml'
   push:
@@ -19,6 +20,7 @@ on:
       - 'ACadSharp.Image.Tests/**'
       - 'Directory.Packages.props'
       - 'Directory.Build.props'
+      - 'sixlabors.lic'
       - '*.sln'
       - '.github/workflows/ci.yml'
 

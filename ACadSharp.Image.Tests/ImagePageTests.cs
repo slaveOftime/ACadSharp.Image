@@ -88,7 +88,6 @@ public sealed class ImagePageTests
             VVector = new XYZ(-5, 0, 0),
             Size = new XY(1, 1),
             ClippingState = true,
-            ClipType = ClipType.Rectangular,
         };
         wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
         ImagePage page = new();
@@ -165,7 +164,6 @@ public sealed class ImagePageTests
             VVector = new XYZ(0, 10, 0),
             Size = new XY(1, 1),
             ClippingState = true,
-            ClipType = ClipType.Rectangular,
             ClipMode = ClipMode.Inside,
         };
         wipeout.ClipBoundaryVertices.Add(new XY(-0.25, -0.25));

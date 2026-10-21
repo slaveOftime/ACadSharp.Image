@@ -8,6 +8,7 @@ using ACadSharp.IO;
 using ACadSharp.Objects;
 using ACadSharp.Tables;
 using CSMath;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace ACadSharp.Image.Tests;
 
@@ -19,7 +20,7 @@ public sealed class EntityRenderDispatcherTests
         return new ImageRenderContext(surface, configuration, layout, 100, 100, 0, 0, 1d, 0, 0, singlePrecision: false, lineTypeScale: 1d);
     }
 
-    // ACadSharp.CadObject.Handle has an internal setter in ACadSharp 3.7.1, so tests
+    // ACadSharp.CadObject.Handle has an internal setter in ACadSharp 3.8.0, so tests
     // that need a deterministic handle assign it via reflection instead.
     private static T WithHandle<T>(T entity, ulong handle)
         where T : CadObject
@@ -66,10 +67,10 @@ public sealed class EntityRenderDispatcherTests
         Assert.Equal(0UL, surface.Entities[1].Handle);
         Assert.Equal("Hardware", surface.Entities[2].LayerName);
         Assert.Equal(0, surface.Depth);
-        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), surface.Layers[1].Color);
+        Assert.Equal(SixLabors.ImageSharp.Color.FromPixel(new Rgba32(255, 0, 0)), surface.Layers[1].Color);
 
         // The layer-0 line is ByLayer, so it is drawn with the effective (insert) layer's colour, not layer 0's.
-        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), surface.Styles[0].StrokeColor);
+        Assert.Equal(SixLabors.ImageSharp.Color.FromPixel(new Rgba32(255, 0, 0)), surface.Styles[0].StrokeColor);
     }
 
     [Fact]
@@ -107,19 +108,19 @@ public sealed class EntityRenderDispatcherTests
         // Styles are recorded per drawing call: (a), (b), (c); the insert itself draws nothing.
         Assert.Equal(3, surface.Styles.Count);
         ImageStyle layerZero = surface.Styles[0];
-        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), layerZero.StrokeColor);
+        Assert.Equal(SixLabors.ImageSharp.Color.FromPixel(new Rgba32(255, 0, 0)), layerZero.StrokeColor);
         Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.W50), layerZero.StrokeWidth);
         // LTSCALE 2 (header, reached through the insert since the clone has no document) x CELTSCALE 1.5 (insert) x 1.
         Assert.NotNull(layerZero.DashPattern);
         Assert.Equal([3f, 3f], layerZero.DashPattern);
 
         ImageStyle byBlock = surface.Styles[1];
-        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(0, 255, 0), byBlock.StrokeColor);
+        Assert.Equal(SixLabors.ImageSharp.Color.FromPixel(new Rgba32(0, 255, 0)), byBlock.StrokeColor);
         Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.W200), byBlock.StrokeWidth);
         Assert.Null(byBlock.DashPattern);
 
         ImageStyle own = surface.Styles[2];
-        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(0, 0, 255), own.StrokeColor);
+        Assert.Equal(SixLabors.ImageSharp.Color.FromPixel(new Rgba32(0, 0, 255)), own.StrokeColor);
         Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.W100), own.StrokeWidth);
     }
 
@@ -162,7 +163,7 @@ public sealed class EntityRenderDispatcherTests
 
         LayerRenderInfo info = Assert.Single(surface.Layers);
         Assert.Equal("Red", info.LayerName);
-        Assert.Equal(SixLabors.ImageSharp.Color.FromRgb(255, 0, 0), info.Color);
+        Assert.Equal(SixLabors.ImageSharp.Color.FromPixel(new Rgba32(255, 0, 0)), info.Color);
         Assert.Equal(configuration.GetLineWeightPixels(LineWeightType.W50), info.StrokeWidth);
     }
 
@@ -170,7 +171,7 @@ public sealed class EntityRenderDispatcherTests
     public void LayerColourIndexSevenFollowsTheBackground()
     {
         RecordingDrawingSurface surface = new();
-        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.FromRgb(20, 20, 40) };
+        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.FromPixel(new Rgba32(20, 20, 40)) };
         EntityRenderDispatcher dispatcher = new(configuration);
         Line line = new(new XYZ(0, 0, 0), new XYZ(10, 0, 0)) { Layer = new Layer("Ink") { Color = new ACadSharp.Color(7) } };
 
@@ -982,7 +983,7 @@ public sealed class EntityRenderDispatcherTests
         BlockRecord block = new("CONST");
         block.Entities.Add(new AttributeDefinition { Tag = "MAKER", Value = "ACME", InsertPoint = new XYZ(1, 1, 0), Height = 2, Flags = AttributeFlags.Constant });
         Insert insert = new(block) { InsertPoint = new XYZ(10, 0, 0) };
-        // Insert has no parameterless constructor and Block has no public setter in ACadSharp 3.7.1 (verified by
+        // Insert has no parameterless constructor and Block has no public setter in ACadSharp 3.8.0 (verified by
         // probe), so an insert with no ATTRIB is built via Insert(BlockRecord) and then Attributes.Clear(), reproducing
         // a file where a constant attribute was never persisted as an ATTRIB. Without the Clear(), Insert(BlockRecord)
         // would already have created an AttributeEntity for the constant ATTDEF, and the assertion below would pass
@@ -1276,8 +1277,9 @@ public sealed class EntityRenderDispatcherTests
         Assert.Contains(arrow, p => Math.Abs(p.X - 11) < 1e-9 && Math.Abs(p.Y - 96) < 1e-9);
         Assert.Equal([new SurfacePoint(5, 95), new SurfacePoint(25, 95)], Assert.Single(surface.Polylines));
 
-        // Insert.Explode()'s clone shares the leader's vertex list (a Leader.Clone() quirk like MLine.Clone()'s), so
-        // ApplyTransform would otherwise leave the block's own LEADER holding world coordinates after this call.
+        // Insert.Explode()'s clone shares the leader's vertex list (a Leader.Clone() quirk; MLine.Clone() shares its
+        // vertices' segment lists instead), so ApplyTransform would otherwise leave the block's own LEADER holding
+        // world coordinates after this call.
         Assert.Equal([new XYZ(0, 0, 0), new XYZ(10, 0, 0)], leader.Vertices);
     }
 
@@ -1376,6 +1378,12 @@ public sealed class EntityRenderDispatcherTests
         }
 
         return vertex;
+    }
+
+    private static void AssertMLineSegmentsIntact(MLine mline)
+    {
+        Assert.Equal(2, mline.Vertices.Count);
+        Assert.All(mline.Vertices, vertex => Assert.Equal(2, vertex.Segments.Count));
     }
 
     [Fact]
@@ -1594,7 +1602,7 @@ public sealed class EntityRenderDispatcherTests
     }
 
     [Fact]
-    public void MLineInsideABlockIsDrawnThroughTheInsertAndKeepsItsVertices()
+    public void MLineInsideABlockIsDrawnThroughTheInsertAndKeepsItsVerticesAndSegments()
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
@@ -1605,13 +1613,13 @@ public sealed class EntityRenderDispatcherTests
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
         Assert.Equal(2, surface.Polylines.Count);
         Assert.Equal([new SurfacePoint(5, 79.5), new SurfacePoint(15, 79.5)], surface.Polylines[0]);
     }
 
     [Fact]
-    public void MLineNestedTwoBlocksDeepIsDrawnThroughTheComposedInsertsAndKeepsItsVertices()
+    public void MLineNestedTwoBlocksDeepIsDrawnThroughTheComposedInsertsAndKeepsItsVerticesAndSegments()
     {
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
@@ -1625,10 +1633,10 @@ public sealed class EntityRenderDispatcherTests
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), outerInsert);
 
-        // ACadSharp 3.7.1's Insert.Clone() deep-clones its block, so exploding outerInsert clones (and empties the
-        // shared vertex list of) an MLINE that is not even a direct child of OUTER's block; without healing every
-        // MLINE reachable through the block tree, the original loses its vertices here too.
-        Assert.Equal(2, mline.Vertices.Count);
+        // ACadSharp 3.8.0's Insert.Clone() deep-clones its block, so exploding outerInsert clones (and empties the
+        // shared segment lists of) an MLINE that is not even a direct child of OUTER's block; without healing every
+        // MLINE reachable through the block tree, the original loses its segments here too.
+        AssertMLineSegmentsIntact(mline);
         Assert.Equal(2, surface.Polylines.Count);
         // Composed translation (5,20) + (2,3) = (7,23), both inserts translation-only. Element 0 (offset +0.5):
         // world y 0.5 -> composed 23.5 -> surface 100-23.5 = 76.5. Element 1 (offset -0.5): world y -0.5 -> composed
@@ -1666,7 +1674,6 @@ public sealed class EntityRenderDispatcherTests
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.White };
         Wipeout wipeout = UnitWipeout();
-        wipeout.ClipType = ClipType.Rectangular;
         wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, 0.5)]);
         wipeout.Transparency = new Transparency(50);
 
@@ -1687,7 +1694,6 @@ public sealed class EntityRenderDispatcherTests
         RecordingDrawingSurface surface = new();
         ImageConfiguration configuration = new();
         Wipeout wipeout = UnitWipeout();
-        wipeout.ClipType = ClipType.Polygonal;
         wipeout.ClipBoundaryVertices.AddRange([new XY(-0.5, -0.5), new XY(0.5, -0.5), new XY(0, 0.5)]);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), wipeout);
@@ -1785,7 +1791,7 @@ public sealed class EntityRenderDispatcherTests
 
         IReadOnlyList<SurfacePoint> polygon = Assert.Single(surface.Polygons);
         // UnitWipeout covers x in [10,15]; the insert translates the insertion point by (50,0,0) to [60,65]. A U
-        // vector contaminated by that translation (as ACadSharp 3.7.1's Wipeout.ApplyTransform would produce) would
+        // vector contaminated by that translation (as ACadSharp 3.8.0's Wipeout.ApplyTransform would produce) would
         // stretch it to [60,115] instead.
         Assert.Equal(60d, polygon.Min(p => p.X), 6);
         Assert.Equal(65d, polygon.Max(p => p.X), 6);
@@ -1918,7 +1924,7 @@ public sealed class EntityRenderDispatcherTests
     public void WipeoutOnATranslucentBackgroundIsSkippedWithAWarning()
     {
         RecordingDrawingSurface surface = new();
-        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.FromRgba(255, 255, 255, 128) };
+        ImageConfiguration configuration = new() { BackgroundColor = SixLabors.ImageSharp.Color.FromPixel(new Rgba32(255, 255, 255, 128)) };
         List<NotificationEventArgs> notifications = new();
         configuration.OnNotification += (_, e) => notifications.Add(e);
 
@@ -2030,7 +2036,7 @@ public sealed class EntityRenderDispatcherTests
         document.BlockRecords.Add(inner);
         outer.Entities.Add(new Line(new XYZ(0, 0, 0), new XYZ(1, 0, 0)));
         // Constructing an Insert of a block overflows the stack once that block's graph already contains a cycle
-        // (ACadSharp 3.7.1's Insert(BlockRecord) constructor itself recurses through the block). So the insert under
+        // (ACadSharp 3.8.0's Insert(BlockRecord) constructor itself recurses through the block). So the insert under
         // test is built, and added to the document, while outer's graph is still acyclic; the second half of the
         // cycle (inner's own Insert(outer)) is wired up afterwards, closing the cycle only in the two blocks'
         // Entities collections, never inside another Insert constructor call.
@@ -2473,7 +2479,7 @@ public sealed class EntityRenderDispatcherTests
         arrow.Entities.Add(mline);
         document.BlockRecords.Add(arrow);
         BlockRecord note = new("NOTE");
-        // ACadSharp 3.7.1's Insert(BlockRecord) constructor clones a document-owned block's entities, and cloning a
+        // ACadSharp 3.8.0's Insert(BlockRecord) constructor clones a document-owned block's entities, and cloning a
         // LEADER clones its dimension style and with it that style's arrowhead block, so building the insert after
         // the leader would empty this MLINE before the renderer ever saw the drawing. The insert is therefore built
         // while NOTE is still empty, the same construction-order workaround the cycle tests use.
@@ -2486,13 +2492,13 @@ public sealed class EntityRenderDispatcherTests
         });
         document.BlockRecords.Add(note);
         document.Entities.Add(insert);
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
         // The caller's own MLINE must survive the render, and it must have been drawn from its two vertices: the
         // leader's path is one polyline and the MLINE's two style elements are the other two.
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
         Assert.Equal(3, surface.Polylines.Count);
     }
 
@@ -2517,14 +2523,14 @@ public sealed class EntityRenderDispatcherTests
             Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, LeaderArrow = arrow },
         };
         document.Entities.Add(leader);
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), leader);
 
         // Nothing exploded this leader, so the only thing standing between ACadSharp's Insert(BlockRecord)
         // constructor and the caller's MLINE is the snapshot DrawArrowBlock takes before building its transient
         // insert.
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
         Assert.Equal(3, surface.Polylines.Count);
     }
 
@@ -2554,14 +2560,14 @@ public sealed class EntityRenderDispatcherTests
         });
         document.BlockRecords.Add(note);
         document.Entities.Add(insert);
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
         // DIMBLK1 is never drawn by this renderer, but DimensionStyle.Clone() deep-clones all four of its
         // block-valued properties, so exploding the insert reaches this MLINE through the leader's style exactly as
         // it does through LeaderArrow. The snapshot has to follow every one of those edges, not just the drawn one.
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
     }
 
     [Fact]
@@ -2588,13 +2594,13 @@ public sealed class EntityRenderDispatcherTests
         });
         document.BlockRecords.Add(note);
         document.Entities.Add(insert);
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
         // A DIMENSION carries a DimensionStyle exactly as a LEADER does, and cloning it clones the style's arrow
         // blocks the same way. A block holding only a dimension must therefore still be scanned and snapshotted.
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
     }
 
     [Fact]
@@ -2622,14 +2628,14 @@ public sealed class EntityRenderDispatcherTests
         });
         document.BlockRecords.Add(note);
         document.Entities.Add(insert);
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), insert);
 
         // Dimension.Clone() deep-clones the picture block that holds the dimension's own generated geometry, not
         // just the arrowhead blocks its style points at, so that block is a fifth edge the snapshot has to follow.
         // Unlike the arrowheads it is on the ordinary render path: DrawDimension draws through it.
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
     }
 
     [Fact]
@@ -2688,14 +2694,14 @@ public sealed class EntityRenderDispatcherTests
             Style = new DimensionStyle("A") { ArrowSize = 2, ScaleFactor = 1, SeparateArrowBlocks = true, DimArrow1 = arrow, DimArrow2 = arrow },
         };
         document.Entities.Add(dimension);
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
 
         new EntityRenderDispatcher(configuration).Draw(CreateContext(surface, configuration), dimension);
 
         // Nothing exploded this dimension: DrawDimension calls UpdateBlock() to generate the picture, and that
         // builds Inserts of the caller's own DimArrow1/DimArrow2 blocks, whose constructor empties an MLINE inside
         // them. The snapshot around that call is the only thing standing between it and the caller's document.
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
     }
 
     [Fact]
@@ -2751,13 +2757,13 @@ public sealed class EntityRenderDispatcherTests
         document.Entities.Add(dimension);
         ImageExporter exporter = new();
         exporter.AddModelSpace(document);
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
 
         foreach (RenderedPage page in exporter.Render())
         {
             page.Dispose();
         }
 
-        Assert.Equal(2, mline.Vertices.Count);
+        AssertMLineSegmentsIntact(mline);
     }
 }

@@ -1,5 +1,6 @@
 using CadColor = ACadSharp.Color;
 using ImageColor = SixLabors.ImageSharp.Color;
+using Rgba32 = SixLabors.ImageSharp.PixelFormats.Rgba32;
 
 namespace ACadSharp.Image.Extensions;
 
@@ -27,6 +28,6 @@ internal static class ColorExtensions
             return foreground;
         }
 
-        return ImageColor.FromRgb(color.R, color.G, color.B);
+        return ImageColor.FromPixel(new Rgba32(color.R, color.G, color.B));
     }
 }

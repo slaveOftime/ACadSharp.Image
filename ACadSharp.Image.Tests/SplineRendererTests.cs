@@ -129,7 +129,7 @@ public sealed class SplineRendererTests
 
         dispatcher.Draw(Context(surface, configuration), spline);
 
-        // ACadSharp 3.7.1's TryPolygonalVertexes tessellates this malformed spline anyway (via its own
+        // ACadSharp 3.8.0's TryPolygonalVertexes tessellates this malformed spline anyway (via its own
         // fallback), so the renderer's last-resort path succeeds and draws a polyline instead of warning.
         Assert.Single(surface.Polylines);
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.Warning);

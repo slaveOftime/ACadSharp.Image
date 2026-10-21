@@ -40,7 +40,7 @@ internal static class SyntheticSamples
         document.Entities.Add(new Line(new XYZ(0, 30, 0), new XYZ(100, 30, 0)) { Layer = grid });
         document.Entities.Add(new Circle { Center = new XYZ(50, 30, 0), Radius = 20, Layer = walls });
 
-        // The default "Layout1" is left in the document: ACadSharp 3.7.1's LayoutCollection.Remove hard-codes
+        // The default "Layout1" is left in the document: ACadSharp 3.8.0's LayoutCollection.Remove hard-codes
         // Layout.PaperLayoutName ("Layout1") as non-removable and throws ArgumentException for it. It is harmless
         // here because the tests add only the "Sheet" layout to the exporter, never document.Layouts wholesale.
         Layout sheet = new("Sheet") { PaperWidth = 297, PaperHeight = 210 };
@@ -315,7 +315,6 @@ internal static class SyntheticSamples
             VVector = new XYZ(0, 20, 0),
             Size = new XY(1, 1),
             ClippingState = true,
-            ClipType = ClipType.Rectangular,
             ClipMode = ClipMode.Inside,
             Layer = coverLayer,
         }, 0x15);
@@ -362,7 +361,7 @@ internal static class SyntheticSamples
 
     /// <summary>
     /// Assigns a deterministic handle via reflection: <see cref="CadObject.Handle"/> has an internal setter in
-    /// ACadSharp 3.7.1, so tests that need a specific handle (to pin draw order, for instance) cannot set it directly.
+    /// ACadSharp 3.8.0, so tests that need a specific handle (to pin draw order, for instance) cannot set it directly.
     /// Shared by <c>ImagePageTests</c> and <c>EntityRenderDispatcherTests</c> as well as this class.
     /// </summary>
     internal static T WithHandle<T>(T entity, ulong handle)

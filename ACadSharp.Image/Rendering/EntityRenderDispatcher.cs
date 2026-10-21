@@ -43,7 +43,7 @@ internal sealed class EntityRenderDispatcher
     /// <remarks>
     /// Keyed on <see cref="BlockRecord"/> identity, so this only pays off for repeated top-level inserts of the
     /// same block within one page: a nested <see cref="Insert"/> reached while exploding an outer one holds a
-    /// deep-cloned block record (per <see cref="Insert.Clone"/> in ACadSharp 3.7.1), a different key every time, so
+    /// deep-cloned block record (per <see cref="Insert.Clone"/> in ACadSharp 3.8.0), a different key every time, so
     /// it misses the cache on every call regardless of how many times the same source block appears nested. A
     /// <see cref="Dictionary{TKey, TValue}"/> would still write an entry for every one of those one-shot clones as
     /// <see cref="ScanBlockSubtree"/> walks them, pinning the whole cloned block graph of a page in memory until
@@ -51,6 +51,24 @@ internal sealed class EntityRenderDispatcher
     /// lookup semantics without retaining a clone past the call that produced it.
     /// </remarks>
     private readonly ConditionalWeakTable<BlockRecord, StrongBox<bool>> _blocksNeedingHeal = new();
+
+    /// <summary>
+    /// Snapshot of an MLINE's vertex list and of each vertex's segment list. ACadSharp's clone gets its own vertex
+    /// objects but shares each vertex's segment-list object with the source, and cloning empties those lists in
+    /// place, so both levels have to be captured and restored.
+    /// </summary>
+    private sealed class MLineSnapshot
+    {
+        public MLineSnapshot(List<MLine.Vertex> vertices, List<List<MLine.Vertex.Segment>> segments)
+        {
+            this.Vertices = vertices;
+            this.Segments = segments;
+        }
+
+        public List<MLine.Vertex> Vertices { get; }
+
+        public List<List<MLine.Vertex.Segment>> Segments { get; }
+    }
 
     public EntityRenderDispatcher(ImageConfiguration configuration)
     {
@@ -99,12 +117,11 @@ internal sealed class EntityRenderDispatcher
     // source is the original block entity a clone came from, whose geometry is used instead of the clone's, and
     // placement is the transform of the insert that placed it. UsesOriginalGeometry's doc is the canonical list of
     // the types drawn from their original, and it is not repeated here.
-    // Both are null outside a block reference, but they do not always travel together inside
-    // one: an MLINE clone is always drawn with placement set and source null (UsesOriginalGeometry never recognises
-    // an MLine original, since the heal already restores the clone's own vertices to local coordinates), and so is a
-    // LEADER clone whose ordinal pairing with the block's original entities failed. A HATCH or WIPEOUT clone has no
-    // such fallback: when its pairing fails it is drawn with neither source nor placement, from its own
-    // un-normalised clone geometry (see the count-mismatch Warning in DrawBlockContents).
+    // Both are null outside a block reference, but they do not always travel together inside one: a LEADER clone
+    // whose ordinal pairing with the block's original entities failed is drawn with placement set and source null,
+    // and an MLINE clone in the same situation is drawn from its own (already transformed) points with both null.
+    // A HATCH or WIPEOUT clone has no such fallback: when its pairing fails it is drawn with neither source nor
+    // placement, from its own un-normalised clone geometry (see the count-mismatch Warning in DrawBlockContents).
     private void Draw(ImageRenderContext context, Entity entity, Layer? parentLayer, ulong? parentHandle, string? blockName, ResolvedStyle? parent, Entity? source = null, Transform? placement = null)
     {
         // Visibility comes first: a hidden entity must not warn about geometry nobody is going to draw.
@@ -138,19 +155,19 @@ internal sealed class EntityRenderDispatcher
                     DrawArc(context, style, arc);
                     break;
                 case Arc arc:
-                    DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), false);
+                    DrawPolyline(context, style, arc.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => (XY)v), false);
                     break;
                 case Circle circle when context.Surface.SupportsCurves && IsWorldPlane(circle.Normal):
                     context.Surface.DrawEllipse(style, context.ToSurfacePoint(circle.Center), context.ToSurfaceLength(circle.Radius), context.ToSurfaceLength(circle.Radius), 0d);
                     break;
                 case Circle circle:
-                    DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
+                    DrawPolyline(context, style, circle.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => (XY)v), true);
                     break;
                 case Ellipse ellipse when context.Surface.SupportsCurves && IsWorldPlane(ellipse.Normal):
                     DrawEllipse(context, style, ellipse);
                     break;
                 case Ellipse ellipse:
-                    DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => v.Convert<XY>()), true);
+                    DrawPolyline(context, style, ellipse.PolygonalVertexes(this._configuration.ArcPrecision).Select(v => (XY)v), true);
                     break;
                 case Line line:
                     context.Surface.DrawLine(style, context.ToSurfacePoint(line.StartPoint), context.ToSurfacePoint(line.EndPoint));
@@ -198,7 +215,7 @@ internal sealed class EntityRenderDispatcher
                     this.DrawBlockContents(context, insert, layer, resolved);
                     break;
                 case MLine mline:
-                    this.DrawMLine(context, style, resolved, mline, placement);
+                    this.DrawMLine(context, style, resolved, source as MLine ?? mline, placement);
                     break;
                 case Wipeout wipeout:
                     this.DrawWipeout(context, style, source as Wipeout ?? wipeout, placement);
@@ -266,10 +283,10 @@ internal sealed class EntityRenderDispatcher
     /// <remarks>
     /// <c>UpdateBlock()</c> is the second place in the renderer, after <see cref="DrawArrowBlock"/>, that makes
     /// ACadSharp construct an <c>Insert</c> of a block the caller owns: for a linear or aligned dimension it builds
-    /// one of each of the style's arrow blocks. ACadSharp 3.7.1's <c>Insert(BlockRecord)</c> constructor clones a
-    /// document-owned block's entities, so that call empties the vertex list of any MLINE inside one of them —
-    /// measured at two vertices to none with no renderer involved. This is the top-level dimension path, where
-    /// nothing else takes a snapshot: a dimension reached through a block reference is covered by
+    /// one of each of the style's arrow blocks. ACadSharp 3.8.0's <c>Insert(BlockRecord)</c> constructor clones a
+    /// document-owned block's entities, so that call empties the segment lists of any MLINE inside one of them —
+    /// measured at two segments per vertex to none with no renderer involved. This is the top-level dimension
+    /// path, where nothing else takes a snapshot: a dimension reached through a block reference is covered by
     /// <see cref="DrawBlockContents"/>'s own snapshot and its <c>finally</c> heal, but the entity-type switch in
     /// <c>Draw</c> routes a top-level dimension straight here. The heal is in a <c>finally</c> for the same reason
     /// it is there, so a throw while generating the picture cannot leave the caller's document broken. Page framing
@@ -288,7 +305,7 @@ internal sealed class EntityRenderDispatcher
         BlockRecord? block = dimension.Block;
         if (block == null)
         {
-            Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
+            Dictionary<MLine, MLineSnapshot> mlineVertices = new();
             Dictionary<Leader, List<XYZ>> leaderVertices = new();
             HashSet<BlockRecord> collected = new();
             foreach (BlockRecord referenced in ReferencedBlocks(dimension))
@@ -437,7 +454,7 @@ internal sealed class EntityRenderDispatcher
         IEnumerable<XYZ> points = polyline.GetPoints<XYZ>(this._configuration.ArcPrecision);
         if (IsWorldPlane(polyline.Normal))
         {
-            return points.Select(v => v.Convert<XY>());
+            return points.Select(v => (XY)v);
         }
 
         OcsTransform toWorld = OcsTransform.For(polyline.Normal);
@@ -511,7 +528,7 @@ internal sealed class EntityRenderDispatcher
     /// Emits an ellipse or elliptical arc natively.
     /// </summary>
     /// <remarks>
-    /// <c>Ellipse.MajorAxis</c> and <c>Ellipse.MinorAxis</c> are full axis lengths in ACadSharp 3.7.1
+    /// <c>Ellipse.MajorAxis</c> and <c>Ellipse.MinorAxis</c> are full axis lengths in ACadSharp 3.8.0
     /// (<c>MajorAxis</c> is twice the length of <c>MajorAxisEndPoint</c>), so they are halved into surface radii.
     /// </remarks>
     private static void DrawEllipse(ImageRenderContext context, ImageStyle style, Ellipse ellipse)
@@ -605,8 +622,8 @@ internal sealed class EntityRenderDispatcher
         }
 
         double size = leader.Style.ArrowSize * (leader.Style.ScaleFactor > 0d ? leader.Style.ScaleFactor : 1d);
-        XY tip = leader.Vertices[0].Convert<XY>();
-        XY direction = tip - leader.Vertices[1].Convert<XY>();
+        XY tip = (XY)leader.Vertices[0];
+        XY direction = tip - (XY)leader.Vertices[1];
         double length = direction.GetLength();
 
         // Every comparison with NaN is false, so the size has to be tested for finiteness explicitly. The degenerate
@@ -655,7 +672,7 @@ internal sealed class EntityRenderDispatcher
     /// by walking its entities with a transform: most entity types are drawn from their own stored points and ignore
     /// a placement, so only <c>Insert.Explode()</c> transforms an arbitrary block's contents correctly.
     /// <para>
-    /// Two ACadSharp 3.7.1 behaviours shape the construction. An <c>Insert</c> cannot represent shear, so a composed
+    /// Two ACadSharp 3.8.0 behaviours shape the construction. An <c>Insert</c> cannot represent shear, so a composed
     /// transform that is not a planar similarity has no equivalent insert and the caller falls back. And
     /// <c>Insert.GetTransform()</c> computes <c>R * S * p + (InsertPoint - BasePoint)</c>, where AutoCAD specifies
     /// <c>InsertPoint + R * S * (p - BasePoint)</c>; the two agree only when the rotation and scale are identity, so
@@ -710,11 +727,11 @@ internal sealed class EntityRenderDispatcher
             return false;
         }
 
-        // ACadSharp 3.7.1's Insert(BlockRecord) constructor clones a document-owned block's entities, so merely
-        // building the transient insert empties the vertex list of any MLINE in the arrow block (and of any MLINE
+        // ACadSharp 3.8.0's Insert(BlockRecord) constructor clones a document-owned block's entities, so merely
+        // building the transient insert empties the segment lists of any MLINE in the arrow block (and of any MLINE
         // in a further arrowhead block below it). The snapshot therefore has to be taken before the constructor
         // runs, not inside DrawBlockContents, which only gets to look once the insert already exists.
-        Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
+        Dictionary<MLine, MLineSnapshot> mlineVertices = new();
         Dictionary<Leader, List<XYZ>> leaderVertices = new();
         if (this.BlockSubtreeNeedsHeal(arrow, new HashSet<BlockRecord>()))
         {
@@ -1101,7 +1118,7 @@ internal sealed class EntityRenderDispatcher
     /// <returns>Zero, one or two rings of world points.</returns>
     /// <remarks>
     /// The insertion point is mapped as a point and the U and V vectors as directions, from the original entity:
-    /// ACadSharp 3.7.1's <c>Wipeout.ApplyTransform</c> maps U and V as points, so a translated clone's vectors carry
+    /// ACadSharp 3.8.0's <c>Wipeout.ApplyTransform</c> maps U and V as points, so a translated clone's vectors carry
     /// the translation and the mask is stretched across the drawing.
     /// </remarks>
     internal static IReadOnlyList<IReadOnlyList<XYZ>> WipeoutWorldRings(Wipeout wipeout, Transform? placement)
@@ -1162,20 +1179,19 @@ internal sealed class EntityRenderDispatcher
     /// placed through the insert's transform, instead of the clone's own points. This doc is the canonical list of
     /// the types that are drawn that way; the block-content path and <c>Draw</c> point here rather than repeat it.
     /// They are: a TEXT or MTEXT (their alignment point and, for MTEXT, X axis are never transformed by
-    /// <c>Explode()</c>), an ATTRIB or ATTDEF (an
-    /// <c>AttributeBase</c> is a <c>TextEntity</c>, so the TEXT arm covers it; in practice this is the constant
-    /// ATTDEF <see cref="DrawBlockContents"/> draws — a non-constant one is a template and is skipped there — and a
-    /// multi-line one is then drawn from the original's embedded MTEXT through the insert transform rather than
-    /// block-local), a LEADER (once healed, the clone
-    /// shares the same local vertex list as the original, so either would draw identically; the original is used
-    /// for consistency with TEXT, MTEXT and SOLID, not because it carries anything the clone lacks), a SOLID whose
-    /// normal is not the world Z axis (its OCS corners must be brought into world space before the insert
-    /// transform, not after), a HATCH (its boundary and pattern are OCS data too, and <c>Hatch.ApplyTransform</c>
-    /// maps the raw OCS boundary as if it were world data and never folds in <c>Elevation</c>, so the clone can
-    /// never be trusted; only the original, drawn through its own OCS frame and then the placement, is correct), or
-    /// a WIPEOUT (<c>Wipeout.ApplyTransform</c> maps its U and V vectors as points, so a translated clone's vectors
-    /// carry the translation; only the original, mapped through <see cref="InsertPlacement.MapVector"/>, keeps them
-    /// as directions).
+    /// <c>Explode()</c>); an ATTRIB or ATTDEF (an <c>AttributeBase</c> is a <c>TextEntity</c>, so the TEXT arm
+    /// covers it; in practice this is the constant ATTDEF <see cref="DrawBlockContents"/> draws — a non-constant one
+    /// is a template and is skipped there — and a multi-line one is then drawn from the original's embedded MTEXT
+    /// through the insert transform rather than block-local); an MLINE (ACadSharp 3.8's <c>Explode()</c> transforms
+    /// the clone's vertices but empties the shared segment lists that carry MLEDIT cuts, so only the original
+    /// retains the complete local geometry); a LEADER (the original is used for consistency with TEXT, MTEXT and
+    /// SOLID; the heal also restores its local vertex list); a SOLID whose normal is not the world Z axis (its OCS
+    /// corners must be brought into world space before the insert transform, not after); a HATCH (its boundary and
+    /// pattern are OCS data too, and <c>Hatch.ApplyTransform</c> maps the raw OCS boundary as if it were world data
+    /// and never folds in <c>Elevation</c>, so the clone can never be trusted; only the original, drawn through its
+    /// own OCS frame and then the placement, is correct); or a WIPEOUT (<c>Wipeout.ApplyTransform</c> maps its U and
+    /// V vectors as points, so a translated clone's vectors carry the translation; only the original, mapped through
+    /// <see cref="InsertPlacement.MapVector"/>, keeps them as directions).
     /// The pairing requires <paramref name="original"/> to be the block entity at the clone's own index and of the
     /// same runtime type, since a mismatched index (an ATTDEF the clone stream skipped, for example) would pair the
     /// wrong entity.
@@ -1190,7 +1206,7 @@ internal sealed class EntityRenderDispatcher
             return false;
         }
 
-        if (original is TextEntity or MText or Leader or Hatch or Wipeout)
+        if (original is TextEntity or MText or MLine or Leader or Hatch or Wipeout)
         {
             return true;
         }
@@ -1199,10 +1215,10 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
-    /// Draws the contents of a block reference by exploding it, healing the vertex lists ACadSharp 3.7.1's clones
-    /// share with their sources, and drawing every clone — some of them from the original block entity through the
-    /// insert's transform rather than from the clone's own points. <see cref="UsesOriginalGeometry"/>'s doc is the
-    /// canonical list of which types those are and why; it is not repeated here.
+    /// Draws the contents of a block reference by exploding it, healing the vertex and segment lists ACadSharp's
+    /// clones share with their sources, and drawing every clone — some of them from the original block entity
+    /// through the insert's transform rather than from the clone's own points. <see cref="UsesOriginalGeometry"/>'s
+    /// doc is the canonical list of which types those are and why; it is not repeated here.
     /// </summary>
     /// <param name="context">The context that maps drawing units onto the surface.</param>
     /// <param name="insert">The block reference to draw the contents of.</param>
@@ -1229,32 +1245,33 @@ internal sealed class EntityRenderDispatcher
 
         // The exploded clones carry the block entities' own attributes but no owner or document; ByBlock and
         // layer-0 inheritance, and the header's LTSCALE, come from the insert's resolved style and effective layer.
-        // ACadSharp 3.7.1's Explode() yields one clone per block entity, in order. Text geometry comes from the
+        // ACadSharp 3.8.0's Explode() yields one clone per block entity, in order. Text geometry comes from the
         // original entity placed through the insert's transform, because the clones' alignment points and MTEXT
         // X axes are never transformed and mirrored inserts hand back world points with a flipped normal.
         Transform transform = insert.GetTransform();
         IReadOnlyList<Entity> originals = insert.Block.Entities.ToList();
 
-        // ACadSharp 3.7.1's MLine.Clone() empties the vertex list an MLine shares with its source (by
-        // MemberwiseClone), and Leader.Clone() shares its vertex list the same way but Explode()'s ApplyTransform
-        // overwrites that shared list's contents (world coordinates) in place instead of emptying it; either way the
-        // source document is left corrupted once Explode() runs, because the clone and its source are the very same
-        // List object. Insert.Clone() deep-clones its entire block subtree, so exploding this insert destroys every
-        // MLINE reachable through it, including ones nested inside a block placed inside this one, several levels
-        // below anything Explode() itself returns, because cloning the nested Insert empties that MLINE's list the
-        // moment it is cloned along the way; a nested LEADER's list, by contrast, is overwritten only when the
-        // insert that directly contains it is the one exploded, so a deeply nested LEADER survives an ancestor's
-        // Explode() unharmed and its snapshot below is a defensive backstop, not a load-bearing fix.
+        // ACadSharp 3.8.0's MLine.Clone() gives the clone its own vertex objects but shares each vertex's segment
+        // list with the source and empties those lists in place; Leader.Clone() shares its vertex list with the
+        // source, but Explode()'s ApplyTransform overwrites that shared list's contents (world coordinates) in place
+        // instead of emptying it. Either way the source document is left corrupted once Explode() runs, because
+        // the clone and its source share the affected list object. Insert.Clone() deep-clones its entire block
+        // subtree, so exploding this insert destroys every MLINE reachable through it, including ones nested inside
+        // a block placed inside this one, several levels below anything Explode() itself returns, because cloning
+        // the nested Insert empties that MLINE's list the moment it is cloned along the way; a nested LEADER's list,
+        // by contrast, is overwritten only when the insert that directly contains it is the one exploded, so a
+        // deeply nested LEADER survives an ancestor's Explode() unharmed and its snapshot below is a defensive
+        // backstop, not a load-bearing fix.
         // CollectSharedVertexLists walks the whole subtree, following every edge ReferencedBlocks reports — nested
         // Insert.Block references, a DIMENSION's own picture block, and the four arrowhead blocks of a LEADER's or a
         // DIMENSION's style, none of them cloned at this point — to snapshot every MLINE and LEADER before
-        // Explode() runs, and Heal repairs them
-        // immediately after and again in `finally`. The repair is always in place (Clear + AddRange into the
-        // *existing* list, never a reassignment): because a clone shares the very same list object as its source at
-        // every depth, one in-place heal fixes the original and every clone below it at once; reassigning would
-        // leave an outer level's shared list broken. The insert's transform still has to be applied manually to a
-        // healed MLINE's or LEADER's points, because Explode()'s own ApplyTransform ran against the pre-heal list.
-        Dictionary<MLine, List<MLine.Vertex>> mlineVertices = new();
+        // Explode() runs, and Heal repairs them immediately after and again in `finally`. The repair is always in
+        // place (Clear + AddRange into the *existing* list, never a reassignment): because the lists a clone shares
+        // with its source are shared at every depth, one in-place heal fixes the original and every clone below it at
+        // once; reassigning would leave an outer level's shared list broken. The insert's transform still has to be
+        // applied manually to the local points used for a healed MLINE or LEADER, because Explode()'s own
+        // ApplyTransform only reached the clone.
+        Dictionary<MLine, MLineSnapshot> mlineVertices = new();
         Dictionary<Leader, List<XYZ>> leaderVertices = new();
         // Walking the whole subtree just to find out there is nothing to snapshot is wasted work on every insert of
         // an MLINE/LEADER-free block; BlockSubtreeNeedsHeal answers that cheaply (memoised per block), so the actual
@@ -1300,7 +1317,14 @@ internal sealed class EntityRenderDispatcher
                     source = original;
                     entityPlacement = transform;
                 }
-                else if (entity is MLine or Leader)
+                else if (entity is MLine)
+                {
+                    // ACadSharp 3.8's Explode() transforms MLINE clones to world coordinates itself. A clone whose
+                    // ordinal pairing with the block's originals failed has no local geometry left to place, so
+                    // applying the insert transform again would move it twice.
+                    entityPlacement = null;
+                }
+                else if (entity is Leader)
                 {
                     entityPlacement = transform;
                 }
@@ -1324,18 +1348,28 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
-    /// Restores every snapshotted MLINE and LEADER vertex list in place (Clear + AddRange, never a reassignment):
-    /// a clone shares the very same list object as its source at every depth, so one in-place repair fixes the
-    /// original and every clone below it at once, where reassigning would leave an outer level's list broken.
+    /// Restores every snapshotted MLINE vertex and segment list, and every LEADER vertex list, in place
+    /// (Clear + AddRange, never a reassignment): the list objects a clone shares with its source are shared at every
+    /// depth, so one in-place repair fixes the original and every clone below it at once, where reassigning would
+    /// leave an outer level's list broken.
     /// </summary>
-    /// <param name="mlineSnapshot">The MLINE vertex lists captured before cloning.</param>
+    /// <param name="mlineSnapshot">The MLINE vertex and segment lists captured before cloning.</param>
     /// <param name="leaderSnapshot">The LEADER vertex lists captured before cloning.</param>
-    private static void Heal(Dictionary<MLine, List<MLine.Vertex>> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot)
+    private static void Heal(Dictionary<MLine, MLineSnapshot> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot)
     {
-        foreach (KeyValuePair<MLine, List<MLine.Vertex>> pair in mlineSnapshot)
+        foreach (KeyValuePair<MLine, MLineSnapshot> pair in mlineSnapshot)
         {
             pair.Key.Vertices.Clear();
-            pair.Key.Vertices.AddRange(pair.Value);
+            pair.Key.Vertices.AddRange(pair.Value.Vertices);
+            // The clone shares each vertex's segment list with its source, and cloning empties those lists in place.
+            // Restoring the source's lists therefore repairs the clone too.
+            int count = Math.Min(pair.Key.Vertices.Count, pair.Value.Segments.Count);
+            for (int i = 0; i < count; i++)
+            {
+                List<MLine.Vertex.Segment> segments = pair.Key.Vertices[i].Segments;
+                segments.Clear();
+                segments.AddRange(pair.Value.Segments[i]);
+            }
         }
 
         foreach (KeyValuePair<Leader, List<XYZ>> pair in leaderSnapshot)
@@ -1352,7 +1386,7 @@ internal sealed class EntityRenderDispatcher
     /// <item>a block reference's own <see cref="Insert.Block"/>;</item>
     /// <item>a DIMENSION's <see cref="Dimension.Block"/>, the anonymous block holding the picture ACadSharp
     /// generates for it — its lines, arrowheads and measurement text. <c>Dimension.Clone()</c> deep-clones it
-    /// (probed on 3.7.1: an MLINE inside a picture block goes from two vertices to none across a single
+    /// (probed on 3.8.0: an MLINE inside a picture block goes from two segments per vertex to none across a single
     /// <c>Clone()</c>, and the clone's block is a different instance), so it corrupts a source document exactly as
     /// the arrowhead edges do. It differs from them in being on the ordinary render path — <c>DrawDimension</c>
     /// draws through it — rather than reachable only from an exotic file, and in being generated geometry rather
@@ -1360,7 +1394,7 @@ internal sealed class EntityRenderDispatcher
     /// and there is nothing to clone or to walk;</item>
     /// <item>every non-null block-valued property of a LEADER's or a DIMENSION's dimension style —
     /// <c>ArrowBlock</c> (DIMBLK), <c>DimArrow1</c> (DIMBLK1), <c>DimArrow2</c> (DIMBLK2) and <c>LeaderArrow</c>
-    /// (DIMLDRBLK). ACadSharp 3.7.1's <c>DimensionStyle.Clone()</c> deep-clones all four, and <c>Leader</c> and
+    /// (DIMLDRBLK). ACadSharp 3.8.0's <c>DimensionStyle.Clone()</c> deep-clones all four, and <c>Leader</c> and
     /// <c>Dimension</c> both clone their style, so an MLINE inside any of them is emptied by a clone that never
     /// names it — whether or not the renderer ever draws that particular arrowhead, since only <c>LeaderArrow</c>
     /// is drawn.</item>
@@ -1431,25 +1465,27 @@ internal sealed class EntityRenderDispatcher
     }
 
     /// <summary>
-    /// Snapshots every MLINE's and LEADER's vertex list reachable from <paramref name="block"/>, following every
-    /// edge <see cref="ReferencedBlocks"/> reports: nested <see cref="Insert.Block"/> references, and all four
-    /// arrowhead blocks of every LEADER's and DIMENSION's dimension style on the way.
-    /// <see cref="Insert.Explode"/> deep-clones its entire block subtree, so an MLINE nested several blocks deep is
-    /// corrupted by an ancestor insert's own explode even though it is never that ancestor's direct child, because
-    /// its list is emptied the moment it is cloned; a nested LEADER's list, by contrast, is only overwritten when
-    /// the insert that directly contains it is the one exploded, so snapshotting it here is a defensive backstop
-    /// rather than the fix MLINE needs. Cloning a LEADER or a DIMENSION also clones its dimension style, and that
-    /// clones all four of the style's arrowhead blocks, and cloning a DIMENSION clones its picture block too, which
-    /// is how an MLINE inside a custom arrowhead — or inside a dimension's own generated geometry — is reached by a
-    /// clone that never names it. This has to run, and capture the whole subtree, before the clone that
-    /// corrupts those lists — the explode itself, or, for a document-owned block, the <c>Insert(BlockRecord)</c>
-    /// constructor.
+    /// Snapshots every MLINE's vertex and segment lists and every LEADER's vertex list reachable from
+    /// <paramref name="block"/>, following every edge <see cref="ReferencedBlocks"/> reports: nested
+    /// <see cref="Insert.Block"/> references, and all four arrowhead blocks of every LEADER's and DIMENSION's
+    /// dimension style on the way. <see cref="Insert.Explode"/> deep-clones its entire block subtree, so an MLINE
+    /// nested several blocks deep is corrupted by an ancestor insert's own explode even though it is never that
+    /// ancestor's direct child, because its vertex and segment lists are emptied the moment it is cloned; a nested
+    /// LEADER's list, by contrast, is only overwritten when the insert that directly contains it is the one
+    /// exploded, so snapshotting it here is a defensive backstop rather than the fix MLINE needs. Cloning a LEADER
+    /// or a DIMENSION also clones its dimension style, which clones all four of the style's arrowhead blocks, and
+    /// cloning a DIMENSION clones its picture block too, which is how an MLINE inside a custom arrowhead — or inside
+    /// a dimension's own generated geometry — is reached by a clone that never names it. This has to run, and capture
+    /// the whole subtree, before the clone that corrupts those lists — the explode itself, or, for a document-owned
+    /// block, the <c>Insert(BlockRecord)</c> constructor.
     /// </summary>
-    /// <param name="block">The block whose entities, nested blocks, dimension pictures and dimension-style arrowhead blocks are searched.</param>
-    /// <param name="mlineSnapshot">Receives one entry per MLINE found, keyed by the MLINE itself.</param>
+    /// <param name="block">The block whose entities, nested blocks, dimension pictures and dimension-style arrowhead
+    /// blocks are searched.</param>
+    /// <param name="mlineSnapshot">Receives one entry per MLINE found, keyed by the MLINE itself and holding its
+    /// vertex and segment lists.</param>
     /// <param name="leaderSnapshot">Receives one entry per LEADER found, keyed by the LEADER itself.</param>
     /// <param name="visited">Blocks already walked, so a circular or diamond hierarchy is walked once.</param>
-    private static void CollectSharedVertexLists(BlockRecord? block, Dictionary<MLine, List<MLine.Vertex>> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot, HashSet<BlockRecord> visited)
+    private static void CollectSharedVertexLists(BlockRecord? block, Dictionary<MLine, MLineSnapshot> mlineSnapshot, Dictionary<Leader, List<XYZ>> leaderSnapshot, HashSet<BlockRecord> visited)
     {
         if (block == null || !visited.Add(block))
         {
@@ -1461,7 +1497,9 @@ internal sealed class EntityRenderDispatcher
             switch (entity)
             {
                 case MLine mline when !mlineSnapshot.ContainsKey(mline):
-                    mlineSnapshot.Add(mline, new List<MLine.Vertex>(mline.Vertices));
+                    mlineSnapshot.Add(mline, new MLineSnapshot(
+                        new List<MLine.Vertex>(mline.Vertices),
+                        mline.Vertices.Select(v => new List<MLine.Vertex.Segment>(v.Segments)).ToList()));
                     break;
                 case Leader leader when !leaderSnapshot.ContainsKey(leader):
                     leaderSnapshot.Add(leader, new List<XYZ>(leader.Vertices));
@@ -1683,7 +1721,7 @@ internal sealed class EntityRenderDispatcher
     private void DrawHatch(ImageRenderContext context, ImageStyle style, Hatch hatch, Transform? placement)
     {
         // Boundary paths and exploded pattern lines are OCS data; the OCS frame and the entity's own elevation are
-        // applied here and the insert transform after them, because ACadSharp 3.7.1's Hatch.ApplyTransform maps the
+        // applied here and the insert transform after them, because ACadSharp 3.8.0's Hatch.ApplyTransform maps the
         // raw OCS boundary as if it were world data and never folds the elevation in, so a clone from a block cannot
         // be trusted for a hatch on a tilted plane.
         OcsTransform? toWorld = IsWorldPlane(hatch.Normal) ? null : OcsTransform.For(hatch.Normal);
@@ -1756,7 +1794,7 @@ internal sealed class EntityRenderDispatcher
 
     /// <summary>
     /// Number of pattern scan lines <c>Hatch.ExplodePattern()</c> would sweep across the hatch's bounding box, using its
-    /// own arithmetic (ACadSharp 3.7.1). Each scan line is clipped against every boundary edge and may emit several
+    /// own arithmetic (ACadSharp 3.8.0). Each scan line is clipped against every boundary edge and may emit several
     /// dashes, so this is the work the expansion costs, not the number of lines it draws.
     /// </summary>
     /// <param name="hatch">The pattern hatch.</param>

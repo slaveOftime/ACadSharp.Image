@@ -109,7 +109,7 @@ internal sealed class ImageStyleResolver
     }
 
     /// <summary>
-    /// Maps CAD transparency to opacity. ByLayer is opaque (ACadSharp 3.7.1 layers carry no transparency);
+    /// Maps CAD transparency to opacity. ByLayer is opaque (ACadSharp 3.8.0 layers carry no transparency);
     /// ByBlock inherits the parent's opacity; explicit values 0..90 mean that percentage transparent.
     /// </summary>
     internal static float ResolveOpacity(Entity entity, float parentOpacity)

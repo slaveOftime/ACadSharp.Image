@@ -1,5 +1,6 @@
 using ACadSharp.Image.Extensions;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace ACadSharp.Image.Tests;
 
@@ -11,7 +12,7 @@ public sealed class ColorResolutionTests
     public void Index7IsBlackOnLightAndWhiteOnDarkBackgrounds()
     {
         ImageConfiguration light = new();
-        ImageConfiguration dark = new() { BackgroundColor = Color.FromRgb(20, 20, 40) };
+        ImageConfiguration dark = new() { BackgroundColor = Color.FromPixel(new Rgba32(20, 20, 40)) };
         ImageConfiguration transparent = new() { BackgroundColor = Color.Transparent };
 
         Assert.Equal(Color.Black, light.ResolveForegroundColor());
@@ -26,6 +27,6 @@ public sealed class ColorResolutionTests
 
         Assert.Equal(Color.Yellow, configuration.ResolveForegroundColor());
         Assert.Equal(Color.Yellow, new ACadSharp.Color(7).ToImageColor(configuration.ResolveForegroundColor()));
-        Assert.Equal(Color.FromRgb(255, 0, 0), new ACadSharp.Color(1).ToImageColor(configuration.ResolveForegroundColor()));
+        Assert.Equal(Color.FromPixel(new Rgba32(255, 0, 0)), new ACadSharp.Color(1).ToImageColor(configuration.ResolveForegroundColor()));
     }
 }

@@ -118,7 +118,7 @@ public sealed class ImageExporterTests
         Assert.NotNull(page.Canvas);
         Assert.DoesNotContain(notifications, n => n.NotificationType == NotificationType.NotImplemented && n.Message.Contains("Spline", StringComparison.OrdinalIgnoreCase));
 
-        // Silence is not enough: the spline must actually reach the surface. ACadSharp 3.7.1's UpdateFromFitPoints
+        // Silence is not enough: the spline must actually reach the surface. ACadSharp 3.8.0's UpdateFromFitPoints
         // produces no control points, so this one is drawn through its fit points, with a warning saying so.
         RecordingDrawingSurface surface = new();
         new ImagePageRenderer(exporter.Configuration).RenderTo(surface, exporter.Pages[0]);
@@ -129,7 +129,7 @@ public sealed class ImageExporterTests
     [Fact]
     public void RenderClosedPeriodicSplineDoesNotDrawSpokeToOrigin()
     {
-        using Image<Rgba32> canvas = new(100, 100, SixLabors.ImageSharp.Color.White);
+        using Image<Rgba32> canvas = new(100, 100, SixLabors.ImageSharp.Color.White.ToPixel<Rgba32>());
         ImageConfiguration configuration = new()
         {
             Width = 100,

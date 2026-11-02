@@ -13,6 +13,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
+      - name: NuGet login (OIDC -> short-lived API key)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          # nuget.org profile name (the owner of the trusted publishing policy)
+          user: slaveoftime
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -34,7 +41,7 @@ jobs:
         run: dotnet pack ./ACadSharp.Image.Cli/ACadSharp.Image.Cli.csproj --configuration Release --output ./artifacts/packages -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.value }}
 
       - name: Publish packages
-        run: dotnet nuget push ./artifacts/packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push ./artifacts/packages/*.nupkg --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
         shell: pwsh
 
   publish-native-cli:
